@@ -858,6 +858,7 @@
             </javacArgs>
             <!-- The following plugin is required to use quasiquotes in Scala 2.10 and is used
                  by Spark SQL for code generation. -->
+<!-- We are not using Spark SQL for now
             <compilerPlugins>
               <compilerPlugin>
                   <groupId>org.scalamacros</groupId>
@@ -865,6 +866,7 @@
                   <version>${scala.macros.version}</version>
               </compilerPlugin>
             </compilerPlugins>
+-->
           </configuration>
         </plugin>
         <plugin>
