@@ -115,6 +115,7 @@
     <java.version>1.6</java.version>
     <sbt.project.name>spark</sbt.project.name>
     <scala.version>2.10.2</scala.version>
+    <scala.organization>org.scala-lang.virtualized</scala.organization>
     <scala.binary.version>2.10</scala.binary.version>
     <scala.macros.version>2.0.1</scala.macros.version>
     <mesos.version>0.18.1</mesos.version>
@@ -840,12 +841,15 @@
           </executions>
           <configuration>
             <scalaVersion>${scala.version}</scalaVersion>
+            <scalaOrgranization>${scala.organization}</scalaOrgranization>
             <recompileMode>modified-only</recompileMode>
             <useZincServer>false</useZincServer>
             <args>
               <arg>-unchecked</arg>
               <arg>-deprecation</arg>
               <arg>-feature</arg>
+              <arg>-language:postfixOps</arg>
+              <arg>-Yvirtualize</arg>
             </args>
             <jvmArgs>
               <jvmArg>-Xms1024m</jvmArg>
