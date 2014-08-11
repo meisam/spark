@@ -254,6 +254,11 @@
   <dependencyManagement>
     <dependencies>
       <dependency>
+        <groupId>EPFL</groupId>
+        <artifactId>lms_2.10</artifactId>
+        <version>0.3-SNAPSHOT</version>
+      </dependency>
+      <dependency>
         <groupId>org.eclipse.jetty</groupId>
         <artifactId>jetty-util</artifactId>
         <version>${jetty.version}</version>
