@@ -66,17 +66,17 @@
       <artifactId>jetty-server</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.scala-lang</groupId>
+      <groupId>org.scala-lang.virtualized</groupId>
       <artifactId>scala-compiler</artifactId>
       <version>${scala.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.scala-lang</groupId>
+      <groupId>org.scala-lang.virtualized</groupId>
       <artifactId>scala-reflect</artifactId>
       <version>${scala.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.scala-lang</groupId>
+      <groupId>org.scala-lang.virtualized</groupId>
       <artifactId>jline</artifactId>
       <version>${scala.version}</version>
     </dependency>
