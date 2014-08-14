@@ -35,6 +35,11 @@
   <url>http://spark.apache.org/</url>
   <dependencies>
     <dependency>
+        <groupId>EPFL</groupId>
+        <artifactId>lms_2.10</artifactId>
+        <version>0.3-SNAPSHOT</version>
+    </dependency>
+    <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-client</artifactId>
       <exclusions>
