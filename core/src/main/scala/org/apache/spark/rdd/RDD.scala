@@ -1518,6 +1518,10 @@ abstract class RDD[T: ClassTag](
   def toJavaRDD() : JavaRDD[T] = {
     new JavaRDD(this)(elementClassTag)
   }
+
+  def toGpuRDD():GpuRDD[T] = {
+    new GpuRDD(this);
+  }
 }
 
 
