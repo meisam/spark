@@ -22,8 +22,6 @@ import java.lang.reflect.{Array => JArray}
 import org.apache.spark.{Logging, Partition, TaskContext}
 
 import scala.reflect.ClassTag
-import scala.reflect.runtime.universe._
-import scala.util.matching.Regex
 
 /**
  *
@@ -35,7 +33,7 @@ class GpuRDD[T <: Product : ClassTag](prev: RDD[T], val columnTypes: Array[Strin
    * Implemented by subclasses to compute a given partition.
    */
   override def compute(split: Partition, context: TaskContext): Iterator[RDDChuck[T]] = {
-    throw new NotImplementedError("org.apache.spark.rdd.GpuRDD.compute is not implemented yet.")
+    new ChunkIterator(firstParent[T].iterator(split, context), columnTypes)
   }
 
   /**
@@ -46,13 +44,15 @@ class GpuRDD[T <: Product : ClassTag](prev: RDD[T], val columnTypes: Array[Strin
 
 }
 
-class RDDChuck[T <: Product : ClassTag](val columnTypes: Array[String]) extends Logging {
+class RDDChuck[T <: Product](val columnTypes: Array[String]) extends Logging {
 
   def MAX_SIZE: Int = 1 << 10
 
   def MAX_STRING_SIZE: Int = 1 << 7
 
-  val intData = Array.ofDim[Int](columnTypes.filter(_ == "INT").length, MAX_SIZE)
+  var actualSize = 0
+
+  val intData: Array[Array[Int]] = Array.ofDim[Int](columnTypes.filter(_ == "INT").length, MAX_SIZE)
   val longData = Array.ofDim[Long](columnTypes.filter(_ == "LONG").length, MAX_SIZE)
   val floatData = Array.ofDim[Float](columnTypes.filter(_ == "FLOAT").length, MAX_SIZE)
   val doubleData = Array.ofDim[Double](columnTypes.filter(_ == "DOUBLE").length, MAX_SIZE)
@@ -60,11 +60,11 @@ class RDDChuck[T <: Product : ClassTag](val columnTypes: Array[String]) extends 
   val charData = Array.ofDim[Char](columnTypes.filter(_ == "CHAR").length, MAX_SIZE)
   val stringData = Array.ofDim[Char](columnTypes.filter(_ == "STRING").length, MAX_SIZE * MAX_STRING_SIZE)
 
-  def fill(iter: Iterator[Product]) = {
+  def fill(iter: Iterator[Product]): Unit = {
     val values: Iterator[Product] = iter.take(MAX_SIZE)
-
     values.zipWithIndex.foreach {
       case (v, rowIndex) =>
+        actualSize = rowIndex
         v.productIterator.zipWithIndex.foreach { case (p, colIndex) =>
           if (columnTypes(colIndex) == "INT") {
             intData(colIndex)(rowIndex) = p.asInstanceOf[Int]
@@ -114,4 +114,16 @@ class RDDChuck[T <: Product : ClassTag](val columnTypes: Array[String]) extends 
     */
   }
 
+}
+
+class ChunkIterator[T <: Product](itr: Iterator[T], val columnTypes: Array[String]) extends Iterator[RDDChuck[T]] {
+
+  override def hasNext: Boolean = itr.hasNext
+
+  override def next(): RDDChuck[T] = {
+    println("This is being called")
+    val chunk = new RDDChuck[T](columnTypes)
+    chunk.fill(itr)
+    chunk
+  }
 }
