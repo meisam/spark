@@ -43,6 +43,14 @@ class GpuLayout extends FunSuite with BeforeAndAfterAll {
     val x = new RDDChuck[(Int, String, Float, Double, String)]
     assert(x.rawData !== null)
     assert(x.rawData.getClass !== null)
-    println(x.rawData.map(_.mkString(","))mkString("\n"))
   }
+
+  test("org.apache.spark.rdd.RDDChuck.fill test") {
+    val testData = (1000 to 1100).zipWithIndex.toIterator
+
+    val chunk = new RDDChuck[(Int, Int)]
+    chunk.fill(testData)
+    chunk.rawData.map(_.mkString(", ")).foreach(println(_))
+  }
+
 }
