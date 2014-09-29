@@ -17,9 +17,7 @@
 
 package org.apache.spark.gpu
 
-import java.lang.reflect.{TypeVariable, ParameterizedType, Field}
-
-import org.apache.spark.rdd.RDDChuck
+import org.apache.spark.rdd.{ChunkIterator, RDDChuck}
 import org.scalatest.{BeforeAndAfterAll, FunSuite}
 
 import scala.language.existentials
@@ -64,4 +62,22 @@ class GpuLayout extends FunSuite with BeforeAndAfterAll {
     )
   }
 
+  test("org.apache.spark.rdd.ChunkIterator test") {
+    val testData = (0 to 10).reverse.zipWithIndex.toIterator
+
+    val colTypes = Array("INT", "INT")
+    val chunkItr = new ChunkIterator(testData, colTypes)
+
+    val chunk = chunkItr.next
+    (0 until chunk.MAX_SIZE).foreach(i =>
+      if (i <= 10) {
+        assert(chunk.intData(0)(i) === (10 - i), "values do not match")
+        assert(chunk.intData(1)(i) === i, "indexes  do not match")
+      } else {
+        assert(chunk.intData(0)(i) === 0, "values do not match")
+        assert(chunk.intData(1)(i) === 0, "values do not match")
+      }
+    )
+
+  }
 }
