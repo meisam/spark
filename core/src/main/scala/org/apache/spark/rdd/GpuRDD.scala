@@ -28,7 +28,8 @@ import scala.util.matching.Regex
 /**
  *
  */
-class GpuRDD[T: ClassTag](prev: RDD[T]) extends RDD[RDDChuck[T]](prev) {
+class GpuRDD[T <: Product : ClassTag](prev: RDD[T], val columnTypes: Array[String])
+  extends RDD[RDDChuck[T]](prev) {
   /**
    * :: DeveloperApi ::
    * Implemented by subclasses to compute a given partition.
@@ -45,88 +46,42 @@ class GpuRDD[T: ClassTag](prev: RDD[T]) extends RDD[RDDChuck[T]](prev) {
 
 }
 
-class RDDChuck[T: TypeTag] extends Logging {
+class RDDChuck[T <: Product : ClassTag](val columnTypes: Array[String]) extends Logging {
 
   def MAX_SIZE: Int = 1 << 10
 
   def MAX_STRING_SIZE: Int = 1 << 7
 
-  val rawData: List[Array[Int]] = initArray
+  val intData = Array.ofDim[Int](columnTypes.filter(_ == "INT").length, MAX_SIZE)
+  val longData = Array.ofDim[Long](columnTypes.filter(_ == "LONG").length, MAX_SIZE)
+  val floatData = Array.ofDim[Float](columnTypes.filter(_ == "FLOAT").length, MAX_SIZE)
+  val doubleData = Array.ofDim[Double](columnTypes.filter(_ == "DOUBLE").length, MAX_SIZE)
+  val booleanData = Array.ofDim[Boolean](columnTypes.filter(_ == "BOOLEAN").length, MAX_SIZE)
+  val charData = Array.ofDim[Char](columnTypes.filter(_ == "CHAR").length, MAX_SIZE)
+  val stringData = Array.ofDim[Char](columnTypes.filter(_ == "STRING").length, MAX_SIZE * MAX_STRING_SIZE)
 
-  private val tuplePattern: Regex = "scala.tuple[0-9]+".r
+  def fill(iter: Iterator[Product]) = {
+    val values: Iterator[Product] = iter.take(MAX_SIZE)
 
-
-  def typeInfo() = {
-    val tag = typeTag[T]
-    tag
-  }
-
-  def initArray(): List[Array[Int]] = {
-
-    logError("org/apache/spark/rdd/GpuRDD.scala:52 is running")
-
-    println("Chunk is %s".format(typeInfo /*.runtimeClass*/))
-    println("Type of Chunk is %s".format(typeInfo.getClass /*.runtimeClass*/))
-    val tag = typeInfo
-    val arr = tag.tpe match {
-      case TypeRef(x, y, args) => {
-        y.fullName match {
-          case tuplePattern => {
-            println("a tuple %d matched ".format(args.length))
-            println("args= of type %s %s".format(args.map(_.getClass).mkString(","),
-              args.mkString(", ")))
-            args.map(arg => { //TODO All arrays are of type INT
-              if (arg =:= typeTag[Int].tpe) {
-                println(" INT found")
-                Array.ofDim[Int](MAX_SIZE)
-              } else if (arg =:= typeTag[Long].tpe) {
-                println(" Long found")
-                Array.ofDim[Int](MAX_SIZE)
-              } else if (arg =:= typeTag[Float].tpe) {
-                println(" Float found")
-                Array.ofDim[Int](MAX_SIZE)
-              } else if (arg =:= typeTag[Double].tpe) {
-                println(" Double found")
-                Array.ofDim[Int](MAX_SIZE)
-              } else if (arg =:= typeTag[Boolean].tpe) {
-                println(" Boolean found")
-                Array.ofDim[Int](MAX_SIZE)
-              } else if (arg =:= typeTag[Char].tpe) {
-                println(" Char found")
-                Array.ofDim[Int](MAX_SIZE)
-              } else if (arg =:= typeTag[String].tpe) {
-                println(" String found")
-                Array.ofDim[Int](MAX_SIZE * MAX_STRING_SIZE)
-              } else {
-                throw new NotImplementedError("Columnar storage for %s is implemented".format(arg))
-              }
-            })
+    values.zipWithIndex.foreach {
+      case (v, rowIndex) =>
+        v.productIterator.zipWithIndex.foreach { case (p, colIndex) =>
+          if (columnTypes(colIndex) == "INT") {
+            intData(colIndex)(rowIndex) = p.asInstanceOf[Int]
+          } else if (columnTypes(colIndex) == "LONG") {
+            longData(colIndex)(rowIndex) = p.asInstanceOf[Long]
+          } else if (columnTypes(colIndex) == "FLOAT") {
+            floatData(colIndex)(rowIndex) = p.asInstanceOf[Float]
+          } else if (columnTypes(colIndex) == "Double") {
+            doubleData(colIndex)(rowIndex) = p.asInstanceOf[Double]
+          } else if (columnTypes(colIndex) == "BOOLEAN") {
+            booleanData(colIndex)(rowIndex) = p.asInstanceOf[Boolean]
+          } else if (columnTypes(colIndex) == "CHAR") {
+            charData(colIndex)(rowIndex) = p.asInstanceOf[Char]
+          } else if (columnTypes(colIndex) == "String") {
+            p.asInstanceOf[String].getChars(0, MAX_STRING_SIZE, stringData(colIndex), rowIndex * MAX_STRING_SIZE)
           }
         }
-      }
-    }
-    arr
-  }
-
-  def fill(iter: Iterator[T]) = {
-    val tag = typeInfo
-    val arr = tag.tpe match {
-      case TypeRef(x, y, args) => {
-        y.fullName match {
-          case tuplePattern => {
-            val values = iter.take(MAX_SIZE)
-            values.zipWithIndex.foreach {
-              case (v, i) => {
-                val product = v.asInstanceOf[Product]
-                product.productIterator.zipWithIndex.foreach({ case (p, j) => {
-                  rawData(j)(i) = p.asInstanceOf[Int] //rawData(j)(i).getClass.cast(p)
-                }
-                })
-              }
-            }
-          }
-        }
-      }
     }
   }
 
