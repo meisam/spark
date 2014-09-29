@@ -23,6 +23,7 @@ import org.apache.spark.{Logging, Partition, TaskContext}
 
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._
+import scala.util.matching.Regex
 
 /**
  *
@@ -46,7 +47,9 @@ class GpuRDD[T: ClassTag](prev: RDD[T]) extends RDD[RDDChuck[T]](prev) {
 
 class RDDChuck[T: TypeTag] extends Logging {
 
-  def MAX_SIZE: Int = (1 << 20)
+  def MAX_SIZE: Int = 1 << 20
+
+  def MAX_STRING_SIZE: Int = 1 << 7
 
   val rawData = initArray
 
@@ -56,29 +59,51 @@ class RDDChuck[T: TypeTag] extends Logging {
     tag
   }
 
-  def initArray(): AnyRef = {
+  def initArray(): List[_] = {
 
     logError("org/apache/spark/rdd/GpuRDD.scala:52 is running")
 
     println("Chunk is %s".format(typeInfo /*.runtimeClass*/))
     println("Type of Chunk is %s".format(typeInfo.getClass /*.runtimeClass*/))
     val tag = typeInfo
-    tag.tpe match {
-      case TypeRef(x, y, args) => {
-        println(runtimeMirror( getClass.getClassLoader ).runtimeClass(x))
-        y.fullName match {
-          case "scala.Tuple5" => {
-            args.foreach(t => {
-
-            })
-
+    val tuplePattern: Regex =
+      tag.tpe match {
+        case TypeRef(x, y, args) => {
+          y.fullName match {
+            case tuplePattern => {
+              println("a tuple %d matched ".format(args.length))
+              println("args= of type %s %s".format(args.map(_.getClass).mkString(","),
+                args.mkString(", ")))
+              args.map(arg => {
+                if (arg.=:=(typeTag[Int].tpe)) {
+                  println(" INT found")
+                  Array.ofDim[Int](MAX_SIZE)
+                } else if (arg.=:=(typeTag[Long].tpe)) {
+                  println(" Long found")
+                  Array.ofDim[Long](MAX_SIZE)
+                } else if (arg.=:=(typeTag[Float].tpe)) {
+                  println(" Float found")
+                  Array.ofDim[Float](MAX_SIZE)
+                } else if (arg.=:=(typeTag[Boolean].tpe)) {
+                  println(" Boolean found")
+                  Array.ofDim[Boolean](MAX_SIZE)
+                } else if (arg.=:=(typeTag[Char].tpe)) {
+                  println(" Char found")
+                  Array.ofDim[Char](MAX_SIZE)
+                } else if (arg.=:=(typeTag[Char].tpe)) {
+                  println(" String found")
+                  Array.ofDim[String](MAX_SIZE * MAX_STRING_SIZE)
+                } else {
+                  throw new NotImplementedError("Columnar storage for $arg is implemented")
+                }
+              })
+            }
+            case _ =>
+              throw new NotImplementedError("Only columnar storage of tuples is implemented")
           }
         }
       }
 
-    }
-
-    throw new NotImplementedError("org/apache/spark/rdd/GpuRDD.scala:70 is not implemented yet")
 
     /*    val d = this.typeInfo() match {
           case t: TypeTag[Product] => {
