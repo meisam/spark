@@ -17,9 +17,12 @@
 
 package org.apache.spark.deploy.worker
 
+import java.io.{File, FileNotFoundException}
 import java.lang.management.ManagementFactory
+import java.util.Scanner
 
 import org.apache.spark.util.{IntParam, MemoryParam, Utils}
+import org.jocl._
 
 /**
  * Command-line parser for the worker.
@@ -143,7 +146,7 @@ private[spark] class WorkerArguments(args: Array[String]) {
       }
     } catch {
       case e: Exception => {
-        totalMb = 2*1024
+        totalMb = 2 * 1024
         System.out.println("Failed to get total physical memory. Using " + totalMb + " MB")
       }
     }
@@ -152,26 +155,77 @@ private[spark] class WorkerArguments(args: Array[String]) {
   }
 
   def inferDefaultGpu(): Int = {
-    val ibmVendor = System.getProperty("java.vendor").contains("IBM")
-    var totalMb = 0
+
+    val platformIndex = 0
+    val deviceType = CL.CL_DEVICE_TYPE_ALL
+    val deviceIndex = 0
+
+    CL.setExceptionsEnabled(true)
+
+    /*
+     * Obtain the number of platforms
+     */
+
+    val numPlatformsArray = Array.ofDim[Int](1)
+    CL.clGetPlatformIDs(0, null, numPlatformsArray)
+    val numPlatforms: Int = numPlatformsArray(0)
+
+    /*
+     * Obtain a platform ID
+     */
+
+    val platforms = Array.ofDim[cl_platform_id](numPlatforms)
+    CL.clGetPlatformIDs(platforms.length, platforms, null)
+
+    /*
+     * We assume there is at least one platform
+     * and we will use the first platform.
+     */
+    platforms.length
+
+
+    val platform = platforms(platformIndex)
+
+    /*
+     * Initialize the context properties
+     */
+
+    val contextProperties = new cl_context_properties()
+    contextProperties.addProperty(CL.CL_CONTEXT_PLATFORM, platform)
+
+    /*
+     * Obtain the number of devices for the platform.
+     * We assume there is at least one device for the given platform
+     * and we simply use the first one for computation.
+     */
+
+    val numDevicesArray = Array.ofDim[Int](1)
+    CL.clGetDeviceIDs(platform, deviceType, 0, null, numDevicesArray)
+    val numDevices = numDevicesArray.head
+
+    val devices = Array.ofDim[cl_device_id](numDevices)
+    CL.clGetDeviceIDs(platform, deviceType, numDevices, devices, null)
+    val device = devices.head
+
+    /*
+     * Initialize the corresponding OpenCL parameters.
+     */
+
+    val context = CL.clCreateContext(contextProperties, 1, Array(device),
+      null, null, null)
+
+    val queue = CL.clCreateCommandQueue(context, device, 0, null)
+
     try {
-      val bean = ManagementFactory.getOperatingSystemMXBean()
-      if (ibmVendor) {
-        val beanClass = Class.forName("com.ibm.lang.management.OperatingSystemMXBean")
-        val method = beanClass.getDeclaredMethod("getTotalPhysicalMemory")
-        totalMb = (method.invoke(bean).asInstanceOf[Long] / 1024 / 1024).toInt
-      } else {
-        val beanClass = Class.forName("com.sun.management.OperatingSystemMXBean")
-        val method = beanClass.getDeclaredMethod("getTotalPhysicalMemorySize")
-        totalMb = (method.invoke(bean).asInstanceOf[Long] / 1024 / 1024).toInt
-      }
+      val kernelFile: File = new File("") //TODO put the kernel source file here
+      val programSource = new Scanner(kernelFile).useDelimiter("\\Z").next()
+      val program = CL.clCreateProgramWithSource(context, 1, Array(programSource), null, null)
+      CL.clBuildProgram(program, 0, null, null, null, null)
     } catch {
-      case e: Exception => {
-        totalMb = 2*1024
-        System.out.println("Failed to get total physical memory. Using " + totalMb + " MB")
-      }
+      case e: FileNotFoundException =>
+        System.out.println("Kernel file not found.\n")
     }
-    // Leave out 1 GB for the operating system, but don't return a negative memory size
-    math.max(totalMb - 1024, 512)
+
+    platforms.length
   }
 }
