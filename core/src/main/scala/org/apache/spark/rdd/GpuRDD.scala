@@ -47,11 +47,13 @@ class GpuRDD[T: ClassTag](prev: RDD[T]) extends RDD[RDDChuck[T]](prev) {
 
 class RDDChuck[T: TypeTag] extends Logging {
 
-  def MAX_SIZE: Int = 1 << 20
+  def MAX_SIZE: Int = 1 << 10
 
   def MAX_STRING_SIZE: Int = 1 << 7
 
-  val rawData = initArray
+  val rawData: List[Array[Int]] = initArray
+
+  private val tuplePattern: Regex = "scala.tuple[0-9]+".r
 
 
   def typeInfo() = {
@@ -59,13 +61,12 @@ class RDDChuck[T: TypeTag] extends Logging {
     tag
   }
 
-  def initArray() = {
+  def initArray(): List[Array[Int]] = {
 
     logError("org/apache/spark/rdd/GpuRDD.scala:52 is running")
 
     println("Chunk is %s".format(typeInfo /*.runtimeClass*/))
     println("Type of Chunk is %s".format(typeInfo.getClass /*.runtimeClass*/))
-    val tuplePattern: Regex = "scala.tuple[0-9]+".r
     val tag = typeInfo
     val arr = tag.tpe match {
       case TypeRef(x, y, args) => {
@@ -74,28 +75,28 @@ class RDDChuck[T: TypeTag] extends Logging {
             println("a tuple %d matched ".format(args.length))
             println("args= of type %s %s".format(args.map(_.getClass).mkString(","),
               args.mkString(", ")))
-            args.map(arg => {
+            args.map(arg => { //TODO All arrays are of type INT
               if (arg =:= typeTag[Int].tpe) {
                 println(" INT found")
                 Array.ofDim[Int](MAX_SIZE)
               } else if (arg =:= typeTag[Long].tpe) {
                 println(" Long found")
-                Array.ofDim[Long](MAX_SIZE)
+                Array.ofDim[Int](MAX_SIZE)
               } else if (arg =:= typeTag[Float].tpe) {
                 println(" Float found")
-                Array.ofDim[Float](MAX_SIZE)
+                Array.ofDim[Int](MAX_SIZE)
               } else if (arg =:= typeTag[Double].tpe) {
                 println(" Double found")
-                Array.ofDim[Double](MAX_SIZE)
+                Array.ofDim[Int](MAX_SIZE)
               } else if (arg =:= typeTag[Boolean].tpe) {
                 println(" Boolean found")
-                Array.ofDim[Boolean](MAX_SIZE)
+                Array.ofDim[Int](MAX_SIZE)
               } else if (arg =:= typeTag[Char].tpe) {
                 println(" Char found")
-                Array.ofDim[Char](MAX_SIZE)
+                Array.ofDim[Int](MAX_SIZE)
               } else if (arg =:= typeTag[String].tpe) {
                 println(" String found")
-                Array.ofDim[Char](MAX_SIZE * MAX_STRING_SIZE)
+                Array.ofDim[Int](MAX_SIZE * MAX_STRING_SIZE)
               } else {
                 throw new NotImplementedError("Columnar storage for %s is implemented".format(arg))
               }
@@ -105,6 +106,28 @@ class RDDChuck[T: TypeTag] extends Logging {
       }
     }
     arr
+  }
+
+  def fill(iter: Iterator[T]) = {
+    val tag = typeInfo
+    val arr = tag.tpe match {
+      case TypeRef(x, y, args) => {
+        y.fullName match {
+          case tuplePattern => {
+            val values = iter.take(MAX_SIZE)
+            values.zipWithIndex.foreach {
+              case (v, i) => {
+                val product = v.asInstanceOf[Product]
+                product.productIterator.zipWithIndex.foreach({ case (p, j) => {
+                  rawData(j)(i) = p.asInstanceOf[Int] //rawData(j)(i).getClass.cast(p)
+                }
+                })
+              }
+            }
+          }
+        }
+      }
+    }
   }
 
   def apply(i: Int): T = {
