@@ -2149,8 +2149,9 @@ object SparkContext extends Logging {
         }
 
         val scheduler = new TaskSchedulerImpl(sc)
+        val gpusPerWorker = 1 // TODO change this settings from the spark
         val localCluster = new LocalSparkCluster(
-          numSlaves.toInt, coresPerSlave.toInt, memoryPerSlaveInt, sc.conf)
+          numSlaves.toInt, coresPerSlave.toInt, memoryPerSlaveInt, sc.conf, gpusPerWorker)
         val masterUrls = localCluster.start()
         val backend = new SparkDeploySchedulerBackend(scheduler, sc, masterUrls)
         scheduler.initialize(backend)

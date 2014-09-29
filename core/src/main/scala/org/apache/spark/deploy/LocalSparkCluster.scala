@@ -17,14 +17,13 @@
 
 package org.apache.spark.deploy
 
-import scala.collection.mutable.ArrayBuffer
-
 import akka.actor.ActorSystem
-
-import org.apache.spark.{Logging, SparkConf}
-import org.apache.spark.deploy.worker.Worker
 import org.apache.spark.deploy.master.Master
+import org.apache.spark.deploy.worker.Worker
 import org.apache.spark.util.Utils
+import org.apache.spark.{Logging, SparkConf}
+
+import scala.collection.mutable.ArrayBuffer
 
 /**
  * Testing class that creates a Spark standalone process in-cluster (that is, running the
@@ -37,7 +36,8 @@ class LocalSparkCluster(
     numWorkers: Int,
     coresPerWorker: Int,
     memoryPerWorker: Int,
-    conf: SparkConf)
+    conf: SparkConf,
+    gpuPerWorker: Int)
   extends Logging {
 
   private val localHostname = Utils.localHostName()
@@ -59,7 +59,7 @@ class LocalSparkCluster(
     /* Start the Workers */
     for (workerNum <- 1 to numWorkers) {
       val (workerSystem, _) = Worker.startSystemAndActor(localHostname, 0, 0, coresPerWorker,
-        memoryPerWorker, masters, null, Some(workerNum), _conf)
+        memoryPerWorker, gpuPerWorker, masters, null, Some(workerNum), _conf)
       workerActorSystems += workerSystem
     }
 
