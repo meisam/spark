@@ -44,7 +44,7 @@ class GpuRDD[T <: Product : ClassTag](prev: RDD[T], val columnTypes: Array[Strin
 
 }
 
-class RDDChuck[T <: Product](val columnTypes: Array[String]) extends Logging {
+class RDDChuck[T <: Product](val columnTypes: Array[String]) extends Serializable with Logging {
 
   def MAX_SIZE: Int = 1 << 10
 
@@ -116,7 +116,8 @@ class RDDChuck[T <: Product](val columnTypes: Array[String]) extends Logging {
 
 }
 
-class ChunkIterator[T <: Product](itr: Iterator[T], val columnTypes: Array[String]) extends Iterator[RDDChuck[T]] {
+class ChunkIterator[T <: Product](itr: Iterator[T], val columnTypes: Array[String]) extends
+Serializable with Iterator[RDDChuck[T]] {
 
   override def hasNext: Boolean = itr.hasNext
 
