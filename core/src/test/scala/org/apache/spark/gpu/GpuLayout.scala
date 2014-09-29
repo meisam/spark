@@ -40,17 +40,28 @@ class GpuLayout extends FunSuite with BeforeAndAfterAll {
   }
 
   test("org.apache.spark.rdd.RDDChuck.initArray test") {
-    val x = new RDDChuck[(Int, String, Float, Double, String)]
-    assert(x.rawData !== null)
-    assert(x.rawData.getClass !== null)
+    val x = new RDDChuck[(Int, String, Float, Double, String)](Array("INT", "STRING", "FLOAT", "DOUBLE", "STRING"))
+    assert(x.intData.length === 1)
+    assert(x.longData.length === 0)
+    assert(x.floatData.length === 1)
+    assert(x.doubleData.length === 1)
+    assert(x.stringData.length === 2)
   }
 
   test("org.apache.spark.rdd.RDDChuck.fill test") {
-    val testData = (1000 to 1100).zipWithIndex.toIterator
+    val testData = (0 to 10).reverse.zipWithIndex.toIterator
 
-    val chunk = new RDDChuck[(Int, Int)]
+    val chunk = new RDDChuck[(Int, Int)](Array("INT", "INT"))
     chunk.fill(testData)
-    chunk.rawData.map(_.mkString(", ")).foreach(println(_))
+    (0 until chunk.MAX_SIZE).foreach(i =>
+      if (i <= 10) {
+        assert(chunk.intData(0)(i) === (10 - i), "values do not match")
+        assert(chunk.intData(1)(i) === i, "indexes  do not match")
+      } else {
+        assert(chunk.intData(0)(i) === 0, "values do not match")
+        assert(chunk.intData(1)(i) === 0, "values do not match")
+      }
+    )
   }
 
 }
