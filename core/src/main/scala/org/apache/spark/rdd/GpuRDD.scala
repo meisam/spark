@@ -59,132 +59,60 @@ class RDDChuck[T: TypeTag] extends Logging {
     tag
   }
 
-  def initArray(): List[_] = {
+  def initArray() = {
 
     logError("org/apache/spark/rdd/GpuRDD.scala:52 is running")
 
     println("Chunk is %s".format(typeInfo /*.runtimeClass*/))
     println("Type of Chunk is %s".format(typeInfo.getClass /*.runtimeClass*/))
+    val tuplePattern: Regex = "scala.tuple[0-9]+".r
     val tag = typeInfo
-    val tuplePattern: Regex =
-      tag.tpe match {
-        case TypeRef(x, y, args) => {
-          y.fullName match {
-            case tuplePattern => {
-              println("a tuple %d matched ".format(args.length))
-              println("args= of type %s %s".format(args.map(_.getClass).mkString(","),
-                args.mkString(", ")))
-              args.map(arg => {
-                if (arg.=:=(typeTag[Int].tpe)) {
-                  println(" INT found")
-                  Array.ofDim[Int](MAX_SIZE)
-                } else if (arg.=:=(typeTag[Long].tpe)) {
-                  println(" Long found")
-                  Array.ofDim[Long](MAX_SIZE)
-                } else if (arg.=:=(typeTag[Float].tpe)) {
-                  println(" Float found")
-                  Array.ofDim[Float](MAX_SIZE)
-                } else if (arg.=:=(typeTag[Boolean].tpe)) {
-                  println(" Boolean found")
-                  Array.ofDim[Boolean](MAX_SIZE)
-                } else if (arg.=:=(typeTag[Char].tpe)) {
-                  println(" Char found")
-                  Array.ofDim[Char](MAX_SIZE)
-                } else if (arg.=:=(typeTag[Char].tpe)) {
-                  println(" String found")
-                  Array.ofDim[String](MAX_SIZE * MAX_STRING_SIZE)
-                } else {
-                  throw new NotImplementedError("Columnar storage for $arg is implemented")
-                }
-              })
-            }
-            case _ =>
-              throw new NotImplementedError("Only columnar storage of tuples is implemented")
+    val arr = tag.tpe match {
+      case TypeRef(x, y, args) => {
+        y.fullName match {
+          case tuplePattern => {
+            println("a tuple %d matched ".format(args.length))
+            println("args= of type %s %s".format(args.map(_.getClass).mkString(","),
+              args.mkString(", ")))
+            args.map(arg => {
+              if (arg =:= typeTag[Int].tpe) {
+                println(" INT found")
+                Array.ofDim[Int](MAX_SIZE)
+              } else if (arg =:= typeTag[Long].tpe) {
+                println(" Long found")
+                Array.ofDim[Long](MAX_SIZE)
+              } else if (arg =:= typeTag[Float].tpe) {
+                println(" Float found")
+                Array.ofDim[Float](MAX_SIZE)
+              } else if (arg =:= typeTag[Double].tpe) {
+                println(" Double found")
+                Array.ofDim[Double](MAX_SIZE)
+              } else if (arg =:= typeTag[Boolean].tpe) {
+                println(" Boolean found")
+                Array.ofDim[Boolean](MAX_SIZE)
+              } else if (arg =:= typeTag[Char].tpe) {
+                println(" Char found")
+                Array.ofDim[Char](MAX_SIZE)
+              } else if (arg =:= typeTag[String].tpe) {
+                println(" String found")
+                Array.ofDim[Char](MAX_SIZE * MAX_STRING_SIZE)
+              } else {
+                throw new NotImplementedError("Columnar storage for %s is implemented".format(arg))
+              }
+            })
           }
         }
       }
-
-
-    /*    val d = this.typeInfo() match {
-          case t: TypeTag[Product] => {
-
-            (JArray.newInstance(t.tpegetDeclaredFields()(0).getType, MAX_SIZE),
-              JArray.newInstance(t.getDeclaredFields()(1).getType, MAX_SIZE),
-              JArray.newInstance(t.getDeclaredFields()(2).getType, MAX_SIZE))
-          }
-        case t: Class[Tuple1[_]] => {
-          JArray.newInstance(t.getDeclaredFields()(0).getType, MAX_SIZE)
-        }
-        case t: Class[Tuple2[_, _]] => {
-            (JArray.newInstance(t.getDeclaredFields()(0).getType, MAX_SIZE),
-            JArray.newInstance(t.getDeclaredFields()(1).getType, MAX_SIZE))
-        }
-        case t: Class[Tuple4[_, _, _, _]] => {
-          (JArray.newInstance(t.getDeclaredFields()(0).getType, MAX_SIZE),
-            JArray.newInstance(t.getDeclaredFields()(1).getType, MAX_SIZE),
-            JArray.newInstance(t.getDeclaredFields()(2).getType, MAX_SIZE),
-            JArray.newInstance(t.getDeclaredFields()(3).getType, MAX_SIZE))
-        }
-        case t: Class[Tuple5[_, _, _, _, _]] => {
-          (JArray.newInstance(t.getDeclaredFields()(0).getType, MAX_SIZE),
-            JArray.newInstance(t.getDeclaredFields()(1).getType, MAX_SIZE),
-            JArray.newInstance(t.getDeclaredFields()(2).getType, MAX_SIZE),
-            JArray.newInstance(t.getDeclaredFields()(3).getType, MAX_SIZE),
-            JArray.newInstance(t.getDeclaredFields()(4).getType, MAX_SIZE))
-        }
-        case t: Class[Tuple6[_, _, _, _, _, _]] => {
-          (JArray.newInstance(t.getDeclaredFields()(0).getType, MAX_SIZE),
-            JArray.newInstance(t.getDeclaredFields()(1).getType, MAX_SIZE),
-            JArray.newInstance(t.getDeclaredFields()(2).getType, MAX_SIZE),
-            JArray.newInstance(t.getDeclaredFields()(3).getType, MAX_SIZE),
-            JArray.newInstance(t.getDeclaredFields()(4).getType, MAX_SIZE),
-            JArray.newInstance(t.getDeclaredFields()(5).getType, MAX_SIZE))
-        }
-        case t: Class[Tuple7[_, _, _, _, _, _, _]] => {
-          (JArray.newInstance(t.getDeclaredFields()(0).getType, MAX_SIZE),
-            JArray.newInstance(t.getDeclaredFields()(1).getType, MAX_SIZE),
-            JArray.newInstance(t.getDeclaredFields()(2).getType, MAX_SIZE),
-            JArray.newInstance(t.getDeclaredFields()(3).getType, MAX_SIZE),
-            JArray.newInstance(t.getDeclaredFields()(4).getType, MAX_SIZE),
-            JArray.newInstance(t.getDeclaredFields()(5).getType, MAX_SIZE),
-            JArray.newInstance(t.getDeclaredFields()(6).getType, MAX_SIZE))
-        }
-        case t: Class[Tuple8[_, _, _, _, _, _, _, _]] => {
-          (JArray.newInstance(t.getDeclaredFields()(0).getType, MAX_SIZE),
-            JArray.newInstance(t.getDeclaredFields()(1).getType, MAX_SIZE),
-            JArray.newInstance(t.getDeclaredFields()(2).getType, MAX_SIZE),
-            JArray.newInstance(t.getDeclaredFields()(3).getType, MAX_SIZE),
-            JArray.newInstance(t.getDeclaredFields()(4).getType, MAX_SIZE),
-            JArray.newInstance(t.getDeclaredFields()(5).getType, MAX_SIZE),
-            JArray.newInstance(t.getDeclaredFields()(6).getType, MAX_SIZE),
-            JArray.newInstance(t.getDeclaredFields()(7).getType, MAX_SIZE))
-        }
-        case t: Class[Tuple9[_, _, _, _, _, _, _, _, _]] => {
-          (JArray.newInstance(t.getDeclaredFields()(0).getType, MAX_SIZE),
-            JArray.newInstance(t.getDeclaredFields()(1).getType, MAX_SIZE),
-            JArray.newInstance(t.getDeclaredFields()(2).getType, MAX_SIZE),
-            JArray.newInstance(t.getDeclaredFields()(3).getType, MAX_SIZE),
-            JArray.newInstance(t.getDeclaredFields()(4).getType, MAX_SIZE),
-            JArray.newInstance(t.getDeclaredFields()(5).getType, MAX_SIZE),
-            JArray.newInstance(t.getDeclaredFields()(6).getType, MAX_SIZE),
-            JArray.newInstance(t.getDeclaredFields()(7).getType, MAX_SIZE),
-            JArray.newInstance(t.getDeclaredFields()(8).getType, MAX_SIZE))
-        }
-          case _ => throw
-        new NotImplementedError("org.apache.spark.rdd.RDDChuck.initArray " +
-        "org/apache/spark/rdd/GpuRDD.scala:126" +
-        " is not implemented yet")
-      }
-        d
-        */
+    }
+    arr
   }
 
   def apply(i: Int): T = {
     throw new NotImplementedError("org.apache.spark.rdd.RDDChuck.apply is not implemented yet")
 
     /*
-  genericType match {
-  case _: Tuple1 => {
+    genericType match {
+    case _: Tuple1 => {
     val arr = rawData.asInstanceOf[Array[Array[Int]]]
     (arr(0)(i)).asInstanceOf[T]
     }
@@ -204,7 +132,7 @@ class RDDChuck[T: TypeTag] extends Logging {
       rawData(4)(i), rawData(5)(i), rawData(6)(i), rawData(7)(i), rawData(9)(i)).asInstanceOf[T]
       case _ =>
     throw new IllegalArgumentException("%s is and unknown element type".format(classOf[T]))
-  }
+    }
     */
   }
 
