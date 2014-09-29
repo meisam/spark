@@ -122,7 +122,6 @@ Serializable with Iterator[RDDChuck[T]] {
   override def hasNext: Boolean = itr.hasNext
 
   override def next(): RDDChuck[T] = {
-    println("This is being called")
     val chunk = new RDDChuck[T](columnTypes)
     chunk.fill(itr)
     chunk
