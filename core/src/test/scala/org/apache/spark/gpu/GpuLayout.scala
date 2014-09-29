@@ -39,24 +39,6 @@ class GpuLayout extends FunSuite with BeforeAndAfterAll {
 
   }
 
-  test("sanity test") {
-
-    val a: ParametricClass[Tuple2[Int, String]] = new ParametricClass(Array((1, "One"), (2, "Two")))
-    val d = a.typeInfo() match {
-      case t: Class[Tuple2[_, _]] => {
-
-        val fields: Array[Field] = t.getDeclaredFields()
-        fields.foreach(f => {
-          println(f, ": ", f.getType)
-        })
-        assert(fields(0).getGenericType.asInstanceOf[TypeVariable[_]].getGenericDeclaration ===
-          classOf[Int])
-        assert(fields(1).getType === classOf[String])
-      }
-      case _ => assert("Unknown type yet" === "in action")
-    }
-  }
-
   test("org.apache.spark.rdd.RDDChuck.initArray test") {
     val x = new RDDChuck[(Int, String, Float, Double, String)]
     assert(x.rawData !== null)
