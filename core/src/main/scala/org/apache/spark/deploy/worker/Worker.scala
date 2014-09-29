@@ -473,7 +473,7 @@ private[spark] object Worker extends Logging {
     val conf = new SparkConf
     val args = new WorkerArguments(argStrings, conf)
     val (actorSystem, _) = startSystemAndActor(args.host, args.port, args.webUiPort, args.cores,
-      args.memory, args.masters, args.workDir)
+      args.memory, args.gpus, args.masters, args.workDir)
     actorSystem.awaitTermination()
   }
 
@@ -483,6 +483,7 @@ private[spark] object Worker extends Logging {
       webUiPort: Int,
       cores: Int,
       memory: Int,
+      gpus: Int,
       masterUrls: Array[String],
       workDir: String,
       workerNumber: Option[Int] = None): (ActorSystem, Int) = {
