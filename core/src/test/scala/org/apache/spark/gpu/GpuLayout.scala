@@ -17,16 +17,18 @@
 
 package org.apache.spark.gpu
 
+import org.apache.spark.SharedSparkContext
 import org.apache.spark.rdd.{ChunkIterator, RDDChuck}
-import org.scalatest.{BeforeAndAfterAll, FunSuite}
+import org.scalatest.FunSuite
 
+import scala.collection.immutable.IndexedSeq
 import scala.language.existentials
 import scala.reflect.ClassTag
 
 /**
  *
  */
-class GpuLayout extends FunSuite with BeforeAndAfterAll {
+class GpuLayout extends FunSuite with SharedSparkContext {
 
   class ParametricClass[T: ClassTag](var element: Array[T]) {
 
@@ -78,6 +80,26 @@ class GpuLayout extends FunSuite with BeforeAndAfterAll {
         assert(chunk.intData(1)(i) === 0, "values do not match")
       }
     )
+  }
+
+  test("GpuRDD test") {
+    val testData: IndexedSeq[(Int, Int)] = (0 to 10).reverse.zipWithIndex
+
+    val rdd = sc.parallelize(testData)
+    val gpuRdd = rdd.toGpuRDD(Array("INT", "INT"))
+    val collectedChunks: Array[RDDChuck[Product]] = gpuRdd.collect()
+    assert(collectedChunks.length === 1)
+    val chunk = collectedChunks(0)
+    (0 until chunk.MAX_SIZE).foreach(i =>
+      if (i <= 10) {
+        assert(chunk.intData(0)(i) === (10 - i), "values do not match")
+        assert(chunk.intData(1)(i) === i, "indexes  do not match")
+      } else {
+        assert(chunk.intData(0)(i) === 0, "values do not match")
+        assert(chunk.intData(1)(i) === 0, "values do not match")
+      }
+    )
+
 
   }
 }
