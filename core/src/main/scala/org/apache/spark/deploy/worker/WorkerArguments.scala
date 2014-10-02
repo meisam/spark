@@ -17,8 +17,9 @@
 
 package org.apache.spark.deploy.worker
 
-import java.io.{File, FileNotFoundException}
+import java.io.{InputStream, File, FileNotFoundException}
 import java.lang.management.ManagementFactory
+import java.net.URL
 import java.util.Scanner
 
 import org.apache.spark.util.{IntParam, MemoryParam, Utils}
@@ -241,7 +242,7 @@ private[spark] class WorkerArguments(args: Array[String], conf: SparkConf) {
     val queue = CL.clCreateCommandQueue(context, device, 0, null)
 
     try {
-      val kernelFile: File = new File("") //TODO put the kernel source file here
+      val kernelFile: InputStream = getClass.getResourceAsStream("/org/apache/spark/gpu/kernel.cl")
       val programSource = new Scanner(kernelFile).useDelimiter("\\Z").next()
       val program = CL.clCreateProgramWithSource(context, 1, Array(programSource), null, null)
       CL.clBuildProgram(program, 0, null, null, null, null)
