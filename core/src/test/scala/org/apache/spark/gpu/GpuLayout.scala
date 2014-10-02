@@ -18,6 +18,7 @@
 package org.apache.spark.gpu
 
 import org.apache.spark.SharedSparkContext
+import org.apache.spark.deploy.worker.WorkerArguments
 import org.apache.spark.rdd.{ChunkIterator, RDDChuck}
 import org.scalatest.FunSuite
 
@@ -99,7 +100,10 @@ class GpuLayout extends FunSuite with SharedSparkContext {
         assert(chunk.intData(1)(i) === 0, "values do not match")
       }
     )
+  }
 
-
+  test("org.apache.spark.deploy.worker.WorkerArguments.inferDefaultGpu test") {
+    val arguments = new WorkerArguments(Array())
+    arguments.inferDefaultGpu()
   }
 }
