@@ -26,13 +26,13 @@ import scala.reflect.ClassTag
 /**
  *
  */
-class GpuRDD[T <: Product : ClassTag](prev: RDD[T], val columnTypes: Array[String])
-  extends RDD[RDDChuck[T]](prev) {
+class GpuRDD[T <: Product : ClassTag](prev : RDD[T], val columnTypes: Array[String])
+  extends RDD[RDDChunk[T]](prev) {
   /**
    * :: DeveloperApi ::
    * Implemented by subclasses to compute a given partition.
    */
-  override def compute(split: Partition, context: TaskContext): Iterator[RDDChuck[T]] = {
+  override def compute(split: Partition, context: TaskContext): Iterator[RDDChunk[T]] = {
     new ChunkIterator(firstParent[T].iterator(split, context), columnTypes)
   }
 
@@ -44,7 +44,7 @@ class GpuRDD[T <: Product : ClassTag](prev: RDD[T], val columnTypes: Array[Strin
 
 }
 
-class RDDChuck[T <: Product](val columnTypes: Array[String]) extends Serializable with Logging {
+class RDDChunk[T <: Product](val columnTypes: Array[String]) extends Serializable with Logging {
 
   def MAX_SIZE: Int = 1 << 10
 
@@ -119,12 +119,12 @@ class RDDChuck[T <: Product](val columnTypes: Array[String]) extends Serializabl
 }
 
 class ChunkIterator[T <: Product](itr: Iterator[T], val columnTypes: Array[String]) extends
-Serializable with Iterator[RDDChuck[T]] {
+Serializable with Iterator[RDDChunk[T]] {
 
   override def hasNext: Boolean = itr.hasNext
 
-  override def next(): RDDChuck[T] = {
-    val chunk = new RDDChuck[T](columnTypes)
+  override def next(): RDDChunk[T] = {
+    val chunk = new RDDChunk[T](columnTypes)
     chunk.fill(itr)
     chunk
   }
