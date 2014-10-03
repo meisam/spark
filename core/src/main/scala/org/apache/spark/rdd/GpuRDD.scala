@@ -58,7 +58,8 @@ class RDDChuck[T <: Product](val columnTypes: Array[String]) extends Serializabl
   val doubleData = Array.ofDim[Double](columnTypes.filter(_ == "DOUBLE").length, MAX_SIZE)
   val booleanData = Array.ofDim[Boolean](columnTypes.filter(_ == "BOOLEAN").length, MAX_SIZE)
   val charData = Array.ofDim[Char](columnTypes.filter(_ == "CHAR").length, MAX_SIZE)
-  val stringData = Array.ofDim[Char](columnTypes.filter(_ == "STRING").length, MAX_SIZE * MAX_STRING_SIZE)
+  val stringData = Array.ofDim[Char](columnTypes.filter(_ == "STRING").length
+    , MAX_SIZE * MAX_STRING_SIZE)
 
   def fill(iter: Iterator[Product]): Unit = {
     val values: Iterator[Product] = iter.take(MAX_SIZE)
@@ -79,14 +80,15 @@ class RDDChuck[T <: Product](val columnTypes: Array[String]) extends Serializabl
           } else if (columnTypes(colIndex) == "CHAR") {
             charData(colIndex)(rowIndex) = p.asInstanceOf[Char]
           } else if (columnTypes(colIndex) == "String") {
-            p.asInstanceOf[String].getChars(0, MAX_STRING_SIZE, stringData(colIndex), rowIndex * MAX_STRING_SIZE)
+            p.asInstanceOf[String].getChars(0, MAX_STRING_SIZE, stringData(colIndex)
+              , rowIndex * MAX_STRING_SIZE)
           }
         }
     }
   }
 
   def apply(i: Int): T = {
-    throw new NotImplementedError("org.apache.spark.rdd.RDDChuck.apply is not implemented yet")
+    throw new NotImplementedError("org.apache.spark.rdd.RDDChunk.apply is not implemented yet")
 
     /*
     genericType match {
