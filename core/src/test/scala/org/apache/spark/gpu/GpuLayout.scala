@@ -102,6 +102,30 @@ class GpuLayout extends FunSuite with SharedSparkContext {
     )
   }
 
+  test("GpuRDD(Int, String, Int, String) test") {
+    val testData: IndexedSeq[(Int, String, Int, String)] = (0 to 10).reverse.zipWithIndex
+      .map(x => (x._1, "STR_I_%d".format(x._1), x._2, "STR_II_%d".format(x._2)))
+
+    val rdd = sc.parallelize(testData)
+    val gpuRdd = rdd.toGpuRDD(Array("INT", "STRING", "INT", "STRING"))
+    val collectedChunks: Array[RDDChunk[Product]] = gpuRdd.collect()
+    assert(collectedChunks.length === 1)
+    val chunk = collectedChunks(0)
+    (0 until chunk.MAX_SIZE).foreach(i =>
+      if (i <= 10) {
+        assert(chunk.intData(0)(i) === (10 - i), "values do not match at row %d".format(i))
+        assert(chunk.intData(1)(i) === i, "values do not match at row %d".format(i))
+        assert(chunk.getStringData(0, i) === ("STR_I_" + (10 - i)), "at row %d".format(i))
+        assert(chunk.getStringData(1, i) === ("STR_II_" + i), "at row %d".format(i))
+      } else {
+        assert(chunk.intData(0)(i) === 0, "values do not match")
+        assert(chunk.intData(1)(i) === 0, "values do not match at row %d".format(i))
+        assert(chunk.getStringData(0, i) === "", "values do not match at row %d".format(i))
+        assert(chunk.getStringData(1, i) === "", "values do not match at row %d".format(i))
+      }
+    )
+  }
+
   test("org.apache.spark.deploy.worker.WorkerArguments.inferDefaultGpu test") {
     val arguments = new WorkerArguments(Array("spark://localhost:7077"))
     assert( arguments.inferDefaultGpu() === 1, "There is one GPU on this device")
