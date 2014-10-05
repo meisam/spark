@@ -124,6 +124,26 @@ class GpuLayout extends FunSuite with SharedSparkContext {
     assert(chunk.toTypedColumnIndex(6) === 2)
   }
 
+  test("org.apache.spark.rdd.RDDChunk.getStringData test") {
+    val testData = (0 to 10).reverse.zipWithIndex.map(
+      x => ("STR_I_%d".format(x._1), "STR_II_%d".format(x._2)))
+
+    val rdd = sc.parallelize(testData)
+    val gpuRdd = rdd.toGpuRDD(Array("STRING", "STRING"))
+    val collectedChunks: Array[RDDChunk[Product]] = gpuRdd.collect()
+    assert(collectedChunks.length === 1)
+    val chunk = collectedChunks(0)
+    (0 until chunk.MAX_SIZE).foreach(i =>
+      if (i <= 10) {
+        assert(chunk.getStringData(0, i) === ("STR_I_" + (10 - i)), "at row %d".format(i))
+        assert(chunk.getStringData(1, i) === ("STR_II_" + i), "at row %d".format(i))
+      } else {
+        assert(chunk.getStringData(0, i) === "", "values do not match at row %d".format(i))
+        assert(chunk.getStringData(1, i) === "", "values do not match at row %d".format(i))
+      }
+    )
+  }
+
   test("java.lang.String.getChars(int, int, char[], int) test") {
     val testData = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     val chars = Array.ofDim[Char](2, 100)
