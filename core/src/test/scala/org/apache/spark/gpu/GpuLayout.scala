@@ -128,7 +128,7 @@ class GpuLayout extends FunSuite with SharedSparkContext {
 
   test("org.apache.spark.deploy.worker.WorkerArguments.inferDefaultGpu test") {
     val arguments = new WorkerArguments(Array("spark://localhost:7077"))
-    assert( arguments.inferDefaultGpu() === 1, "There is one GPU on this device")
+    assert(arguments.inferDefaultGpu() === 1, "There is one GPU on this device")
   }
 
   test("org.apache.spark.rdd.RDDChunk.toTypeAwareColumnIndex test") {
