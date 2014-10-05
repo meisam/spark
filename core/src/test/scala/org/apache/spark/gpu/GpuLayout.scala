@@ -131,21 +131,21 @@ class GpuLayout extends FunSuite with SharedSparkContext {
     assert( arguments.inferDefaultGpu() === 1, "There is one GPU on this device")
   }
 
-  test("org.apache.spark.rdd.RDDChunk.toTypedColumnIndex test") {
-    val testData: IndexedSeq[(Int, Int)] = (0 to 10).reverse.zipWithIndex
+  test("org.apache.spark.rdd.RDDChunk.toTypeAwareColumnIndex test") {
+    val testData = (0 to 10).map(x => (x, "STR_I_%d".format(x), 1.5f + x, 2.5d + x, "STR_II_%d".format(x), x - 1, "STR_III_%d".format(x)))
 
     val rdd = sc.parallelize(testData)
     val gpuRdd = rdd.toGpuRDD(Array("INT", "STRING", "FLOAT", "DOUBLE", "STRING", "INT", "STRING"))
     val collectedChunks: Array[RDDChunk[Product]] = gpuRdd.collect()
     assert(collectedChunks.length === 1)
     val chunk = collectedChunks(0)
-    assert(chunk.toTypedColumnIndex(0) === 0)
-    assert(chunk.toTypedColumnIndex(1) === 0)
-    assert(chunk.toTypedColumnIndex(2) === 0)
-    assert(chunk.toTypedColumnIndex(3) === 0)
-    assert(chunk.toTypedColumnIndex(4) === 1)
-    assert(chunk.toTypedColumnIndex(5) === 1)
-    assert(chunk.toTypedColumnIndex(6) === 2)
+    assert(chunk.toTypeAwareColumnIndex(0) === 0)
+    assert(chunk.toTypeAwareColumnIndex(1) === 0)
+    assert(chunk.toTypeAwareColumnIndex(2) === 0)
+    assert(chunk.toTypeAwareColumnIndex(3) === 0)
+    assert(chunk.toTypeAwareColumnIndex(4) === 1)
+    assert(chunk.toTypeAwareColumnIndex(5) === 1)
+    assert(chunk.toTypeAwareColumnIndex(6) === 2)
   }
 
   test("org.apache.spark.rdd.RDDChunk.getStringData test") {
