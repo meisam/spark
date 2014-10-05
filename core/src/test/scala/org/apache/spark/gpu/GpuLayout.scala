@@ -106,4 +106,21 @@ class GpuLayout extends FunSuite with SharedSparkContext {
     val arguments = new WorkerArguments(Array("spark://localhost:7077"))
     assert( arguments.inferDefaultGpu() === 1, "There is one GPU on this device")
   }
+
+  test("org.apache.spark.rdd.RDDChunk.toTypedColumnIndex test") {
+    val testData: IndexedSeq[(Int, Int)] = (0 to 10).reverse.zipWithIndex
+
+    val rdd = sc.parallelize(testData)
+    val gpuRdd = rdd.toGpuRDD(Array("INT", "STRING", "FLOAT", "DOUBLE", "STRING", "INT", "STRING"))
+    val collectedChunks: Array[RDDChunk[Product]] = gpuRdd.collect()
+    assert(collectedChunks.length === 1)
+    val chunk = collectedChunks(0)
+    assert(chunk.toTypedColumnIndex(0) === 0)
+    assert(chunk.toTypedColumnIndex(1) === 0)
+    assert(chunk.toTypedColumnIndex(2) === 0)
+    assert(chunk.toTypedColumnIndex(3) === 0)
+    assert(chunk.toTypedColumnIndex(4) === 1)
+    assert(chunk.toTypedColumnIndex(5) === 1)
+    assert(chunk.toTypedColumnIndex(6) === 2)
+  }
 }
