@@ -83,7 +83,7 @@ class GpuLayout extends FunSuite with SharedSparkContext {
     )
   }
 
-  test("GpuRDD test") {
+  test("GpuRDD(Int, Int) test") {
     val testData: IndexedSeq[(Int, Int)] = (0 to 10).reverse.zipWithIndex
 
     val rdd = sc.parallelize(testData)
