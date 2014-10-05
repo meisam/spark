@@ -26,7 +26,7 @@ import scala.reflect.ClassTag
 /**
  *
  */
-class GpuRDD[T <: Product : ClassTag](prev : RDD[T], val columnTypes: Array[String])
+class GpuRDD[T <: Product : ClassTag](prev: RDD[T], val columnTypes: Array[String])
   extends RDD[RDDChunk[T]](prev) {
   /**
    * :: DeveloperApi ::
@@ -68,23 +68,44 @@ class RDDChunk[T <: Product](val columnTypes: Array[String]) extends Serializabl
         actualSize = rowIndex
         v.productIterator.zipWithIndex.foreach { case (p, colIndex) =>
           if (columnTypes(colIndex) == "INT") {
-            intData(colIndex)(rowIndex) = p.asInstanceOf[Int]
+            intData(toTypeAwareColumnIndex(colIndex))(rowIndex) = p.asInstanceOf[Int]
           } else if (columnTypes(colIndex) == "LONG") {
-            longData(colIndex)(rowIndex) = p.asInstanceOf[Long]
+            longData(toTypeAwareColumnIndex(colIndex))(rowIndex) = p.asInstanceOf[Long]
           } else if (columnTypes(colIndex) == "FLOAT") {
-            floatData(colIndex)(rowIndex) = p.asInstanceOf[Float]
+            floatData(toTypeAwareColumnIndex(colIndex))(rowIndex) = p.asInstanceOf[Float]
           } else if (columnTypes(colIndex) == "Double") {
-            doubleData(colIndex)(rowIndex) = p.asInstanceOf[Double]
+            doubleData(toTypeAwareColumnIndex(colIndex))(rowIndex) = p.asInstanceOf[Double]
           } else if (columnTypes(colIndex) == "BOOLEAN") {
-            booleanData(colIndex)(rowIndex) = p.asInstanceOf[Boolean]
+            booleanData(toTypeAwareColumnIndex(colIndex))(rowIndex) = p.asInstanceOf[Boolean]
           } else if (columnTypes(colIndex) == "CHAR") {
-            charData(colIndex)(rowIndex) = p.asInstanceOf[Char]
-          } else if (columnTypes(colIndex) == "String") {
-            p.asInstanceOf[String].getChars(0, MAX_STRING_SIZE, stringData(colIndex)
-              , rowIndex * MAX_STRING_SIZE)
+            charData(toTypeAwareColumnIndex(colIndex))(rowIndex) = p.asInstanceOf[Char]
+          } else if (columnTypes(colIndex) == "STRING") {
+            val str = p.toString
+            str.getChars(0, Math.min(MAX_STRING_SIZE, str.length),
+              stringData(toTypeAwareColumnIndex(colIndex)), rowIndex * MAX_STRING_SIZE)
           }
         }
     }
+  }
+
+  def getStringData(typeAwareColumnIndex: Int, rowIndex: Int): String = {
+    val str = new String(stringData(typeAwareColumnIndex), rowIndex * MAX_STRING_SIZE, MAX_STRING_SIZE)
+    val actualLenght = str.indexOf(0)
+    str.substring(0, actualLenght)
+  }
+
+  /**
+   * Returns how many columns with the same type appear before the given column
+   * in the underlying type of this chunk. For example, if the underlying type of the chunk is
+   * (Int, Int, String, Int, String) the return values will be (0, 1, 0, 2, 1).
+   *
+   * @param columnIndex The given column index
+   * @return Number of columns with the same type as the given column
+   */
+  def toTypeAwareColumnIndex(columnIndex: Int): Int = {
+    val targetColumnType = columnTypes(columnIndex)
+    val (taken, _) = columnTypes.splitAt(columnIndex)
+    taken.filter(_ == targetColumnType).length
   }
 
   def apply(i: Int): T = {
