@@ -123,4 +123,22 @@ class GpuLayout extends FunSuite with SharedSparkContext {
     assert(chunk.toTypedColumnIndex(5) === 1)
     assert(chunk.toTypedColumnIndex(6) === 2)
   }
+
+  test("java.lang.String.getChars(int, int, char[], int) test") {
+    val testData = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    val chars = Array.ofDim[Char](2, 100)
+    //    chars(0) = new Array[Char](100)
+    //    chars(1) = new Array[Char](100)
+
+    testData.getChars(0, testData.length, chars(0), 0)
+
+    (0 until testData.length).foreach(i => {
+      assert(chars(0)(i) === testData(i), "at row %d".format(i))
+    })
+
+    (testData.length until chars(0).length).foreach(i => {
+      assert(chars(0)(i) === 0.toChar, "at row %d".format(i))
+    })
+  }
+
 }
