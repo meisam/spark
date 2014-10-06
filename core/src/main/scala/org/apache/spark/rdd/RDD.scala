@@ -19,6 +19,8 @@ package org.apache.spark.rdd
 
 import java.util.Random
 
+import org.apache.spark.scheduler.OpenCLContext
+
 import scala.collection.{mutable, Map}
 import scala.collection.mutable.ArrayBuffer
 import scala.language.implicitConversions
@@ -1526,6 +1528,12 @@ abstract class RDD[T: ClassTag](
   def toGpuRDD(columnTypes: Array[String]) = {
     new GpuRDD(this.asInstanceOf[RDD[Product]], columnTypes);
   }
+
+  def toGpuFilterRDD(columnTypes: Array[String], columnIndex: Int, operation: String, value: Int) = {
+    new GpuFilteredRDD(this.asInstanceOf[RDD[Product]], columnTypes
+      , columnIndex, operation: String, value)
+  }
+
   /**
    * This field should be @transient because we want to initialize it after we send the task over
    * the network.
