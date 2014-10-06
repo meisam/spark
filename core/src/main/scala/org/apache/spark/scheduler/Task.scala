@@ -17,8 +17,12 @@
 
 package org.apache.spark.scheduler
 
-import java.io.{ByteArrayOutputStream, DataInputStream, DataOutputStream}
+import java.io._
 import java.nio.ByteBuffer
+import java.util.Scanner
+
+import org.jocl.CL._
+import org.jocl._
 
 import scala.collection.mutable.HashMap
 
@@ -61,6 +65,7 @@ private[spark] abstract class Task[T](val stageId: Int, var partitionId: Int) ex
       kill(interruptThread = false)
     }
     try {
+      openCLContext.initOpenCL("/org/apache/spark/gpu/kernel.cl")
       runTask(context)
     } finally {
       context.markTaskCompleted()
@@ -106,7 +111,9 @@ private[spark] abstract class Task[T](val stageId: Int, var partitionId: Int) ex
     if (interruptThread && taskThread != null) {
       taskThread.interrupt()
     }
-  }  
+  }
+
+  val openCLContext = new OpenCLContext
 }
 
 /**
@@ -183,3 +190,63 @@ private[spark] object Task {
     (taskFiles, taskJars, subBuffer)
   }
 }
+
+class OpenCLContext extends Serializable{
+  def getOpenCLContext: cl_context = {
+    context
+  }
+
+  def getOpenCLQueue: cl_command_queue = {
+    queue
+  }
+
+  def getOpenCLProgram: cl_program = {
+    return program
+  }
+
+  /**
+   * This method should be called after the task is sent to workers because all the fields in this
+   * class are @transient and will be lost when serialized.
+   * @param path
+   */
+  def initOpenCL(path: String) {
+    val platformIndex: Int = 0
+    val deviceType: Long = CL_DEVICE_TYPE_ALL
+    val deviceIndex: Int = 0
+    CL.setExceptionsEnabled(true)
+    val numPlatformsArray = new Array[Int](1) // TODO we only need one device at this time
+    clGetPlatformIDs(0, null, numPlatformsArray)
+    val numPlatforms: Int = numPlatformsArray(0)
+    val platforms = new Array[cl_platform_id](numPlatforms)
+    clGetPlatformIDs(platforms.length, platforms, null)
+    val platform: cl_platform_id = platforms(platformIndex)
+    val contextProperties: cl_context_properties = new cl_context_properties
+    contextProperties.addProperty(CL_CONTEXT_PLATFORM, platform)
+    val numDevicesArray = new Array[Int](1)
+    clGetDeviceIDs(platform, deviceType, 0, null, numDevicesArray)
+    val numDevices: Int = numDevicesArray(0)
+    val devices = new Array[cl_device_id](numDevices)
+    clGetDeviceIDs(platform, deviceType, numDevices, devices, null)
+    val device: cl_device_id = devices(deviceIndex)
+    context = clCreateContext(contextProperties, 1, Array[cl_device_id](device), null, null, null)
+    queue = clCreateCommandQueue(context, device, 0, null)
+    try {
+      val kernelFile: InputStream = getClass.getResourceAsStream(path)
+      programSource = new Scanner(kernelFile).useDelimiter("\\Z").next()
+    }
+    catch {
+      case e: FileNotFoundException => {
+        System.out.println("Kernel file not found.\n")
+      }
+    }
+    program = clCreateProgramWithSource(context, 1, Array[String](programSource), null, null)
+    clBuildProgram(program, 0, null, null, null, null)
+  }
+
+
+  @transient var context: cl_context = null
+  @transient var queue: cl_command_queue = null
+  @transient var program: cl_program = null
+  @transient var programSource: String = null
+}
+

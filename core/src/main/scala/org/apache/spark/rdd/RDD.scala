@@ -1526,6 +1526,11 @@ abstract class RDD[T: ClassTag](
   def toGpuRDD(columnTypes: Array[String]) = {
     new GpuRDD(this.asInstanceOf[RDD[Product]], columnTypes);
   }
+  /**
+   * This field should be @transient because we want to initialize it after we send the task over
+   * the network.
+   */
+  @transient var openCLContext: OpenCLContext = null
 }
 
 
