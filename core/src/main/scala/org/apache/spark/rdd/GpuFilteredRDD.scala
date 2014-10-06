@@ -371,6 +371,7 @@ class FilteredChunkIterator[T <: Product]
       resCount = chunk.actualSize
       project(data, outData)
       println(outData.mkString(","))
+      chunk.intData(colIndex) = outData
     }
     chunk
   }
