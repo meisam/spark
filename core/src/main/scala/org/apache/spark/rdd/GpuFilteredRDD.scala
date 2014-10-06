@@ -13,7 +13,7 @@ import scala.reflect.ClassTag
  */
 class GpuFilteredRDD[T <: Product : ClassTag]
 (prev: RDD[T], val columnTypes: Array[String]
- , colIndex: Int, op: String, value: Int)
+ , colIndex: Int, operation: Int, value: Int)
   extends RDD[RDDChunk[T]](prev) {
 
   override def getPartitions: Array[Partition] = firstParent[RDDChunk[T]].partitions
@@ -22,13 +22,12 @@ class GpuFilteredRDD[T <: Product : ClassTag]
 
   override def compute(split: Partition, context: TaskContext): FilteredChunkIterator[T] = {
     new FilteredChunkIterator(firstParent[T].iterator(split, context)
-      , columnTypes, openCLContext, 0, 0, 0, colIndex, op, value: Int)
+      , columnTypes, openCLContext, colIndex, operation, value)
   }
 }
 
 class FilteredChunkIterator[T <: Product]
-(itr: Iterator[T], columnTypes: Array[String], openCLContext: OpenCLContext,
- globalSize: Int, localSize: Int, var resCount: Int, colIndex: Int, op: String, value: Int)
+(itr: Iterator[T], columnTypes: Array[String], var openCLContext: OpenCLContext, colIndex: Int, operation: Int, value: Int)
   extends Iterator[RDDChunk[T]] {
 
   def isPowerOfTwo(n: Int): Boolean = {
@@ -248,7 +247,10 @@ class FilteredChunkIterator[T <: Product]
 
   def compute(col: Array[Int], value: Int, comp: Int, globalSize: Long, localSize: Long) {
     val tupleNum: Long = col.length
-    var kernel: cl_kernel = null
+    if (openCLContext == null) {
+      openCLContext = new OpenCLContext
+      openCLContext.initOpenCL("/org/apache/spark/gpu/kernel.cl")
+    }
     val start: Long = System.nanoTime
     gpuCol = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * tupleNum, null, null)
 
@@ -257,26 +259,29 @@ class FilteredChunkIterator[T <: Product]
     gpuFilter = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * tupleNum, null, null)
     gpuPsum = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
     gpuCount = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
-    comp match {
+    var kernel = comp match {
       case 0 =>
-        kernel = clCreateKernel(openCLContext.getOpenCLProgram, "genScanFilter_init_int_eq", null)
+        clCreateKernel(openCLContext.getOpenCLProgram, "genScanFilter_init_int_eq", null)
       case 1 =>
-        kernel = clCreateKernel(openCLContext.getOpenCLProgram, "genScanFilter_init_int_gth", null)
+        clCreateKernel(openCLContext.getOpenCLProgram, "genScanFilter_init_int_gth", null)
       case 2 =>
-        kernel = clCreateKernel(openCLContext.getOpenCLProgram, "genScanFilter_init_int_geq", null)
+        clCreateKernel(openCLContext.getOpenCLProgram, "genScanFilter_init_int_geq", null)
       case 3 =>
-        kernel = clCreateKernel(openCLContext.getOpenCLProgram, "genScanFilter_init_int_lth", null)
+        clCreateKernel(openCLContext.getOpenCLProgram, "genScanFilter_init_int_lth", null)
       case 4 =>
-        kernel = clCreateKernel(openCLContext.getOpenCLProgram, "genScanFilter_init_int_leq", null)
+        clCreateKernel(openCLContext.getOpenCLProgram, "genScanFilter_init_int_leq", null)
       case _ =>
-        kernel = clCreateKernel(openCLContext.getOpenCLProgram, "genScanFilter_init_int_eq", null)
+        clCreateKernel(openCLContext.getOpenCLProgram, "genScanFilter_init_int_eq", null)
     }
     clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(gpuCol))
     clSetKernelArg(kernel, 1, Sizeof.cl_long, Pointer.to(Array[Long](tupleNum)))
     clSetKernelArg(kernel, 2, Sizeof.cl_int, Pointer.to(Array[Int](value)))
     clSetKernelArg(kernel, 3, Sizeof.cl_mem, Pointer.to(gpuFilter))
-    val global_work_size = Array[Long](globalSize)
-    val local_work_size = Array[Long](localSize)
+    val global_work_size = Array[Long](1)
+    global_work_size(0) = globalSize
+    val local_work_size = Array[Long](1)
+    local_work_size(0) = localSize
+    println("global=%d, local= %d".format(globalSize, localSize))
     clEnqueueNDRangeKernel(openCLContext.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
     kernel = clCreateKernel(openCLContext.getOpenCLProgram, "countScanNum", null)
     clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(gpuFilter))
@@ -286,21 +291,31 @@ class FilteredChunkIterator[T <: Product]
     gpuPsum = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
     gpuCount = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
     scanImpl(gpuCount, globalSize.asInstanceOf[Int], gpuPsum, openCLContext)
-    val tmp1: Array[Int] = new Array[Int](1)
-    val tmp2: Array[Int] = new Array[Int](1)
+    val tmp1 = new Array[Int](1)
+    val tmp2 = new Array[Int](1)
+    println("Before tmp1 = %d, tmp2 = %d".format(tmp1(0), tmp2(0)))
     clEnqueueReadBuffer(openCLContext.getOpenCLQueue, gpuCount, CL_TRUE, Sizeof.cl_int * (globalSize - 1), Sizeof.cl_int, Pointer.to(tmp1), 0, null, null)
     clEnqueueReadBuffer(openCLContext.getOpenCLQueue, gpuPsum, CL_TRUE, Sizeof.cl_int * (globalSize - 1), Sizeof.cl_int, Pointer.to(tmp2), 0, null, null)
-    resCount = tmp1(0) + tmp2(0)
+
+    if (tmp1(0) < 0 || tmp2(0) < 0) {
+      println("After tmp1 = %d, tmp2 = %d".format(tmp1(0), tmp2(0)))
+      println("Integer overflow")
+    }
+    resCount = tmp1(0) //+ tmp2(0)
     val end: Long = System.nanoTime
   }
 
   def project(inCol: Array[Int], outCol: Array[Int]) {
     var kernel: cl_kernel = null
-    val global_work_size = Array[Long](globalSize)
-    val local_work_size = Array[Long](localSize)
+    val global_work_size = Array[Long](1)
+    global_work_size(0) = globalSize
+    val local_work_size = Array[Long](1)
+    local_work_size(0) = localSize
     val tupleNum: Int = inCol.length
+    println("tuple number = %d".format(tupleNum))
     val scanCol: cl_mem = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * tupleNum, null, null)
-    val result: cl_mem = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * resCount, null, null)
+    //TOOD the result buffer does not need to be as big as the input buffer
+    val result: cl_mem = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * tupleNum, null, null)
     kernel = clCreateKernel(openCLContext.getOpenCLProgram, "scan_int", null)
     clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(scanCol))
     clSetKernelArg(kernel, 1, Sizeof.cl_int, Pointer.to(Array[Int](4)))
@@ -338,9 +353,25 @@ class FilteredChunkIterator[T <: Product]
 
   override def hasNext: Boolean = itr.hasNext
 
+  var globalSize = 0
+
+  var localSize = 0
+  var resCount = 0
+
   override def next(): RDDChunk[T] = {
     val chunk = new RDDChunk[T](columnTypes)
     chunk.fill(itr)
+    if (columnTypes(colIndex) == "INT") {
+      val data = chunk.intData(colIndex).take(chunk.actualSize)
+      globalSize = data.length
+      localSize = Math.min(BLOCK_SIZE, globalSize)
+      compute(data, value, operation, globalSize, localSize)
+
+      val outData = new Array[Int](chunk.actualSize)
+      resCount = chunk.actualSize
+      project(data, outData)
+      println(outData.mkString(","))
+    }
     chunk
   }
 }
