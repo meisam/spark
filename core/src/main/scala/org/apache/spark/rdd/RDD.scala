@@ -630,7 +630,7 @@ abstract class RDD[T: ClassTag](
    * should be `false` unless this is a pair RDD and the input function doesn't modify the keys.
    */
   def mapPartitions[U: ClassTag](
-          f: Iterator[T] => Iterator[U], preservesPartitioning: Boolean = false): RDD[U] = {
+                                  f: Iterator[T] => Iterator[U], preservesPartitioning: Boolean = false): RDD[U] = {
     val func = (context: TaskContext, index: Int, iter: Iterator[T]) => f(iter)
     new MapPartitionsRDD(this, sc.clean(func), preservesPartitioning)
   }
@@ -643,7 +643,7 @@ abstract class RDD[T: ClassTag](
    * should be `false` unless this is a pair RDD and the input function doesn't modify the keys.
    */
   def mapPartitionsWithIndex[U: ClassTag](
-         f: (Int, Iterator[T]) => Iterator[U], preservesPartitioning: Boolean = false): RDD[U] = {
+                                           f: (Int, Iterator[T]) => Iterator[U], preservesPartitioning: Boolean = false): RDD[U] = {
     val func = (context: TaskContext, index: Int, iter: Iterator[T]) => f(index, iter)
     new MapPartitionsRDD(this, sc.clean(func), preservesPartitioning)
   }
@@ -671,7 +671,7 @@ abstract class RDD[T: ClassTag](
    */
   @deprecated("use mapPartitionsWithIndex", "0.7.0")
   def mapPartitionsWithSplit[U: ClassTag](
-         f: (Int, Iterator[T]) => Iterator[U], preservesPartitioning: Boolean = false): RDD[U] = {
+                                           f: (Int, Iterator[T]) => Iterator[U], preservesPartitioning: Boolean = false): RDD[U] = {
     mapPartitionsWithIndex(f, preservesPartitioning)
   }
 

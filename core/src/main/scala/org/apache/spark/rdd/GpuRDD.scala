@@ -17,6 +17,7 @@
 
 package org.apache.spark.rdd
 
+import java.io._
 import java.lang.reflect.{Array => JArray}
 
 import org.apache.spark.{Logging, Partition, TaskContext}
@@ -41,10 +42,10 @@ class GpuRDD[T <: Product : ClassTag](prev: RDD[T], val columnTypes: Array[Strin
    * be called once, so it is safe to implement a time-consuming computation in it.
    */
   override def getPartitions: Array[Partition] = firstParent[T].partitions
-
 }
 
-class RDDChunk[T <: Product](val columnTypes: Array[String]) extends Serializable with Logging {
+class RDDChunk[T <: Product](val columnTypes: Array[String])
+  extends Serializable with Logging {
 
   def MAX_SIZE: Int = 1 << 10
 
@@ -136,11 +137,11 @@ class RDDChunk[T <: Product](val columnTypes: Array[String]) extends Serializabl
     }
     */
   }
-
 }
 
-class ChunkIterator[T <: Product](itr: Iterator[T], val columnTypes: Array[String]) extends
-Serializable with Iterator[RDDChunk[T]] {
+class ChunkIterator[T <: Product]
+(itr: Iterator[T], val columnTypes: Array[String])
+  extends Serializable with Iterator[RDDChunk[T]] {
 
   override def hasNext: Boolean = itr.hasNext
 
