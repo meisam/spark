@@ -301,7 +301,7 @@ class FilteredChunkIterator[T <: Product]
       println("After tmp1 = %d, tmp2 = %d".format(tmp1(0), tmp2(0)))
       println("Integer overflow")
     }
-    resCount = tmp1(0) //+ tmp2(0)
+    resCount = tmp1(0) + tmp2(0)
     val end: Long = System.nanoTime
   }
 
