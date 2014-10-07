@@ -418,3 +418,16 @@ __kernel void uniformAdd(__global int *g_data,
     g_data[address + get_local_size(0)] += (get_local_id(0) + get_local_size(0) < n) * uni;
 }
 
+__kernel void prefix_sum_stage(__global int *prefix_sum_in,
+                           __global int *prefix_sum_out,
+                           const int stride)
+{
+    int thread_idx = get_global_id(0);
+    if (stride == 0) {
+        prefix_sum_out[thread_idx] = prefix_sum_in[thread_idx];
+        return;
+    }
+    unsigned long my_sum = prefix_sum_in[thread_idx];
+    unsigned long neighbors_sum = (thread_idx < stride)? 0 :prefix_sum_in[thread_idx - stride];
+    prefix_sum_out[thread_idx] = my_sum + neighbors_sum;
+}
