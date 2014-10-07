@@ -326,6 +326,18 @@ class FilteredChunkIterator[T <: Product]
     clReleaseMemObject(col)
   }
 
+  private def createReadWriteBuffer(size: Long): cl_mem = {
+    clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, size, null, null)
+  }
+
+  private def hostToDeviceCopy(src: Pointer, dest: cl_mem, length: Long): Unit = {
+    clEnqueueWriteBuffer(openCLContext.getOpenCLQueue, dest, CL_TRUE, 0, length, src, 0, null, null)
+  }
+
+  private def deviceToHostCopy(src: cl_mem, dest: Pointer, length: Long): Unit = {
+    clEnqueueReadBuffer(openCLContext.getOpenCLQueue, src, CL_TRUE, 0, length, dest, 0, null, null)
+  }
+
   def release {
     clReleaseMemObject(gpuPsum)
     clReleaseMemObject(gpuCount)
