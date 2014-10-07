@@ -326,6 +326,37 @@ class FilteredChunkIterator[T <: Product]
     clReleaseMemObject(col)
   }
 
+  def prefixSum(counts: Array[Int], prefixSums: Array[Int]): Unit = {
+
+    // using double buffers to avoid copying data
+    val buffer1 = createReadWriteBuffer(Sizeof.cl_int * counts.length)
+    val buffer2 = createReadWriteBuffer(Sizeof.cl_int * counts.length)
+
+    hostToDeviceCopy(Pointer.to(counts), buffer1, Sizeof.cl_int * counts.length)
+    val kernel = clCreateKernel(openCLContext.getOpenCLProgram, "prefix_sum_stage", null)
+    var stride: Int = 0
+    var switch = true
+    val localSize = Math.min(globalSize, 256)
+
+    while (stride <= counts.length) {
+      clSetKernelArg(kernel, if (switch) 0 else 1, Sizeof.cl_mem, Pointer.to(buffer1))
+      clSetKernelArg(kernel, if (switch) 1 else 0, Sizeof.cl_mem, Pointer.to(buffer2))
+      clSetKernelArg(kernel, 2, Sizeof.cl_int, Pointer.to(Array[Int](stride)))
+      val global_work_size = Array[Long](globalSize)
+      val local_work_size = Array[Long](localSize)
+      clEnqueueNDRangeKernel(openCLContext.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
+      val resultData = new Array[Int](counts.length)
+      switch = !switch
+      stride = if (stride == 0) 1 else stride << 1
+    }
+    if (counts.length != prefixSums.length) {
+      throw new IllegalArgumentException("Input and output arrays should have the same size (%d != %d)".format(counts.length, prefixSums.length))
+    }
+    val resultData: Array[Int] = new Array[Int](counts.length)
+    val results = if (switch) buffer1 else buffer2
+    deviceToHostCopy(results, Pointer.to(resultData), Sizeof.cl_int * globalSize)
+  }
+
   private def createReadWriteBuffer(size: Long): cl_mem = {
     clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, size, null, null)
   }
