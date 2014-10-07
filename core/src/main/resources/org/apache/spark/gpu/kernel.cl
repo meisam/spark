@@ -1,7 +1,7 @@
 
 __kernel void genScanFilter_init_int_gth(__global int *col, long tupleNum, int where, __global int * filter){
-	size_t stride = get_global_size(0);
-	size_t tid = get_global_id(0);
+    size_t stride = get_global_size(0);
+    size_t tid = get_global_id(0);
         int con;
 
         for(size_t i = tid; i<tupleNum;i+=stride){
@@ -11,8 +11,8 @@ __kernel void genScanFilter_init_int_gth(__global int *col, long tupleNum, int w
 }
 
 __kernel void genScanFilter_init_int_lth(__global int *col, long tupleNum, int where, __global int * filter){
-	size_t stride = get_global_size(0);
-	size_t tid = get_global_id(0);
+    size_t stride = get_global_size(0);
+    size_t tid = get_global_id(0);
         int con;
 
         for(size_t i = tid; i<tupleNum;i+=stride){
@@ -22,8 +22,8 @@ __kernel void genScanFilter_init_int_lth(__global int *col, long tupleNum, int w
 }
 
 __kernel void genScanFilter_init_int_geq(__global int *col, long tupleNum, int where, __global int * filter){
-	size_t stride = get_global_size(0);
-	size_t tid = get_global_id(0);
+    size_t stride = get_global_size(0);
+    size_t tid = get_global_id(0);
         int con;
 
         for(size_t i = tid; i<tupleNum;i+=stride){
@@ -33,8 +33,8 @@ __kernel void genScanFilter_init_int_geq(__global int *col, long tupleNum, int w
 }
 
 __kernel void genScanFilter_init_int_leq(__global int *col, long tupleNum, int where, __global int * filter){
-	size_t stride = get_global_size(0);
-	size_t tid = get_global_id(0);
+    size_t stride = get_global_size(0);
+    size_t tid = get_global_id(0);
         int con;
 
         for(size_t i = tid; i<tupleNum;i+=stride){
@@ -57,8 +57,8 @@ __kernel void genScanFilter_init_int_eq(__global int *col, long tupleNum, int wh
 
 
 __kernel void genScanFilter_and_int_eq(__global int *col, long tupleNum, int where, __global int * filter){
-	size_t stride = get_global_size(0);
-	size_t tid = get_global_id(0);
+    size_t stride = get_global_size(0);
+    size_t tid = get_global_id(0);
         int con;
 
         for(size_t i = tid; i<tupleNum;i+=stride){
@@ -68,8 +68,8 @@ __kernel void genScanFilter_and_int_eq(__global int *col, long tupleNum, int whe
 }
 
 __kernel void genScanFilter_and_int_geq(__global int *col, long tupleNum, int where, __global int * filter){
-	size_t stride = get_global_size(0);
-	size_t tid = get_global_id(0);
+    size_t stride = get_global_size(0);
+    size_t tid = get_global_id(0);
         int con;
 
         for(size_t i = tid; i<tupleNum;i+=stride){
@@ -80,8 +80,8 @@ __kernel void genScanFilter_and_int_geq(__global int *col, long tupleNum, int wh
 
 
 __kernel void genScanFilter_and_int_leq(__global int *col, long tupleNum, int where, __global int * filter){
-	size_t stride = get_global_size(0);
-	size_t tid = get_global_id(0);
+    size_t stride = get_global_size(0);
+    size_t tid = get_global_id(0);
         int con;
 
         for(size_t i = tid; i<tupleNum;i+=stride){
@@ -92,8 +92,8 @@ __kernel void genScanFilter_and_int_leq(__global int *col, long tupleNum, int wh
 
 
 __kernel void genScanFilter_and_int_gth(__global int *col, long tupleNum, int where, __global int * filter){
-	size_t stride = get_global_size(0);
-	size_t tid = get_global_id(0);
+    size_t stride = get_global_size(0);
+    size_t tid = get_global_id(0);
         int con;
 
         for(size_t i = tid; i<tupleNum;i+=stride){
@@ -104,8 +104,8 @@ __kernel void genScanFilter_and_int_gth(__global int *col, long tupleNum, int wh
 
 
 __kernel void genScanFilter_and_int_lth(__global int *col, long tupleNum, int where, __global int * filter){
-	size_t stride = get_global_size(0);
-	size_t tid = get_global_id(0);
+    size_t stride = get_global_size(0);
+    size_t tid = get_global_id(0);
         int con;
 
         for(size_t i = tid; i<tupleNum;i+=stride){
@@ -115,8 +115,8 @@ __kernel void genScanFilter_and_int_lth(__global int *col, long tupleNum, int wh
 }
 
 __kernel void genScanFilter_or_int_eq(__global int *col, long tupleNum, int where, __global int * filter){
-	size_t stride = get_global_size(0);
-	size_t tid = get_global_id(0);
+    size_t stride = get_global_size(0);
+    size_t tid = get_global_id(0);
         int con;
 
         for(size_t i = tid; i<tupleNum;i+=stride){
@@ -126,8 +126,8 @@ __kernel void genScanFilter_or_int_eq(__global int *col, long tupleNum, int wher
 }
 
 __kernel void genScanFilter_or_int_gth(__global int *col, long tupleNum, int where, __global int * filter){
-	size_t stride = get_global_size(0);
-	size_t tid = get_global_id(0);
+    size_t stride = get_global_size(0);
+    size_t tid = get_global_id(0);
         int con;
 
         for(size_t i = tid; i<tupleNum;i+=stride){
@@ -137,8 +137,8 @@ __kernel void genScanFilter_or_int_gth(__global int *col, long tupleNum, int whe
 }
 
 __kernel void genScanFilter_or_int_lth(__global int *col, long tupleNum, int where, __global int * filter){
-	size_t stride = get_global_size(0);
-	size_t tid = get_global_id(0);
+    size_t stride = get_global_size(0);
+    size_t tid = get_global_id(0);
         int con;
 
         for(size_t i = tid; i<tupleNum;i+=stride){
@@ -148,8 +148,8 @@ __kernel void genScanFilter_or_int_lth(__global int *col, long tupleNum, int whe
 }
 
 __kernel void genScanFilter_or_int_geq(__global int *col, long tupleNum, int where, __global int * filter){
-	size_t stride = get_global_size(0);
-	size_t tid = get_global_id(0);
+    size_t stride = get_global_size(0);
+    size_t tid = get_global_id(0);
         int con;
 
         for(size_t i = tid; i<tupleNum;i+=stride){
@@ -159,8 +159,8 @@ __kernel void genScanFilter_or_int_geq(__global int *col, long tupleNum, int whe
 }
 
 __kernel void genScanFilter_or_int_leq(__global int *col, long tupleNum, int where, __global int * filter){
-	size_t stride = get_global_size(0);
-	size_t tid = get_global_id(0);
+    size_t stride = get_global_size(0);
+    size_t tid = get_global_id(0);
         int con;
 
         for(size_t i = tid; i<tupleNum;i+=stride){
@@ -170,8 +170,8 @@ __kernel void genScanFilter_or_int_leq(__global int *col, long tupleNum, int whe
 }
 
 __kernel void countScanNum(__global int *filter, long tupleNum, __global int * count){
-	size_t stride = get_global_size(0);
-	size_t tid = get_global_id(0);
+    size_t stride = get_global_size(0);
+    size_t tid = get_global_id(0);
         int localCount = 0;
 
         for(size_t i = tid; i<tupleNum; i += stride){
@@ -184,23 +184,23 @@ __kernel void countScanNum(__global int *filter, long tupleNum, __global int * c
 
 
 __kernel void scan_other(__global char *col, int colSize, long tupleNum, __global int *psum, long resultNum, __global int * filter, __global char * result){
-	size_t stride = get_global_size(0);
-	size_t tid = get_global_id(0);
+    size_t stride = get_global_size(0);
+    size_t tid = get_global_id(0);
         int pos = psum[tid]  * colSize;
 
         for(size_t i = tid; i<tupleNum;i+=stride){
 
                 if(filter[i] == 1){
-			for(int k=0;k<colSize;k++)
-				(result+pos)[k] = (col+i*colSize)[k];
+            for(int k=0;k<colSize;k++)
+                (result+pos)[k] = (col+i*colSize)[k];
                         pos += colSize;
                 }
         }
 }
 
 __kernel void scan_int(__global int *col, int colSize, long tupleNum, __global int *psum, long resultNum, __global int * filter, __global int * result){
-	size_t stride = get_global_size(0);
-	size_t tid = get_global_id(0);
+    size_t stride = get_global_size(0);
+    size_t tid = get_global_id(0);
         int localCount = psum[tid] ;
 
         for(size_t i = tid; i<tupleNum;i+=stride){
@@ -315,7 +315,7 @@ inline int buildSum(__local int *s_data)
 
     for (size_t d = get_local_size(0); d > 0; d >>= 1)
     {
-	barrier(CLK_LOCAL_MEM_FENCE);
+    barrier(CLK_LOCAL_MEM_FENCE);
 
         if (thid < d)
         {
@@ -343,7 +343,7 @@ void scanRootToLeaves(__local int *s_data, int stride)
     {
         stride >>= 1;
 
-	barrier(CLK_LOCAL_MEM_FENCE);
+    barrier(CLK_LOCAL_MEM_FENCE);
 
         if (thid < d)
         {
@@ -382,7 +382,7 @@ __kernel void prescan(__global int *g_odata,
     int bsize = get_local_size(0);
 
     loadSharedChunkFromMem(s_data, (same == 0) ? g_idata:g_odata,
-				  n,
+                  n,
                                   (baseIndex == 0) ?
                                   mul24(bid, (bsize << 1)):baseIndex,
                                   &ai, &bi, &mem_ai, &mem_bi,
