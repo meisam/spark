@@ -116,8 +116,10 @@ class FilteredChunkIterator[T <: Product]
       clSetKernelArg(kernel, 7, Sizeof.cl_int, Pointer.to(Array[Int](tmp)))
       clSetKernelArg(kernel, 8, Sizeof.cl_int, Pointer.to(Array[Int](same)))
       clSetKernelArg(kernel, 9, sharedMemSize, null)
-      var global_work_size = Array[Long](globalSize)
-      var local_work_size = Array[Long](localSize)
+      var global_work_size = Array[Long](1)
+      global_work_size(0) = globalSize
+      var local_work_size = Array[Long](1)
+      local_work_size(0) = localSize
       clEnqueueNDRangeKernel(context.queue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
       if (np2LastBlock != 0) {
         kernel = clCreateKernel(context.program, "prescan", null)
@@ -138,10 +140,8 @@ class FilteredChunkIterator[T <: Product]
         clSetKernelArg(kernel, 7, Sizeof.cl_int, Pointer.to(Array[Int](tmp)))
         clSetKernelArg(kernel, 8, Sizeof.cl_int, Pointer.to(Array[Int](same)))
         clSetKernelArg(kernel, 9, sharedMemLastBlock, null)
-        globalSize = ({
-          localSize = numThreadsLastBlock;
-          localSize
-        })
+        localSize = numThreadsLastBlock
+        globalSize = numThreadsLastBlock
         global_work_size = Array[Long](globalSize)
         local_work_size = Array[Long](localSize)
         clEnqueueNDRangeKernel(context.queue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
@@ -157,8 +157,6 @@ class FilteredChunkIterator[T <: Product]
       clSetKernelArg(kernel, 4, Sizeof.cl_int, Pointer.to(Array[Int](tmp)))
       localSize = numThreads
       globalSize = Math.max(1, numBlocks - np2LastBlock) * localSize
-      global_work_size = Array[Long](globalSize)
-      local_work_size = Array[Long](localSize)
       clEnqueueNDRangeKernel(context.queue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
       if (np2LastBlock != 0) {
         kernel = clCreateKernel(context.program, "uniformAdd", null)
@@ -169,12 +167,10 @@ class FilteredChunkIterator[T <: Product]
         clSetKernelArg(kernel, 3, Sizeof.cl_int, Pointer.to(Array[Int](tmp)))
         tmp = numElements - numEltsLastBlock
         clSetKernelArg(kernel, 4, Sizeof.cl_int, Pointer.to(Array[Int](tmp)))
-        globalSize = ({
-          localSize = numThreadsLastBlock;
-          localSize
-        })
-        global_work_size = Array[Long](globalSize)
-        local_work_size = Array[Long](localSize)
+        localSize = numThreadsLastBlock
+        globalSize = numThreadsLastBlock
+        global_work_size(0) = globalSize
+        local_work_size(0) = localSize
         clEnqueueNDRangeKernel(context.queue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
       }
     }
@@ -199,8 +195,10 @@ class FilteredChunkIterator[T <: Product]
       clSetKernelArg(kernel, 9, sharedMemSize, null)
       localSize = numThreads
       globalSize = Math.max(1, numBlocks - np2LastBlock) * localSize
-      val global_work_size = Array[Long](globalSize)
-      val local_work_size = Array[Long](localSize)
+      val global_work_size = Array[Long](1)
+      val local_work_size = Array[Long](1)
+      global_work_size(0) = globalSize
+      local_work_size(0) = localSize
       clEnqueueNDRangeKernel(context.queue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
     }
     else {
@@ -281,7 +279,6 @@ class FilteredChunkIterator[T <: Product]
     global_work_size(0) = globalSize
     val local_work_size = Array[Long](1)
     local_work_size(0) = localSize
-    println("global=%d, local= %d".format(globalSize, localSize))
     clEnqueueNDRangeKernel(openCLContext.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
     kernel = clCreateKernel(openCLContext.getOpenCLProgram, "countScanNum", null)
     clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(gpuFilter))
@@ -293,12 +290,10 @@ class FilteredChunkIterator[T <: Product]
     scanImpl(gpuCount, globalSize.asInstanceOf[Int], gpuPsum, openCLContext)
     val tmp1 = new Array[Int](1)
     val tmp2 = new Array[Int](1)
-    println("Before tmp1 = %d, tmp2 = %d".format(tmp1(0), tmp2(0)))
     clEnqueueReadBuffer(openCLContext.getOpenCLQueue, gpuCount, CL_TRUE, Sizeof.cl_int * (globalSize - 1), Sizeof.cl_int, Pointer.to(tmp1), 0, null, null)
     clEnqueueReadBuffer(openCLContext.getOpenCLQueue, gpuPsum, CL_TRUE, Sizeof.cl_int * (globalSize - 1), Sizeof.cl_int, Pointer.to(tmp2), 0, null, null)
 
-    if (tmp1(0) < 0 || tmp2(0) < 0) {
-      println("After tmp1 = %d, tmp2 = %d".format(tmp1(0), tmp2(0)))
+    if (tmp1(0) * tmp2(0) <= 0) {
       println("Integer overflow")
     }
     resCount = tmp1(0) + tmp2(0)
@@ -312,7 +307,6 @@ class FilteredChunkIterator[T <: Product]
     val local_work_size = Array[Long](1)
     local_work_size(0) = localSize
     val tupleNum: Int = inCol.length
-    println("tuple number = %d".format(tupleNum))
     val scanCol: cl_mem = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * tupleNum, null, null)
     //TOOD the result buffer does not need to be as big as the input buffer
     val result: cl_mem = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * tupleNum, null, null)
