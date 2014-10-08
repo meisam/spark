@@ -1,10 +1,11 @@
 package org.apache.spark.rdd
 
 import org.apache.spark.scheduler.OpenCLContext
-import org.apache.spark.{TaskContext, Partition}
+import org.apache.spark.{Partition, TaskContext}
 import org.jocl.CL._
 import org.jocl.{Pointer, Sizeof, cl_kernel, cl_mem}
 
+import scala.collection.immutable.IndexedSeq
 import scala.reflect.ClassTag
 
 
@@ -335,26 +336,26 @@ class FilteredChunkIterator[T <: Product]
     hostToDeviceCopy(Pointer.to(counts), buffer1, Sizeof.cl_int * counts.length)
     val kernel = clCreateKernel(openCLContext.getOpenCLProgram, "prefix_sum_stage", null)
     var stride: Int = 0
-    var switch = true
-    val localSize = Math.min(globalSize, 256)
+    var switchedBuffers = true
+    val globalSize = POW_2_S.filter(_ >= counts.length).head
+
+    val localSize = Math.min(globalSize, BLOCK_SIZE)
 
     while (stride <= counts.length) {
-      clSetKernelArg(kernel, if (switch) 0 else 1, Sizeof.cl_mem, Pointer.to(buffer1))
-      clSetKernelArg(kernel, if (switch) 1 else 0, Sizeof.cl_mem, Pointer.to(buffer2))
+      clSetKernelArg(kernel, if (switchedBuffers) 0 else 1, Sizeof.cl_mem, Pointer.to(buffer1))
+      clSetKernelArg(kernel, if (switchedBuffers) 1 else 0, Sizeof.cl_mem, Pointer.to(buffer2))
       clSetKernelArg(kernel, 2, Sizeof.cl_int, Pointer.to(Array[Int](stride)))
       val global_work_size = Array[Long](globalSize)
       val local_work_size = Array[Long](localSize)
       clEnqueueNDRangeKernel(openCLContext.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
-      val resultData = new Array[Int](counts.length)
-      switch = !switch
+      switchedBuffers = !switchedBuffers
       stride = if (stride == 0) 1 else stride << 1
     }
     if (counts.length != prefixSums.length) {
       throw new IllegalArgumentException("Input and output arrays should have the same size (%d != %d)".format(counts.length, prefixSums.length))
     }
-    val resultData: Array[Int] = new Array[Int](counts.length)
-    val results = if (switch) buffer1 else buffer2
-    deviceToHostCopy(results, Pointer.to(resultData), Sizeof.cl_int * globalSize)
+    val results = if (switchedBuffers) buffer1 else buffer2
+    deviceToHostCopy(results, Pointer.to(prefixSums), Sizeof.cl_int * globalSize)
   }
 
   private def createReadWriteBuffer(size: Long): cl_mem = {
@@ -376,6 +377,7 @@ class FilteredChunkIterator[T <: Product]
     clReleaseMemObject(gpuFilter)
   }
 
+  val POW_2_S: IndexedSeq[Long] = (0 to 100).map(_.toLong).map(1L << _)
   val BLOCK_SIZE: Int = 256
   val NUM_BANKS: Int = 16
   val LOG_NUM_BANKS: Int = 4
