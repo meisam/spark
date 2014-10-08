@@ -114,6 +114,34 @@ class GpuFilterRDDSuit extends FunSuite with SharedSparkContext {
 
   test("kernel.countScanNum test") {
   test("org.apache.spark.rdd.GpuRDD.filter test") {
+  test("kernel.my prefixSum test") {
+    val TEST_DATA_SIZE = 3 + (1 << 4)
+    println("TEST_DATA_SIZE=%d".format(TEST_DATA_SIZE))
+
+    // the test sequence is     (0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,...)
+    // the prefix sum should be (0,1,1,1,2,2,2,3,3,3,4,4,4,5,5,5,6,6,6,...)
+    val testData = (0 until TEST_DATA_SIZE).map(_ % 3).map(_ % 2).zipWithIndex
+
+    val iter = new FilteredChunkIterator[(Int, Int)](testData.iterator, Array("INT", "INT"), openCLContext, 0, 0, 1)
+    assert(iter.hasNext)
+    val chunk = iter.next()
+    assert(!iter.hasNext)
+
+    assert(chunk.intData(0) !== null)
+    assert(chunk.intData(0).length === chunk.MAX_SIZE)
+
+    val expectedResults = (0 until TEST_DATA_SIZE).map(x => (2 + x) / 3).toArray
+    val actualResults = new Array[Int](chunk.intData(0).length)
+    iter.prefixSum(chunk.intData(0), actualResults)
+
+    assert(actualResults !== null)
+    assert(actualResults.length !== expectedResults.length)
+    expectedResults.zip(actualResults).zipWithIndex.foreach { case ((expected, actual), i) =>
+      assert(expected === actual, "The %sths expected %d <> %d actual".format(i, expected, actual))
+    }
+  }
+
+  ignore("org.apache.spark.rdd.GpuRDD.filter test") {
     val testData: IndexedSeq[(Int, Int)] = (0 to 10).reverse.zipWithIndex
 
     val rdd = sc.parallelize(testData)
