@@ -31,6 +31,88 @@ import scala.reflect.ClassTag
  */
 class GpuFilterRDDSuit extends FunSuite with SharedSparkContext {
 
+  val openCLContext = new OpenCLContext
+
+  override def beforeAll() {
+    super.beforeAll()
+    //    setLogLevel(LogLevel.LOG_TRACE)
+    openCLContext.initOpenCL("/org/apache/spark/gpu/kernel.cl")
+  }
+
+  override def afterAll(): Unit = {
+    // maybe release resources
+  }
+
+  test("kernel.genScanFilter_init_int_eq test") {
+    val TEST_DATA_SIZE = 3 + (1 << 25) // TODO larger data sizes may saturate java heap
+
+    val testData: Array[Int] = (0 until TEST_DATA_SIZE).toArray
+    val tupleNum: Long = testData.length
+    val globalSize = tupleNum
+    val localSize = Math.min(globalSize, 256)
+    val value = 50
+
+    val gpuCol = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * tupleNum, null, null)
+    clEnqueueWriteBuffer(openCLContext.getOpenCLQueue, gpuCol, CL_TRUE, 0, Sizeof.cl_int * tupleNum, Pointer.to(testData), 0, null, null)
+
+    val gpuFilter = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * tupleNum, null, null)
+    val gpuPsum = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
+    val gpuCount = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
+    var kernel = clCreateKernel(openCLContext.getOpenCLProgram, "genScanFilter_init_int_eq", null)
+    clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(gpuCol))
+    clSetKernelArg(kernel, 1, Sizeof.cl_long, Pointer.to(Array[Long](tupleNum)))
+    clSetKernelArg(kernel, 2, Sizeof.cl_int, Pointer.to(Array[Int](value)))
+    clSetKernelArg(kernel, 3, Sizeof.cl_mem, Pointer.to(gpuFilter))
+    val global_work_size = Array[Long](globalSize)
+    val local_work_size = Array[Long](localSize)
+    clEnqueueNDRangeKernel(openCLContext.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
+    val resultData = new Array[Int](tupleNum.toInt)
+    clEnqueueReadBuffer(openCLContext.getOpenCLQueue, gpuFilter, CL_TRUE, 0, Sizeof.cl_int * globalSize, Pointer.to(resultData), 0, null, null)
+    (0 until TEST_DATA_SIZE).foreach { i =>
+      if (resultData(i) == 1) {
+        assert(i === value)
+        assert(testData(i) === value)
+      }
+      else
+        assert(testData(i) === i)
+    }
+  }
+
+  test("kernel.genScanFilter_init_int_geq test") {
+    val TEST_DATA_SIZE = 3 + (1 << 25) // TODO larger data sizes may saturate java heap
+
+    val testData: Array[Int] = (0 until TEST_DATA_SIZE).toArray
+    val tupleNum: Long = testData.length
+    val globalSize = tupleNum
+    val localSize = Math.min(globalSize, 256)
+    val value = 50
+
+    val gpuCol = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * tupleNum, null, null)
+    clEnqueueWriteBuffer(openCLContext.getOpenCLQueue, gpuCol, CL_TRUE, 0, Sizeof.cl_int * tupleNum, Pointer.to(testData), 0, null, null)
+
+    val gpuFilter = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * tupleNum, null, null)
+    val gpuPsum = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
+    val gpuCount = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
+    var kernel = clCreateKernel(openCLContext.getOpenCLProgram, "genScanFilter_init_int_geq", null)
+    clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(gpuCol))
+    clSetKernelArg(kernel, 1, Sizeof.cl_long, Pointer.to(Array[Long](tupleNum)))
+    clSetKernelArg(kernel, 2, Sizeof.cl_int, Pointer.to(Array[Int](value)))
+    clSetKernelArg(kernel, 3, Sizeof.cl_mem, Pointer.to(gpuFilter))
+    val global_work_size = Array[Long](globalSize)
+    val local_work_size = Array[Long](localSize)
+    clEnqueueNDRangeKernel(openCLContext.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
+    val resultData = new Array[Int](tupleNum.toInt)
+    clEnqueueReadBuffer(openCLContext.getOpenCLQueue, gpuFilter, CL_TRUE, 0, Sizeof.cl_int * globalSize, Pointer.to(resultData), 0, null, null)
+    (0 until TEST_DATA_SIZE).foreach { i =>
+      if (resultData(i) == 1) {
+        assert(testData(i) >= value)
+      }
+      else
+        assert(testData(i) < value)
+    }
+  }
+
+  test("kernel.countScanNum test") {
   test("org.apache.spark.rdd.GpuRDD.filter test") {
     val testData: IndexedSeq[(Int, Int)] = (0 to 10).reverse.zipWithIndex
 
