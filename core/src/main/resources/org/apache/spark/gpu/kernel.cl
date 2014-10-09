@@ -439,7 +439,7 @@ __kernel void scan(__global int *source_col,
                         const int n)
 {
     int thread_idx = get_global_id(0);
-    if (thread_idx <= n && filter[thread_idx] == 1) {
+    if ((thread_idx < n) && (filter[thread_idx] == 1)) {
         int my_write_index = prefix_sum[thread_idx] - 1;
         dest_col[my_write_index] = source_col[thread_idx];
     }
