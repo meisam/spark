@@ -170,6 +170,60 @@ class GpuFilterRDDSuit extends FunSuite with SharedSparkContext {
     }
   }
 
+  test("kernel.my prefixSum small range test test") {
+    val count = 10
+    val testData = (0 until count).map(_ % 2).zipWithIndex
+
+    val iter = new FilteredChunkIterator[(Int, Int)](testData.iterator, Array("INT", "INT"), openCLContext, 0, 0, 1)
+    assert(iter.hasNext)
+    val chunk = iter.next()
+    assert(!iter.hasNext)
+
+    assert(chunk.intData(0) !== null)
+    assert(chunk.intData(0).length === chunk.MAX_SIZE)
+
+    val expectedResults = Array(0,1,1,2,2,3,3,4,4,5)
+    val actualResults = new Array[Int](chunk.intData(0).length)
+    iter.prefixSum(chunk.intData(0), actualResults)
+
+    assert(actualResults !== null)
+    assert(actualResults.length !== expectedResults.length)
+    expectedResults.zip(actualResults).zipWithIndex.foreach { case ((expected, actual), i) =>
+      assert(expected === actual, "The %sths expected %d <> %d actual".format(i, expected, actual))
+    }
+  }
+
+  test("kernel.my scan test") {
+    val TEST_DATA_SIZE = 3 + (1 << 4)
+
+    val count = 10
+    val sourceCol = (0 until count).toArray
+    val filter = sourceCol.map(_ % 2)
+
+    val prefixSums = Array(0,1,1,2,2,3,3,4,4,5)
+    val actualResults = Array.ofDim[Int](count)
+
+    val iter = new FilteredChunkIterator[(Int, Int)](sourceCol.zipWithIndex.iterator,
+      Array("INT", "INT"), openCLContext, 0, 0, 1)
+    assert(iter.hasNext)
+    val chunk = iter.next()
+    //    assert(!iter.hasNext)
+
+    assert(chunk.intData(0) !== null)
+    assert(chunk.intData(0).length === chunk.MAX_SIZE)
+
+    val expectedResults = (0 until count / 2).map(_ * 2).toArray
+    iter.scan(sourceCol, filter, prefixSums, actualResults, count)
+
+    assert(actualResults !== null)
+    assert(actualResults.length !== expectedResults.length)
+
+    println("actual results %s".format(actualResults.mkString(",")))
+    expectedResults.zip(actualResults).zipWithIndex.foreach { case ((expected, actual), i) =>
+      assert(expected === actual, "The %sths expected %d <> %d actual".format(i, expected, actual))
+    }
+  }
+
   ignore("org.apache.spark.rdd.GpuRDD.filter test") {
     // This crashes  the OpenCL device
     val testData: IndexedSeq[(Int, Int)] = (0 to 10).reverse.zipWithIndex
