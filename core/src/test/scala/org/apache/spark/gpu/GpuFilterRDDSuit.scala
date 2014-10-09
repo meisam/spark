@@ -201,7 +201,8 @@ class GpuFilterRDDSuit extends FunSuite with SharedSparkContext {
     val filter = sourceCol.map(_ % 2)
 
     val prefixSums = Array(0,1,1,2,2,3,3,4,4,5)
-    val actualResults = Array.ofDim[Int](count)
+    val resultSize = prefixSums(prefixSums.length-1)
+    val actualResults = Array.ofDim[Int](resultSize)
 
     val iter = new FilteredChunkIterator[(Int, Int)](sourceCol.zipWithIndex.iterator,
       Array("INT", "INT"), openCLContext, 0, 0, 1)
