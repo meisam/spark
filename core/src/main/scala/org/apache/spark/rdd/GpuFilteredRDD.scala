@@ -359,8 +359,51 @@ class FilteredChunkIterator[T <: Product]
     deviceToHostCopy(results, Pointer.to(prefixSums), Sizeof.cl_int * globalSize)
   }
 
+  def scan(sourceCol: Array[Int], filter: Array[Int], prefixSums: Array[Int], destColumn: Array[Int], count: Int): Unit = {
+    if (sourceCol.length != filter.length
+      || filter.length != prefixSums.length
+      || prefixSums.length != destColumn.length) {
+      throw new IllegalArgumentException("All arrays should have the same size(%d, %d, %d, %d)".
+        format(sourceCol.length, filter.length, prefixSums.length, destColumn.length))
+    }
+
+    val globalSize = POW_2_S.filter(_ >= count).head
+    val localSize = Math.min(globalSize, BLOCK_SIZE)
+    val global_work_size = Array[Long](globalSize)
+    val local_work_size = Array[Long](localSize)
+
+
+    val d_sourceColumns = createReadBuffer(Sizeof.cl_int * globalSize)
+    val d_selectionFilter = createReadBuffer(Sizeof.cl_int * globalSize)
+    val d_prefixSums = createReadBuffer(Sizeof.cl_int * globalSize)
+    val d_destColumn = createReadWriteBuffer(Sizeof.cl_int * globalSize)
+
+    hostToDeviceCopy(Pointer.to(filter), d_sourceColumns, Sizeof.cl_int * count)
+    hostToDeviceCopy(Pointer.to(filter), d_selectionFilter, Sizeof.cl_int * count)
+    hostToDeviceCopy(Pointer.to(filter), d_prefixSums, Sizeof.cl_int * count)
+
+    val kernel = clCreateKernel(openCLContext.getOpenCLProgram, "scan", null)
+
+    clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(d_sourceColumns))
+    clSetKernelArg(kernel, 1, Sizeof.cl_mem, Pointer.to(d_selectionFilter))
+    clSetKernelArg(kernel, 2, Sizeof.cl_mem, Pointer.to(d_prefixSums))
+    clSetKernelArg(kernel, 3, Sizeof.cl_mem, Pointer.to(d_destColumn))
+    clSetKernelArg(kernel, 4, Sizeof.cl_int, Pointer.to(Array[Int](count)))
+    clEnqueueNDRangeKernel(openCLContext.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
+
+    deviceToHostCopy(d_destColumn, Pointer.to(destColumn), Sizeof.cl_int * globalSize)
+  }
+
+  private def createReadBuffer(size: Long): cl_mem = {
+    clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_ONLY, size, null, null)
+  }
+
   private def createReadWriteBuffer(size: Long): cl_mem = {
     clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, size, null, null)
+  }
+
+  private def createWriteBuffer(size: Long): cl_mem = {
+    clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_WRITE_ONLY, size, null, null)
   }
 
   private def hostToDeviceCopy(src: Pointer, dest: cl_mem, length: Long): Unit = {
