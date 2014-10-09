@@ -361,16 +361,21 @@ class FilteredChunkIterator[T <: Product]
 
   def scan(sourceCol: Array[Int], filter: Array[Int], prefixSums: Array[Int], destColumn: Array[Int], count: Int): Unit = {
     if (sourceCol.length != filter.length
-      || filter.length != prefixSums.length
-      || prefixSums.length != destColumn.length) {
+      || filter.length != prefixSums.length) {
       throw new IllegalArgumentException("All arrays should have the same size(%d, %d, %d, %d)".
         format(sourceCol.length, filter.length, prefixSums.length, destColumn.length))
+    }
+
+    if (prefixSums.reverse.head != destColumn.length) {
+      throw new IllegalArgumentException(("Size of dest coulumn is not the same as number of " +
+        "filtered columns (%d, %d)").format(prefixSums.reverse.head, destColumn.length))
     }
 
     val globalSize = POW_2_S.filter(_ >= count).head
     val localSize = Math.min(globalSize, BLOCK_SIZE)
     val global_work_size = Array[Long](globalSize)
     val local_work_size = Array[Long](localSize)
+    val resultSize = destColumn.length
 
 
     val d_sourceColumns = createReadBuffer(Sizeof.cl_int * globalSize)
@@ -391,7 +396,7 @@ class FilteredChunkIterator[T <: Product]
     clSetKernelArg(kernel, 4, Sizeof.cl_int, Pointer.to(Array[Int](count)))
     clEnqueueNDRangeKernel(openCLContext.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
 
-    deviceToHostCopy(d_destColumn, Pointer.to(destColumn), Sizeof.cl_int * globalSize)
+    deviceToHostCopy(d_destColumn, Pointer.to(destColumn), Sizeof.cl_int * resultSize)
   }
 
   private def createReadBuffer(size: Long): cl_mem = {
