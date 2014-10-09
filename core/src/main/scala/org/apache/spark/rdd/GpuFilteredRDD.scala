@@ -378,9 +378,9 @@ class FilteredChunkIterator[T <: Product]
     val d_prefixSums = createReadBuffer(Sizeof.cl_int * globalSize)
     val d_destColumn = createReadWriteBuffer(Sizeof.cl_int * globalSize)
 
-    hostToDeviceCopy(Pointer.to(filter), d_sourceColumns, Sizeof.cl_int * count)
+    hostToDeviceCopy(Pointer.to(sourceCol), d_sourceColumns, Sizeof.cl_int * count)
     hostToDeviceCopy(Pointer.to(filter), d_selectionFilter, Sizeof.cl_int * count)
-    hostToDeviceCopy(Pointer.to(filter), d_prefixSums, Sizeof.cl_int * count)
+    hostToDeviceCopy(Pointer.to(prefixSums), d_prefixSums, Sizeof.cl_int * count)
 
     val kernel = clCreateKernel(openCLContext.getOpenCLProgram, "scan", null)
 
