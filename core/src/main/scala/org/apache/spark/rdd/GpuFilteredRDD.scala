@@ -399,6 +399,71 @@ class FilteredChunkIterator[T <: Product]
     deviceToHostCopy(d_destColumn, Pointer.to(destColumn), Sizeof.cl_int * resultSize)
   }
 
+  def selection(columnData: Array[Int]): Array[Int] = {
+    val globalSize = POW_2_S.filter(_ >= columnData.length).head
+    val localSize = Math.min(globalSize, 256)
+
+    val global_work_size = Array[Long](globalSize)
+    val local_work_size = Array[Long](localSize)
+
+    val columnBuffer = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
+    clEnqueueWriteBuffer(openCLContext.getOpenCLQueue, columnBuffer, CL_TRUE, 0, Sizeof.cl_int * columnData.length, Pointer.to(columnData), 0, null, null)
+
+    val filterBuffer = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
+
+    val filterKernel = clCreateKernel(openCLContext.getOpenCLProgram, "genScanFilter_init_int_eq", null)
+    clSetKernelArg(filterKernel, 0, Sizeof.cl_mem, Pointer.to(columnBuffer))
+    clSetKernelArg(filterKernel, 1, Sizeof.cl_long, Pointer.to(Array[Long](columnData.length.toLong)))
+    clSetKernelArg(filterKernel, 2, Sizeof.cl_int, Pointer.to(Array[Int](value)))
+    clSetKernelArg(filterKernel, 3, Sizeof.cl_mem, Pointer.to(filterBuffer))
+    clEnqueueNDRangeKernel(openCLContext.getOpenCLQueue, filterKernel, 1, null, global_work_size, local_work_size, 0, null, null)
+
+    // using double buffers to avoid copying data
+    val prefixSumBuffer1 = createReadWriteBuffer(Sizeof.cl_int * globalSize)
+    val prefixSumBuffer2 = createReadWriteBuffer(Sizeof.cl_int * globalSize)
+
+
+    val copyKernel = clCreateKernel(openCLContext.getOpenCLProgram, "copy_buffer", null)
+    clSetKernelArg(copyKernel, 0, Sizeof.cl_mem, Pointer.to(filterBuffer))
+    clSetKernelArg(copyKernel, 1, Sizeof.cl_mem, Pointer.to(prefixSumBuffer1))
+    clEnqueueNDRangeKernel(openCLContext.getOpenCLQueue, filterKernel, 1, null, global_work_size, local_work_size, 0, null, null)
+
+
+    val prefixSumKernel = clCreateKernel(openCLContext.getOpenCLProgram, "prefix_sum_stage", null)
+    var stride: Int = 0
+
+    var switchedBuffers = true
+
+    while (stride <= columnData.length) {
+      clSetKernelArg(prefixSumKernel, if (switchedBuffers) 0 else 1, Sizeof.cl_mem, Pointer.to(prefixSumBuffer1))
+      clSetKernelArg(prefixSumKernel, if (switchedBuffers) 1 else 0, Sizeof.cl_mem, Pointer.to(prefixSumBuffer2))
+      clSetKernelArg(prefixSumKernel, 2, Sizeof.cl_int, Pointer.to(Array[Int](stride)))
+      clEnqueueNDRangeKernel(openCLContext.getOpenCLQueue, prefixSumKernel, 1, null, global_work_size, local_work_size, 0, null, null)
+      switchedBuffers = !switchedBuffers
+      stride = if (stride == 0) 1 else stride << 1
+    }
+    val prefixSumBuffer = if (switchedBuffers) prefixSumBuffer1 else prefixSumBuffer2
+
+    val resultSize = Array(0)
+
+    deviceToHostCopy(prefixSumBuffer, Pointer.to(resultSize), 1)
+    val d_destColumn = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE,
+      Sizeof.cl_int * resultSize.head, null, null)
+
+    val scanKernel = clCreateKernel(openCLContext.getOpenCLProgram, "scan", null)
+
+    clSetKernelArg(scanKernel, 0, Sizeof.cl_mem, Pointer.to(columnBuffer))
+    clSetKernelArg(scanKernel, 1, Sizeof.cl_mem, Pointer.to(filterBuffer))
+    clSetKernelArg(scanKernel, 2, Sizeof.cl_mem, Pointer.to(prefixSumBuffer))
+    clSetKernelArg(scanKernel, 3, Sizeof.cl_mem, Pointer.to(d_destColumn))
+    clSetKernelArg(scanKernel, 4, Sizeof.cl_int, Pointer.to(Array[Int](resultSize.head)))
+    clEnqueueNDRangeKernel(openCLContext.getOpenCLQueue, scanKernel, 1, null, global_work_size, local_work_size, 0, null, null)
+
+    val destColumn = new Array[Int](resultSize.head)
+    deviceToHostCopy(d_destColumn, Pointer.to(destColumn), Sizeof.cl_int * resultSize.head)
+    destColumn
+  }
+
   private def createReadBuffer(size: Long): cl_mem = {
     clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_ONLY, size, null, null)
   }
