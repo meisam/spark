@@ -415,8 +415,9 @@ class FilteredChunkIterator[T <: Product]
     clEnqueueWriteBuffer(openCLContext.getOpenCLQueue, dest, CL_TRUE, 0, length, src, 0, null, null)
   }
 
-  private def deviceToHostCopy(src: cl_mem, dest: Pointer, length: Long): Unit = {
-    clEnqueueReadBuffer(openCLContext.getOpenCLQueue, src, CL_TRUE, 0, length, dest, 0, null, null)
+  private def deviceToHostCopy(src: cl_mem, dest: Pointer, length: Long, offset: Long = 0): Unit = {
+    clEnqueueReadBuffer(openCLContext.getOpenCLQueue, src, CL_TRUE, offset, length, dest, 0, null,
+      null)
   }
 
   def release {
