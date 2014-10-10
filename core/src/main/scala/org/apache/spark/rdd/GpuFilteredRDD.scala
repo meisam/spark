@@ -400,28 +400,44 @@ class FilteredChunkIterator[T <: Product]
   }
 
   def selection(columnData: Array[Int]): Array[Int] = {
+    val startInitTime = System.nanoTime
     val globalSize = POW_2_S.filter(_ >= columnData.length).head
     val localSize = Math.min(globalSize, 256)
 
     val global_work_size = Array[Long](globalSize)
     val local_work_size = Array[Long](localSize)
 
-    val columnBuffer = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
-    clEnqueueWriteBuffer(openCLContext.getOpenCLQueue, columnBuffer, CL_TRUE, 0, Sizeof.cl_int * columnData.length, Pointer.to(columnData), 0, null, null)
+    if (openCLContext == null) {
+      openCLContext = new OpenCLContext
+      openCLContext.initOpenCL("/org/apache/spark/gpu/kernel.cl")
+    }
+
+    val endInitTime = System.nanoTime
+
+    val startTransferTime = System.nanoTime
+
+    val columnBuffer = createReadBuffer(Sizeof.cl_int * globalSize)
+    hostToDeviceCopy(Pointer.to(columnData), columnBuffer, Sizeof.cl_int * columnData.length)
+
+    val endTransferTime = System.nanoTime
+
+    val startFilterTime = System.nanoTime
 
     val filterBuffer = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
-
     val filterKernel = clCreateKernel(openCLContext.getOpenCLProgram, "genScanFilter_init_int_eq", null)
+
     clSetKernelArg(filterKernel, 0, Sizeof.cl_mem, Pointer.to(columnBuffer))
     clSetKernelArg(filterKernel, 1, Sizeof.cl_long, Pointer.to(Array[Long](columnData.length.toLong)))
     clSetKernelArg(filterKernel, 2, Sizeof.cl_int, Pointer.to(Array[Int](value)))
     clSetKernelArg(filterKernel, 3, Sizeof.cl_mem, Pointer.to(filterBuffer))
     clEnqueueNDRangeKernel(openCLContext.getOpenCLQueue, filterKernel, 1, null, global_work_size, local_work_size, 0, null, null)
 
+    val endFilterTime = System.nanoTime
+
+    val startPrefixSumTime = System.nanoTime
     // using double buffers to avoid copying data
     val prefixSumBuffer1 = createReadWriteBuffer(Sizeof.cl_int * globalSize)
     val prefixSumBuffer2 = createReadWriteBuffer(Sizeof.cl_int * globalSize)
-
 
     val copyKernel = clCreateKernel(openCLContext.getOpenCLProgram, "copy_buffer", null)
     clSetKernelArg(copyKernel, 0, Sizeof.cl_mem, Pointer.to(filterBuffer))
@@ -444,12 +460,19 @@ class FilteredChunkIterator[T <: Product]
     }
     val prefixSumBuffer = if (switchedBuffers) prefixSumBuffer1 else prefixSumBuffer2
 
+    val endPrefixSumTime = System.nanoTime
+
+    val startFetchSizeTime = System.nanoTime
     val resultSize = Array(0)
 
-    deviceToHostCopy(prefixSumBuffer, Pointer.to(resultSize), 1)
+    deviceToHostCopy(prefixSumBuffer, Pointer.to(resultSize), 1, columnData.length - 2)
+    val endFetchSizeTime = System.nanoTime
+
+    resultSize(0) = columnData.length / 10
     val d_destColumn = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE,
       Sizeof.cl_int * resultSize.head, null, null)
 
+    val startScanTime = System.nanoTime
     val scanKernel = clCreateKernel(openCLContext.getOpenCLProgram, "scan", null)
 
     clSetKernelArg(scanKernel, 0, Sizeof.cl_mem, Pointer.to(columnBuffer))
@@ -459,13 +482,29 @@ class FilteredChunkIterator[T <: Product]
     clSetKernelArg(scanKernel, 4, Sizeof.cl_int, Pointer.to(Array[Int](resultSize.head)))
     clEnqueueNDRangeKernel(openCLContext.getOpenCLQueue, scanKernel, 1, null, global_work_size, local_work_size, 0, null, null)
 
+    val endScanTime = System.nanoTime
+
+    val startCopyResultTime = System.nanoTime
     val destColumn = new Array[Int](resultSize.head)
-    deviceToHostCopy(d_destColumn, Pointer.to(destColumn), Sizeof.cl_int * resultSize.head)
+    println(resultSize.head)
+//    deviceToHostCopy(d_destColumn, Pointer.to(destColumn), Sizeof.cl_int * resultSize.head)
+    val endCopyResultTime = System.nanoTime
+
+    println("Times (Transfer2Device ,Filter, PrefixSum, FetchSize, LastScan, Transfer2Host")
+    println("(%d ,%d, %d, %d, %d)".format(
+      -(startTransferTime - endTransferTime),
+      -(startFilterTime - endFilterTime),
+      -(startPrefixSumTime - endPrefixSumTime),
+      -(startFetchSizeTime - endFetchSizeTime),
+      -(startScanTime - endScanTime)//,
+      //-(startCopyResultTime - endCopyResultTime)
+    ))
     destColumn
   }
 
   private def createReadBuffer(size: Long): cl_mem = {
     clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_ONLY, size, null, null)
+
   }
 
   private def createReadWriteBuffer(size: Long): cl_mem = {
@@ -477,7 +516,10 @@ class FilteredChunkIterator[T <: Product]
   }
 
   private def hostToDeviceCopy(src: Pointer, dest: cl_mem, length: Long): Unit = {
-    clEnqueueWriteBuffer(openCLContext.getOpenCLQueue, dest, CL_TRUE, 0, length, src, 0, null, null)
+    println(openCLContext.getOpenCLQueue)
+    val result = clEnqueueWriteBuffer(openCLContext.getOpenCLQueue, dest, CL_TRUE, 0, length, src,
+      0, null, null)
+    println(result)
   }
 
   private def deviceToHostCopy(src: cl_mem, dest: Pointer, length: Long, offset: Long = 0): Unit = {
