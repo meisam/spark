@@ -444,3 +444,10 @@ __kernel void scan(__global int *source_col,
         dest_col[my_write_index] = source_col[thread_idx];
     }
 }
+
+__kernel void copy_buffer(__global int *source,
+                        __global int *dest)
+{
+    int thread_idx = get_global_id(0);
+    dest[thread_idx] = source[thread_idx];
+}
