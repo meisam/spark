@@ -124,20 +124,33 @@ class GpuPerformanceTestsSuit extends FunSuite with SharedSparkContext {
 
   test("selection with 10% selectivity scan") {
     val SIZE_OF_INTEGER = 4
-    (24 to 29).foreach { size => {
+    (26 until 27).foreach { size => {
       val TEST_DATA_SIZE = (1 << size) / SIZE_OF_INTEGER
       val selectivity = 10 //percent
       val value = 1
 
       val testData = (0 until TEST_DATA_SIZE).map(x => if (x % 10 == 0) value else 0).toArray
 
-      var totalTime = 0L
 
       val cores = 1
 
+      val startTransformDataTime = System.nanoTime
       val iter = new FilteredChunkIterator[(Int, Int)](testData.zipWithIndex.iterator,
         Array("INT", "INT"), openCLContext, 0, 0, value)
+      val endTransformDataTime = System.nanoTime
+
+      val startSelectionTotalTime = System.nanoTime
       iter.selection(testData)
+      val endSelectionTotalTime = System.nanoTime
+
+      val totalTime = endSelectionTotalTime - startTransformDataTime
+      println("Test with size=%d".format(size))
+      println("Total transform time (ns) to copy %d elements of data = %d".format
+        (TEST_DATA_SIZE, endTransformDataTime - startTransformDataTime))
+      println("Selection time (ns) = %d".format
+        (endSelectionTotalTime - startSelectionTotalTime))
+      println("Total selection time (ns) = %d".format
+        (totalTime))
 
 
     }
