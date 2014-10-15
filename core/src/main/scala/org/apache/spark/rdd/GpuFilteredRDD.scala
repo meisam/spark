@@ -3,7 +3,7 @@ package org.apache.spark.rdd
 import org.apache.spark.scheduler.OpenCLContext
 import org.apache.spark.{Partition, TaskContext}
 import org.jocl.CL._
-import org.jocl.{Pointer, Sizeof, cl_kernel, cl_mem}
+import org.jocl._
 
 import scala.collection.immutable.IndexedSeq
 import scala.reflect.ClassTag
@@ -276,18 +276,16 @@ class FilteredChunkIterator[T <: Product]
     clSetKernelArg(kernel, 1, Sizeof.cl_long, Pointer.to(Array[Long](tupleNum)))
     clSetKernelArg(kernel, 2, Sizeof.cl_int, Pointer.to(Array[Int](value)))
     clSetKernelArg(kernel, 3, Sizeof.cl_mem, Pointer.to(gpuFilter))
-    val global_work_size = Array[Long](1)
-    global_work_size(0) = globalSize
-    val local_work_size = Array[Long](1)
-    local_work_size(0) = localSize
+    val global_work_size = Array[Long](globalSize)
+    val local_work_size = Array[Long](localSize)
     clEnqueueNDRangeKernel(openCLContext.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
     kernel = clCreateKernel(openCLContext.getOpenCLProgram, "countScanNum", null)
     clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(gpuFilter))
     clSetKernelArg(kernel, 1, Sizeof.cl_long, Pointer.to(Array[Long](tupleNum)))
     clSetKernelArg(kernel, 2, Sizeof.cl_mem, Pointer.to(gpuCount))
     clEnqueueNDRangeKernel(openCLContext.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
-    gpuPsum = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
-    gpuCount = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
+
+
     scanImpl(gpuCount, globalSize.asInstanceOf[Int], gpuPsum, openCLContext)
 
     val tmp1 = Array[Int](0)
