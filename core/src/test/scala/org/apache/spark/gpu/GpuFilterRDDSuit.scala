@@ -18,7 +18,7 @@
 package org.apache.spark.gpu
 
 import org.apache.spark.SharedSparkContext
-import org.apache.spark.rdd.FilteredChunkIterator
+import org.apache.spark.rdd.{FilteredChunkIterator, RDDChunk}
 import org.apache.spark.scheduler.OpenCLContext
 import org.jocl.CL._
 import org.jocl.{Pointer, Sizeof}
@@ -182,7 +182,7 @@ class GpuFilterRDDSuit extends FunSuite with SharedSparkContext {
     assert(chunk.intData(0) !== null)
     assert(chunk.intData(0).length === chunk.MAX_SIZE)
 
-    val expectedResults = Array(0,1,1,2,2,3,3,4,4,5)
+    val expectedResults = Array(0, 1, 1, 2, 2, 3, 3, 4, 4, 5)
     val actualResults = new Array[Int](chunk.intData(0).length)
     iter.prefixSum(chunk.intData(0), actualResults)
 
