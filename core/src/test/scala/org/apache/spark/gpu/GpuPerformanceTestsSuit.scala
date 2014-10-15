@@ -70,7 +70,7 @@ class GpuPerformanceTestsSuit extends FunSuite with SharedSparkContext {
         totalTime += endTime - startTime
       }
 
-      println("time to copy %d elements of data = %f".format(TEST_DATA_SIZE,
+      println("time to copy %,12d elements of data = %f".format(TEST_DATA_SIZE,
         totalTime.toDouble / 1000.0 / 1000000000))
 
       val gpuFilter = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
@@ -118,7 +118,7 @@ class GpuPerformanceTestsSuit extends FunSuite with SharedSparkContext {
         totalTime += endTime - startTime
       }
 
-      println("time (ns) to do 10% selection on 1 CPU core %d integer elements of data = %f".format
+      println("time (ns) to do 10% selection on 1 CPU core %,12d integer elements of data = %f".format
         (TEST_DATA_SIZE, totalTime.toDouble / iterations))
     }
     }
@@ -146,12 +146,12 @@ class GpuPerformanceTestsSuit extends FunSuite with SharedSparkContext {
       val endSelectionTotalTime = System.nanoTime
 
       val totalTime = endSelectionTotalTime - startTransformDataTime
-      println("Test with size=%d".format(size))
-      println("Total transform time (ns) to copy %d elements of data = %d".format
+      println("Test with size=%,12d".format(size))
+      println("Total transform time (ns) to copy %,12d elements of data = %,12d".format
         (TEST_DATA_SIZE, endTransformDataTime - startTransformDataTime))
-      println("Selection time (ns) = %d".format
+      println("Selection time (ns) = %,12d".format
         (endSelectionTotalTime - startSelectionTotalTime))
-      println("Total selection time (ns) = %d".format
+      println("Total selection time (ns) = %,12d".format
         (totalTime))
 
 
@@ -193,12 +193,12 @@ class GpuPerformanceTestsSuit extends FunSuite with SharedSparkContext {
       val endSelectionTotalTime = System.nanoTime
 
       val totalTime = endSelectionTotalTime - startTransformDataTime
-      println("Test with size=%d".format(size))
-      println("Total transform time (ns) to copy %d elements of data = %d".format
+      println("Test with size=%,12d".format(size))
+      println("Total transform time (ns) to copy %,12d elements of data = %,12d".format
         (TEST_DATA_SIZE, endTransformDataTime - startTransformDataTime))
-      println("Selection time (ns) = %d".format
+      println("Selection time (ns) = %,12d".format
         (endSelectionTotalTime - startSelectionTotalTime))
-      println("Total selection time (ns) = %d".format
+      println("Total selection time (ns) = %,12d".format
         (totalTime))
 
     }
