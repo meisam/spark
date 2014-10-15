@@ -245,4 +245,18 @@ class GpuFilterRDDSuit extends FunSuite with SharedSparkContext {
     )
   }
 
+  test("compute") {
+    val testData: IndexedSeq[(Int, Int)] = (0 to 10).zipWithIndex
+
+    val chunkIterator = new FilteredChunkIterator(testData.iterator, Array("INT", "INT"),
+      openCLContext, 1, 0, 1)
+    val column1 = (1 to 10).toArray
+    val localSize = math.min(256, column1.length)
+    val globalSize = localSize * math.min(1 + (column1.length - 1) / localSize, 2048)
+
+    assert(globalSize === 10)
+    val actualResult  = chunkIterator.compute(column1, 5, 3, globalSize, localSize)
+    val expectedResult = column1.filter( _ < 5).length
+    assert(actualResult === expectedResult)
+  }
 }
