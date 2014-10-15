@@ -245,6 +245,19 @@ class GpuFilterRDDSuit extends FunSuite with SharedSparkContext {
     )
   }
 
+  test("GpuFilterdRDD(Int, Int) test") {
+    val testData: IndexedSeq[(Int, Int)] = (0 to 10).zipWithIndex
+
+    val rdd = sc.parallelize(testData)
+    val gpuRdd = rdd.toGpuFilterRDD(Array("INT", "INT"), 0, 0, 1)
+    val collectedChunks: Array[RDDChunk[Product]] = gpuRdd.collect()
+    assert(collectedChunks.length === 1)
+    val chunk = collectedChunks(0)
+    assert (chunk.actualSize === 1)
+    assert(chunk.intData(0)(0) === 1, "values do not match")
+    assert(chunk.intData(1)(1) === 1, "values do not match")
+  }
+
   test("compute") {
     val testData: IndexedSeq[(Int, Int)] = (0 to 10).zipWithIndex
 
