@@ -399,7 +399,7 @@ class FilteredChunkIterator[T <: Product]
     deviceToHostCopy(d_destColumn, Pointer.to(destColumn), Sizeof.cl_int * resultSize)
   }
 
-  def selection(columnData: Array[Int]): Array[Int] = {
+  def selection(columnData: Array[Int], isBlocking: Boolean = true): Array[Int] = {
     val startInitTime = System.nanoTime
     val globalSize = POW_2_S.filter(_ >= columnData.length).head
     val localSize = Math.min(globalSize, 256)
@@ -487,7 +487,7 @@ class FilteredChunkIterator[T <: Product]
     val startCopyResultTime = System.nanoTime
     val destColumn = new Array[Int](resultSize.head)
     println(resultSize.head)
-//    deviceToHostCopy(d_destColumn, Pointer.to(destColumn), Sizeof.cl_int * resultSize.head)
+    //    deviceToHostCopy(d_destColumn, Pointer.to(destColumn), Sizeof.cl_int * resultSize.head)
     val endCopyResultTime = System.nanoTime
 
     println("Times (Transfer2Device ,Filter, PrefixSum, FetchSize, LastScan, Transfer2Host")
@@ -496,11 +496,13 @@ class FilteredChunkIterator[T <: Product]
       -(startFilterTime - endFilterTime),
       -(startPrefixSumTime - endPrefixSumTime),
       -(startFetchSizeTime - endFetchSizeTime),
-      -(startScanTime - endScanTime)//,
+      -(startScanTime - endScanTime) //,
       //-(startCopyResultTime - endCopyResultTime)
     ))
     destColumn
   }
+
+  def nonBlockingSelection(columnData: Array[Int]) = selection(columnData, false)
 
   private def createReadBuffer(size: Long): cl_mem = {
     clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_ONLY, size, null, null)

@@ -17,6 +17,8 @@
 
 package org.apache.spark.gpu
 
+import java.util.concurrent.CountDownLatch
+
 import org.apache.spark.SharedSparkContext
 import org.apache.spark.rdd.FilteredChunkIterator
 import org.apache.spark.scheduler.OpenCLContext
@@ -122,7 +124,7 @@ class GpuPerformanceTestsSuit extends FunSuite with SharedSparkContext {
     }
   }
 
-  test("selection with 10% selectivity scan") {
+  ignore("selection with 10% selectivity scan") {
     val SIZE_OF_INTEGER = 4
     (26 until 27).foreach { size => {
       val TEST_DATA_SIZE = (1 << size) / SIZE_OF_INTEGER
@@ -155,5 +157,60 @@ class GpuPerformanceTestsSuit extends FunSuite with SharedSparkContext {
 
     }
     }
+  }
+
+  test("two concurrent selection with 10% selectivity without data transformation") {
+    val SIZE_OF_INTEGER = 4
+    (25 until 26).foreach { size => {
+      val TEST_DATA_SIZE = (1 << size) / SIZE_OF_INTEGER
+      val selectivity = 10 //percent
+      val value = 1
+
+      val testData1 = (0 until TEST_DATA_SIZE).map(x => if (x % 10 == 0) value else 0).toArray
+      val testData2 = (0 until TEST_DATA_SIZE).map(x => if (x % 10 == 1) value else 0).toArray
+
+      // this is to avoid the huge cost of transforming data from row-store to columnar store
+      val dummyData = (0 until 10).zipWithIndex.iterator
+
+      val cores = 1
+
+      val startTransformDataTime = System.nanoTime
+      val iter = new FilteredChunkIterator[(Int, Int)](dummyData,
+        Array("INT", "INT"), openCLContext, 0, 0, value)
+      val endTransformDataTime = System.nanoTime
+
+      val countDown = new CountDownLatch(2)
+
+      val allData = Seq(testData1, testData1)
+      val gpuRunnerThreads = allData.map(columnData => new GpuRunner(columnData, iter, countDown))
+
+      val startSelectionTotalTime = System.nanoTime
+
+      gpuRunnerThreads.foreach(_.start)
+
+      countDown.await()
+
+      val endSelectionTotalTime = System.nanoTime
+
+      val totalTime = endSelectionTotalTime - startTransformDataTime
+      println("Test with size=%d".format(size))
+      println("Total transform time (ns) to copy %d elements of data = %d".format
+        (TEST_DATA_SIZE, endTransformDataTime - startTransformDataTime))
+      println("Selection time (ns) = %d".format
+        (endSelectionTotalTime - startSelectionTotalTime))
+      println("Total selection time (ns) = %d".format
+        (totalTime))
+
+    }
+    }
+  }
+}
+
+class GpuRunner(columnData: Array[Int]
+                , iter: FilteredChunkIterator[(Int, Int)]
+                , countDown: CountDownLatch) extends Thread {
+  override def run(): Unit = {
+    iter.nonBlockingSelection(columnData)
+    countDown.countDown()
   }
 }
