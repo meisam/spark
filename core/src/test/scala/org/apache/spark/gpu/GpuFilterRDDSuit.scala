@@ -112,7 +112,7 @@ class GpuFilterRDDSuit extends FunSuite with SharedSparkContext {
     }
   }
 
-  ignore("kernel.countScanNum test") {
+  test("kernel.countScanNum test") {
     // countScanNum does not do what I thought.
     val TEST_DATA_SIZE = 3 + (1 << 10)
 
@@ -144,8 +144,7 @@ class GpuFilterRDDSuit extends FunSuite with SharedSparkContext {
   }
 
   test("kernel.my prefixSum test") {
-    val TEST_DATA_SIZE = 3 + (1 << 4)
-    println("TEST_DATA_SIZE=%,12d".format(TEST_DATA_SIZE))
+    val TEST_DATA_SIZE = 3 + (1 << 14)
 
     // the test sequence is     (0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,...)
     // the prefix sum should be (0,1,1,1,2,2,2,3,3,3,4,4,4,5,5,5,6,6,6,...)
@@ -157,7 +156,7 @@ class GpuFilterRDDSuit extends FunSuite with SharedSparkContext {
     assert(!iter.hasNext)
 
     assert(chunk.intData(0) !== null)
-    assert(chunk.intData(0).length === chunk.MAX_SIZE)
+    assert(chunk.intData(0).length === testData.map(_._1).filter(_ == 1).length)
 
     val expectedResults = (0 until TEST_DATA_SIZE).map(x => (2 + x) / 3).toArray
     val actualResults = new Array[Int](chunk.intData(0).length)
@@ -180,7 +179,7 @@ class GpuFilterRDDSuit extends FunSuite with SharedSparkContext {
     assert(!iter.hasNext)
 
     assert(chunk.intData(0) !== null)
-    assert(chunk.intData(0).length === chunk.MAX_SIZE)
+    assert(chunk.intData(0).length === testData.map(_._1).filter(_ == 1).length)
 
     val expectedResults = Array(0, 1, 1, 2, 2, 3, 3, 4, 4, 5)
     val actualResults = new Array[Int](chunk.intData(0).length)
@@ -211,7 +210,7 @@ class GpuFilterRDDSuit extends FunSuite with SharedSparkContext {
     //    assert(!iter.hasNext)
 
     assert(chunk.intData(0) !== null)
-    assert(chunk.intData(0).length === chunk.MAX_SIZE)
+    assert(chunk.intData(0).length === sourceCol.filter(_ == 1).length)
 
     val expectedResults = (0 until count / 2).map(_ * 2).toArray
     iter.scan(sourceCol, filter, prefixSums, actualResults, count)
@@ -219,7 +218,6 @@ class GpuFilterRDDSuit extends FunSuite with SharedSparkContext {
     assert(actualResults !== null)
     assert(actualResults.length !== expectedResults.length)
 
-    println("actual results %s".format(actualResults.mkString(",")))
     expectedResults.zip(actualResults).zipWithIndex.foreach { case ((expected, actual), i) =>
       assert(expected === actual, "The %sths expected %,12d <> %,12d actual".format(i, expected, actual))
     }
@@ -253,7 +251,7 @@ class GpuFilterRDDSuit extends FunSuite with SharedSparkContext {
     val collectedChunks: Array[RDDChunk[Product]] = gpuRdd.collect()
     assert(collectedChunks.length === 1)
     val chunk = collectedChunks(0)
-    assert (chunk.actualSize === 1)
+    assert(chunk.actualSize === 1)
     assert(chunk.intData(0)(0) === 1, "values do not match")
     assert(chunk.intData(1)(1) === 1, "values do not match")
   }
@@ -268,8 +266,8 @@ class GpuFilterRDDSuit extends FunSuite with SharedSparkContext {
     val globalSize = localSize * math.min(1 + (column1.length - 1) / localSize, 2048)
 
     assert(globalSize === 10)
-    val actualResult  = chunkIterator.compute(column1, 5, 3, globalSize, localSize)
-    val expectedResult = column1.filter( _ < 5).length
+    val actualResult = chunkIterator.compute(column1, 5, 3, globalSize, localSize)
+    val expectedResult = column1.filter(_ < 5).length
     assert(actualResult === expectedResult)
   }
 }
