@@ -244,8 +244,8 @@ class FilteredChunkIterator[T <: Product]
     deallocBlockSums
   }
 
-  def compute(col: Array[Int], value: Int, comp: Int, globalSize: Long, localSize: Long) {
-    val tupleNum: Long = col.length
+  def compute(col: Array[Int], value: Int, comp: Int, globalSize: Long, localSize: Long): Int = {
+    val tupleNum: Long = col.length.toLong
     if (openCLContext == null) {
       openCLContext = new OpenCLContext
       openCLContext.initOpenCL("/org/apache/spark/gpu/kernel.cl")
@@ -289,16 +289,22 @@ class FilteredChunkIterator[T <: Product]
     gpuPsum = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
     gpuCount = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
     scanImpl(gpuCount, globalSize.asInstanceOf[Int], gpuPsum, openCLContext)
-    val tmp1 = new Array[Int](1)
-    val tmp2 = new Array[Int](1)
+
+    val tmp1 = Array[Int](0)
+    val tmp2 = Array[Int](0)
+
     clEnqueueReadBuffer(openCLContext.getOpenCLQueue, gpuCount, CL_TRUE, Sizeof.cl_int * (globalSize - 1), Sizeof.cl_int, Pointer.to(tmp1), 0, null, null)
+
     clEnqueueReadBuffer(openCLContext.getOpenCLQueue, gpuPsum, CL_TRUE, Sizeof.cl_int * (globalSize - 1), Sizeof.cl_int, Pointer.to(tmp2), 0, null, null)
 
-    if (tmp1(0) * tmp2(0) <= 0) {
+    println(tmp2.mkString(", "))
+    if (tmp1(0) < 0 || tmp2(0) < 0) {
       println("Integer overflow")
     }
     resCount = tmp1(0) + tmp2(0)
+    println("results 1, 2, count = %,12d |  %,12d |  %,12d".format(tmp1(0), tmp2(0), resCount))
     val end: Long = System.nanoTime
+    resCount
   }
 
   def project(inCol: Array[Int], outCol: Array[Int]) {
