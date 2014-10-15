@@ -166,7 +166,7 @@ class GpuFilterRDDSuit extends FunSuite with SharedSparkContext {
     assert(actualResults !== null)
     assert(actualResults.length !== expectedResults.length)
     expectedResults.zip(actualResults).zipWithIndex.foreach { case ((expected, actual), i) =>
-      assert(expected === actual, "The %sths expected %d <> %d actual".format(i, expected, actual))
+      assert(expected === actual, "The %sths expected %,12d <> %,12d actual".format(i, expected, actual))
     }
   }
 
@@ -189,7 +189,7 @@ class GpuFilterRDDSuit extends FunSuite with SharedSparkContext {
     assert(actualResults !== null)
     assert(actualResults.length !== expectedResults.length)
     expectedResults.zip(actualResults).zipWithIndex.foreach { case ((expected, actual), i) =>
-      assert(expected === actual, "The %sths expected %d <> %d actual".format(i, expected, actual))
+      assert(expected === actual, "The %sths expected %,12d <> %,12d actual".format(i, expected, actual))
     }
   }
 
@@ -200,8 +200,8 @@ class GpuFilterRDDSuit extends FunSuite with SharedSparkContext {
     val sourceCol = (0 until count).toArray
     val filter = sourceCol.map(_ % 2)
 
-    val prefixSums = Array(0,1,1,2,2,3,3,4,4,5)
-    val resultSize = prefixSums(prefixSums.length-1)
+    val prefixSums = Array(0, 1, 1, 2, 2, 3, 3, 4, 4, 5)
+    val resultSize = prefixSums(prefixSums.length - 1)
     val actualResults = Array.ofDim[Int](resultSize)
 
     val iter = new FilteredChunkIterator[(Int, Int)](sourceCol.zipWithIndex.iterator,
@@ -221,7 +221,7 @@ class GpuFilterRDDSuit extends FunSuite with SharedSparkContext {
 
     println("actual results %s".format(actualResults.mkString(",")))
     expectedResults.zip(actualResults).zipWithIndex.foreach { case ((expected, actual), i) =>
-      assert(expected === actual, "The %sths expected %d <> %d actual".format(i, expected, actual))
+      assert(expected === actual, "The %sths expected %,12d <> %,12d actual".format(i, expected, actual))
     }
   }
 
