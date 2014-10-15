@@ -139,13 +139,13 @@ class GpuFilterRDDSuit extends FunSuite with SharedSparkContext {
     val expectedResults = (1 to TEST_DATA_SIZE).map(x => (1 + x) / 3)
 
     expectedResults.zip(resultData).zipWithIndex.foreach { case ((expected, actual), i) =>
-      assert(expected === actual, "The %sths expected %d <> %d actual".format(i, expected, actual))
+      assert(expected === actual, "The %sths expected %,12d <> %,12d actual".format(i, expected, actual))
     }
   }
 
   test("kernel.my prefixSum test") {
     val TEST_DATA_SIZE = 3 + (1 << 4)
-    println("TEST_DATA_SIZE=%d".format(TEST_DATA_SIZE))
+    println("TEST_DATA_SIZE=%,12d".format(TEST_DATA_SIZE))
 
     // the test sequence is     (0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,...)
     // the prefix sum should be (0,1,1,1,2,2,2,3,3,3,4,4,4,5,5,5,6,6,6,...)

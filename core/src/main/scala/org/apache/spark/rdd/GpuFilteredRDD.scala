@@ -330,7 +330,7 @@ class FilteredChunkIterator[T <: Product]
   def prefixSum(counts: Array[Int], prefixSums: Array[Int]): Unit = {
 
     if (counts.length != prefixSums.length) {
-      throw new IllegalArgumentException("Input and output arrays should have the same size (%d != %d)".format(counts.length, prefixSums.length))
+      throw new IllegalArgumentException("Input and output arrays should have the same size (%,12d != %,12d)".format(counts.length, prefixSums.length))
     }
 
     val globalSize = POW_2_S.filter(_ >= counts.length).head
@@ -362,13 +362,13 @@ class FilteredChunkIterator[T <: Product]
   def scan(sourceCol: Array[Int], filter: Array[Int], prefixSums: Array[Int], destColumn: Array[Int], count: Int): Unit = {
     if (sourceCol.length != filter.length
       || filter.length != prefixSums.length) {
-      throw new IllegalArgumentException("All arrays should have the same size(%d, %d, %d, %d)".
+      throw new IllegalArgumentException("All arrays should have the same size(%,12d, %,12d, %,12d, %,12d)".
         format(sourceCol.length, filter.length, prefixSums.length, destColumn.length))
     }
 
     if (prefixSums.reverse.head != destColumn.length) {
       throw new IllegalArgumentException(("Size of dest coulumn is not the same as number of " +
-        "filtered columns (%d, %d)").format(prefixSums.reverse.head, destColumn.length))
+        "filtered columns (%,12d, %,12d)").format(prefixSums.reverse.head, destColumn.length))
     }
 
     val globalSize = POW_2_S.filter(_ >= count).head
@@ -468,6 +468,8 @@ class FilteredChunkIterator[T <: Product]
     deviceToHostCopy(prefixSumBuffer, Pointer.to(resultSize), 1, columnData.length - 2)
     val endFetchSizeTime = System.nanoTime
 
+    println("resultSize.head = %,12d".format(resultSize.head))
+    println(resultSize.take(100).mkString(", "))
     resultSize(0) = columnData.length / 10
     val d_destColumn = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE,
       Sizeof.cl_int * resultSize.head, null, null)
@@ -490,14 +492,16 @@ class FilteredChunkIterator[T <: Product]
     //    deviceToHostCopy(d_destColumn, Pointer.to(destColumn), Sizeof.cl_int * resultSize.head)
     val endCopyResultTime = System.nanoTime
 
-    println("Times (Transfer2Device ,Filter, PrefixSum, FetchSize, LastScan, Transfer2Host")
-    println("(%d ,%d, %d, %d, %d)".format(
+    println("Times (%12s | %12s | %12s | %12s | %12s | %12s)".format(
+      "Transfer2GPU", "Filter", "PrefixSum", "FetchSize", "LastScan", "Transfer2Host"
+    ))
+    println("Times (%,12d | %,12d | %,12d | %,12d | %,12d | %,12d)".format(
       -(startTransferTime - endTransferTime),
       -(startFilterTime - endFilterTime),
       -(startPrefixSumTime - endPrefixSumTime),
       -(startFetchSizeTime - endFetchSizeTime),
-      -(startScanTime - endScanTime) //,
-      //-(startCopyResultTime - endCopyResultTime)
+      -(startScanTime - endScanTime),
+      -(startCopyResultTime - endCopyResultTime)
     ))
     destColumn
   }
