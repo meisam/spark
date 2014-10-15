@@ -579,19 +579,27 @@ class FilteredChunkIterator[T <: Product]
   override def next(): RDDChunk[T] = {
     val chunk = new RDDChunk[T](columnTypes)
     chunk.fill(itr)
-    //    if (columnTypes(colIndex) == "INT") {
-    //      val data = chunk.intData(colIndex).take(chunk.actualSize)
-    //      globalSize = data.length
-    //      localSize = Math.min(BLOCK_SIZE, globalSize)
-    //      compute(data, value, operation, globalSize, localSize)
-    //
-    //      val outData = new Array[Int](chunk.actualSize)
-    //      resCount = chunk.actualSize
-    //      project(data, outData)
-    //      chunk.intData(colIndex) = outData
-    //    }
+    if (columnTypes(colIndex) == "INT") {
+      val data = chunk.intData(colIndex).take(chunk.actualSize)
+      globalSize = data.length
+      localSize = Math.min(BLOCK_SIZE, globalSize)
+      println("value = %,12d".format(value))
+      println("operation = %,12d".format(operation))
+      val resultSize = compute(data, value, operation, globalSize, localSize)
+
+      val outData = new Array[Int](resultSize)
+      chunk.actualSize = resultSize
+      project(data, outData)
+
+      chunk.actualSize = resCount
+      chunk.intData(colIndex) = outData
+      println("data after filter:")
+      println(outData.mkString(", "))
+    }
     chunk
   }
+
+
 }
 
 
