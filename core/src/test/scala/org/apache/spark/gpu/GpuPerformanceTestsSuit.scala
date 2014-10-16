@@ -36,6 +36,7 @@ class GpuPerformanceTestsSuit extends FunSuite with SharedSparkContext {
 
   val openCLContext = new OpenCLContext
   val POW_2_S: IndexedSeq[Long] = (0 to 100).map(_.toLong).map(1L << _)
+  val SIZE_OF_INTEGER = 4
 
   override def beforeAll() {
     super.beforeAll()
@@ -48,7 +49,6 @@ class GpuPerformanceTestsSuit extends FunSuite with SharedSparkContext {
   }
 
   ignore("selection with 10% selectivity transfer time test") {
-    val SIZE_OF_INTEGER = 4
     (25 to 29).foreach { size => {
       val TEST_DATA_SIZE = (1 << size) / SIZE_OF_INTEGER
       val selectivity = 10 //percent
@@ -97,7 +97,6 @@ class GpuPerformanceTestsSuit extends FunSuite with SharedSparkContext {
   }
 
   ignore("selection with 10% selectivity on one CPU core") {
-    val SIZE_OF_INTEGER = 4
     (20 to 29).foreach { size => {
       val TEST_DATA_SIZE = (1 << size) / SIZE_OF_INTEGER
       val selectivity = 10 //percent
@@ -125,8 +124,7 @@ class GpuPerformanceTestsSuit extends FunSuite with SharedSparkContext {
   }
 
   ignore("selection with 10% selectivity scan") {
-    val SIZE_OF_INTEGER = 4
-    (26 until 27).foreach { size => {
+    (27 until 28).foreach { size => {
       val TEST_DATA_SIZE = (1 << size) / SIZE_OF_INTEGER
       val selectivity = 10 //percent
       val value = 1
@@ -159,8 +157,7 @@ class GpuPerformanceTestsSuit extends FunSuite with SharedSparkContext {
     }
   }
 
-  test("two concurrent selection with 10% selectivity without data transformation") {
-    val SIZE_OF_INTEGER = 4
+  ignore("two concurrent selection with 10% selectivity without data transformation") {
     (25 until 26).foreach { size => {
       val TEST_DATA_SIZE = (1 << size) / SIZE_OF_INTEGER
       val selectivity = 10 //percent
@@ -204,6 +201,44 @@ class GpuPerformanceTestsSuit extends FunSuite with SharedSparkContext {
     }
     }
   }
+
+  test("Selection time") {
+
+    println("running selection time")
+    val size = 27
+    val TEST_DATA_SIZE = (1 << size) / SIZE_OF_INTEGER
+    val selectivity = 10 //percent
+    val value = 1
+
+    val testData = (0 until TEST_DATA_SIZE).map(x => if (x % 10 == 0) value else 0).toArray
+    println("org/apache/spark/gpu/GpuPerformanceTestsSuit.scala:214")
+
+
+    val startTransformDataTime = System.nanoTime
+    println("org/apache/spark/gpu/GpuPerformanceTestsSuit.scala:218")
+    val iter = new FilteredChunkIterator[(Int, Int)](testData.zipWithIndex.iterator,
+      Array("INT", "INT"), openCLContext, 0, 0, value)
+    val endTransformDataTime = System.nanoTime
+    println("org/apache/spark/gpu/GpuPerformanceTestsSuit.scala:222")
+
+    val startSelectionTotalTime = System.nanoTime
+    val localSize = math.min(256, testData.length)
+    val globalSize = localSize * math.min(1 + (testData.length - 1) / localSize, 2048)
+    iter.compute(testData, 1, 0, globalSize, localSize)
+    val endSelectionTotalTime = System.nanoTime
+    println("org/apache/spark/gpu/GpuPerformanceTestsSuit.scala:227")
+
+    val totalTime = endSelectionTotalTime - startTransformDataTime
+    println("Test with size=%,12d".format(size))
+    println("Total transform time (ns) to copy %,12d elements of data = %,12d".format
+      (TEST_DATA_SIZE, endTransformDataTime - startTransformDataTime))
+    println("Selection time (ns) = %,12d".format
+      (endSelectionTotalTime - startSelectionTotalTime))
+    println("Total selection time (ns) = %,12d".format
+      (totalTime))
+
+  }
+
 }
 
 class GpuRunner(columnData: Array[Int]
