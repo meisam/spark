@@ -74,7 +74,11 @@ class FilteredChunkIterator[T <: Product]
   }
 
   def prescanArrayRecursive(outArray: cl_mem, inArray: cl_mem, numElements: Int, level: Int, same: Int, context: OpenCLContext) {
+
+
     val blockSize: Int = BLOCK_SIZE
+    val waitEvents = Array(new cl_event)
+
     val numBlocks: Int = Math.max(1, Math.ceil(numElements.asInstanceOf[Int] / (2.0f * blockSize)).asInstanceOf[Int])
     var numThreads: Int = 0
     var kernel: cl_kernel = null
@@ -226,6 +230,7 @@ class FilteredChunkIterator[T <: Product]
       val local_work_size = Array[Long](localSize)
       clEnqueueNDRangeKernel(context.queue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
     }
+    clFinish(context.queue)
   }
 
   def deallocBlockSums {
@@ -235,7 +240,11 @@ class FilteredChunkIterator[T <: Product]
   }
 
   def prescanArray(outArray: cl_mem, inArray: cl_mem, numElements: Int, context: OpenCLContext) {
+    val prefixsumStartTime = System.nanoTime
     prescanArrayRecursive(outArray, inArray, numElements, 0, 0, context)
+    val prefixsumEndTime = System.nanoTime
+
+    println("Prefix Sum time = %,12d".format(prefixsumEndTime - prefixsumStartTime))
   }
 
   def scanImpl(d_input: cl_mem, rLen: Int, d_output: cl_mem, openCLContext: OpenCLContext) {
@@ -570,34 +579,27 @@ class FilteredChunkIterator[T <: Product]
   override def next(): RDDChunk[T] = {
     val chunk = new RDDChunk[T](columnTypes)
     val startTransformDataTime = System.nanoTime
-    println("org/apache/spark/rdd/GpuFilteredRDD.scala:571")
     chunk.fill(itr)
     val endTransformDataTime = System.nanoTime
     val startSelectionTotalTime = System.nanoTime
 
-    println("org/apache/spark/rdd/GpuFilteredRDD.scala:576")
     if (columnTypes(colIndex) == "INT") {
-      println("org/apache/spark/rdd/GpuFilteredRDD.scala:578")
       val data = chunk.intData(colIndex).take(chunk.actualSize)
       val localSize = math.min(256, chunk.intData(colIndex).length)
       val globalSize = localSize * math.min(1 + (chunk.intData(colIndex).length - 1) / localSize, 2048)
 
-      println("Global size = %,12d | local size = %,12d".format(globalSize, localSize))
-      println("org/apache/spark/rdd/GpuFilteredRDD.scala:584")
       val resultSize = compute(data, value, operation, globalSize, localSize)
 
       println("result value = %,12d".format(resultSize))
-      println("org/apache/spark/rdd/GpuFilteredRDD.scala:588")
       val outData = new Array[Int](resultSize)
       chunk.actualSize = resultSize
-      //project(data, outData)
-      println("org/apache/spark/rdd/GpuFilteredRDD.scala:592")
+      project(data, outData)
 
-      println("org/apache/spark/rdd/GpuFilteredRDD.scala:594")
+      println("Out Data: ")
+      println(outData.mkString(", "))
       chunk.actualSize = resCount
       chunk.intData(colIndex) = outData
     }
-    println("org/apache/spark/rdd/GpuFilteredRDD.scala:596")
     val endSelectionTotalTime = System.nanoTime
 
     val totalTime = endSelectionTotalTime - startTransformDataTime
@@ -611,7 +613,7 @@ class FilteredChunkIterator[T <: Product]
 
     dept += 1
 
-    if (dept >=2) {
+    if (dept >= 2) {
       throw new RuntimeException("Too many times calling into this function")
     }
 
