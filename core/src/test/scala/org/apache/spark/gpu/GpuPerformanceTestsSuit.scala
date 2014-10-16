@@ -211,29 +211,31 @@ class GpuPerformanceTestsSuit extends FunSuite with SharedSparkContext {
     val value = 1
 
     val testData = (0 until TEST_DATA_SIZE).map(x => if (x % 10 == 0) value else 0).toArray
-    println("org/apache/spark/gpu/GpuPerformanceTestsSuit.scala:214")
 
+    val ITERATIONS = 5
+    var times = new Array[(Long, Long, Long, Long)](ITERATIONS)
+    (0 until ITERATIONS).foreach { i =>
+      val startTransformDataTime = System.nanoTime
+      val iter = new FilteredChunkIterator[(Int, Int)](testData.zipWithIndex.iterator,
+        Array("INT", "INT"), openCLContext, 0, 0, value)
+      val endTransformDataTime = System.nanoTime
 
-    val startTransformDataTime = System.nanoTime
-    println("org/apache/spark/gpu/GpuPerformanceTestsSuit.scala:218")
-    val iter = new FilteredChunkIterator[(Int, Int)](testData.zipWithIndex.iterator,
-      Array("INT", "INT"), openCLContext, 0, 0, value)
-    val endTransformDataTime = System.nanoTime
-    println("org/apache/spark/gpu/GpuPerformanceTestsSuit.scala:222")
-
-    val startSelectionTotalTime = System.nanoTime
-    val localSize = math.min(256, testData.length)
-    val globalSize = localSize * math.min(1 + (testData.length - 1) / localSize, 2048)
-    iter.compute(testData, 1, 0, globalSize, localSize)
-    val endSelectionTotalTime = System.nanoTime
-    println("org/apache/spark/gpu/GpuPerformanceTestsSuit.scala:227")
-
-    val totalTime = endSelectionTotalTime - startTransformDataTime
+      val startSelectionTotalTime = System.nanoTime
+      val localSize = math.min(256, testData.length)
+      val globalSize = localSize * math.min(1 + (testData.length - 1) / localSize, 2048)
+      iter.compute(testData, 1, 0, globalSize, localSize)
+      val endSelectionTotalTime = System.nanoTime
+      times(i) = (startTransformDataTime, endTransformDataTime, startSelectionTotalTime,
+        endSelectionTotalTime)
+    }
+    val selectionTime = times.map(x => x._4 - x._3).sum / ITERATIONS
+    val transferTime = times.map(x => x._2 - x._1).sum / ITERATIONS
+    val totalTime = times.map(x => x._4 - x._1).sum / ITERATIONS
     println("Test with size=%,12d".format(size))
-    println("Total transform time (ns) to copy %,12d elements of data = %,12d".format
-      (TEST_DATA_SIZE, endTransformDataTime - startTransformDataTime))
+    println("Total transform time (ns) = %,12d".format
+      ( transferTime))
     println("Selection time (ns) = %,12d".format
-      (endSelectionTotalTime - startSelectionTotalTime))
+      (selectionTime))
     println("Total selection time (ns) = %,12d".format
       (totalTime))
 
