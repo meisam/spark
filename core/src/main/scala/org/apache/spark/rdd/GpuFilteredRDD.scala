@@ -308,13 +308,14 @@ class FilteredChunkIterator[T <: Product]
     val local_work_size = Array[Long](1)
     local_work_size(0) = localSize
     val tupleNum: Int = inCol.length
-    //    val scanCol: cl_mem = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE,
-    //      Sizeof.cl_int * tupleNum, null, null)
+    val scanCol: cl_mem = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE,
+      Sizeof.cl_int * tupleNum, null, null)
+    hostToDeviceCopy(Pointer.to(inCol), scanCol, Sizeof.cl_int * inCol.length)
     val result: cl_mem = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE,
       Sizeof.cl_int * outCol.length, null, null)
     kernel = clCreateKernel(openCLContext.getOpenCLProgram, "scan_int", null)
-    clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(gpuCol))
-    clSetKernelArg(kernel, 1, Sizeof.cl_int, Pointer.to(Array[Int](4)))
+    clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(scanCol))
+    clSetKernelArg(kernel, 1, Sizeof.cl_int, Pointer.to(Array[Int](Sizeof.cl_int)))
     clSetKernelArg(kernel, 2, Sizeof.cl_long, Pointer.to(Array[Long](tupleNum)))
     clSetKernelArg(kernel, 3, Sizeof.cl_mem, Pointer.to(gpuPsum))
     clSetKernelArg(kernel, 4, Sizeof.cl_long, Pointer.to(Array[Long](resCount)))
