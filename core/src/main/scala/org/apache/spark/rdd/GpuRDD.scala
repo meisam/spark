@@ -47,7 +47,7 @@ class GpuRDD[T <: Product : ClassTag](prev: RDD[T], val columnTypes: Array[Strin
 class RDDChunk[T <: Product](val columnTypes: Array[String])
   extends Serializable with Logging {
 
-  def MAX_SIZE: Int = 1 << 10
+  def MAX_SIZE: Int = 1 << 15
 
   def MAX_STRING_SIZE: Int = 1 << 7
 
