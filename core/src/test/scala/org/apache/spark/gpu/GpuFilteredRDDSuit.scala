@@ -30,7 +30,7 @@ import scala.language.existentials
 /**
  *
  */
-class GpuFilterRDDSuit extends FunSuite with SharedSparkContext {
+class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
 
   val openCLContext = new OpenCLContext
   val POW_2_S: IndexedSeq[Long] = (0 to 100).map(_.toLong).map(1L << _)
