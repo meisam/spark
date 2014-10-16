@@ -285,8 +285,9 @@ class FilteredChunkIterator[T <: Product]
     clSetKernelArg(kernel, 2, Sizeof.cl_mem, Pointer.to(gpuCount))
     clEnqueueNDRangeKernel(openCLContext.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
 
-
+    val startPsum = System.nanoTime()
     scanImpl(gpuCount, globalSize.asInstanceOf[Int], gpuPsum, openCLContext)
+    val endPsum = System.nanoTime()
 
     val tmp1 = Array[Int](0)
     val tmp2 = Array[Int](0)
@@ -295,12 +296,7 @@ class FilteredChunkIterator[T <: Product]
 
     clEnqueueReadBuffer(openCLContext.getOpenCLQueue, gpuPsum, CL_TRUE, Sizeof.cl_int * (globalSize - 1), Sizeof.cl_int, Pointer.to(tmp2), 0, null, null)
 
-    println(tmp2.mkString(", "))
-    if (tmp1(0) < 0 || tmp2(0) < 0) {
-      println("Integer overflow")
-    }
     resCount = tmp1(0) + tmp2(0)
-    println("results 1, 2, count = %,12d |  %,12d |  %,12d".format(tmp1(0), tmp2(0), resCount))
     val end: Long = System.nanoTime
     resCount
   }
@@ -312,8 +308,8 @@ class FilteredChunkIterator[T <: Product]
     val local_work_size = Array[Long](1)
     local_work_size(0) = localSize
     val tupleNum: Int = inCol.length
-//    val scanCol: cl_mem = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE,
-//      Sizeof.cl_int * tupleNum, null, null)
+    //    val scanCol: cl_mem = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE,
+    //      Sizeof.cl_int * tupleNum, null, null)
     val result: cl_mem = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE,
       Sizeof.cl_int * outCol.length, null, null)
     kernel = clCreateKernel(openCLContext.getOpenCLProgram, "scan_int", null)
@@ -481,10 +477,6 @@ class FilteredChunkIterator[T <: Product]
     deviceToHostCopy(prefixSumBuffer, Pointer.to(resultSize), columnData.length, 0)
     val endFetchSizeTime = System.nanoTime
 
-    println("resultSize.head = %,12d".format(resultSize.head))
-    println(resultSize.take(100).mkString(", "))
-    resultSize(0) = columnData.length / 10
-
     val d_destColumn = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE,
       Sizeof.cl_int * resultSize.head, null, null)
 
@@ -538,10 +530,8 @@ class FilteredChunkIterator[T <: Product]
   }
 
   private def hostToDeviceCopy(src: Pointer, dest: cl_mem, length: Long): Unit = {
-    println(openCLContext.getOpenCLQueue)
-    val result = clEnqueueWriteBuffer(openCLContext.getOpenCLQueue, dest, CL_TRUE, 0, length, src,
+    clEnqueueWriteBuffer(openCLContext.getOpenCLQueue, dest, CL_TRUE, 0, length, src,
       0, null, null)
-    println(result)
   }
 
   private def deviceToHostCopy(src: cl_mem, dest: Pointer, length: Long, offset: Long = 0): Unit = {
@@ -578,26 +568,58 @@ class FilteredChunkIterator[T <: Product]
 
   override def next(): RDDChunk[T] = {
     val chunk = new RDDChunk[T](columnTypes)
+    val startTransformDataTime = System.nanoTime
+    println("org/apache/spark/rdd/GpuFilteredRDD.scala:571")
     chunk.fill(itr)
+    val endTransformDataTime = System.nanoTime
+    val startSelectionTotalTime = System.nanoTime
+
+    println("org/apache/spark/rdd/GpuFilteredRDD.scala:576")
     if (columnTypes(colIndex) == "INT") {
+      println("org/apache/spark/rdd/GpuFilteredRDD.scala:578")
       val data = chunk.intData(colIndex).take(chunk.actualSize)
-      globalSize = data.length
-      localSize = Math.min(BLOCK_SIZE, globalSize)
-      println("value = %,12d".format(value))
-      println("operation = %,12d".format(operation))
+      val localSize = math.min(256, chunk.intData(colIndex).length)
+      val globalSize = localSize * math.min(1 + (chunk.intData(colIndex).length - 1) / localSize, 2048)
+
+      println("Global size = %,12d | local size = %,12d".format(globalSize, localSize))
+      println("org/apache/spark/rdd/GpuFilteredRDD.scala:584")
       val resultSize = compute(data, value, operation, globalSize, localSize)
 
+      println("result value = %,12d".format(resultSize))
+      println("org/apache/spark/rdd/GpuFilteredRDD.scala:588")
       val outData = new Array[Int](resultSize)
       chunk.actualSize = resultSize
-      project(data, outData)
+      //project(data, outData)
+      println("org/apache/spark/rdd/GpuFilteredRDD.scala:592")
 
+      println("org/apache/spark/rdd/GpuFilteredRDD.scala:594")
       chunk.actualSize = resCount
       chunk.intData(colIndex) = outData
-      println("data after filter:")
-      println(outData.mkString(", "))
     }
+    println("org/apache/spark/rdd/GpuFilteredRDD.scala:596")
+    val endSelectionTotalTime = System.nanoTime
+
+    val totalTime = endSelectionTotalTime - startTransformDataTime
+    println("Test with size=%,12d".format(size))
+    println("Total transform time (ns) to copy %,12d elements of data = %,12d".format
+      (-1, endTransformDataTime - startTransformDataTime))
+    println("Selection time (ns) = %,12d".format
+      (endSelectionTotalTime - startSelectionTotalTime))
+    println("Total selection time (ns) = %,12d".format
+      (totalTime))
+
+    dept += 1
+
+    if (dept >=2) {
+      throw new RuntimeException("Too many times calling into this function")
+    }
+
+
     chunk
   }
+
+
+  var dept = 0
 
 
 }
