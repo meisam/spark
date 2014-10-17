@@ -223,7 +223,7 @@ class GpuPerformanceTestsSuit extends FunSuite with SharedSparkContext {
       val startSelectionTotalTime = System.nanoTime
       val localSize = math.min(256, testData.length)
       val globalSize = localSize * math.min(1 + (testData.length - 1) / localSize, 2048)
-      iter.compute(testData, 1, 0, globalSize, localSize)
+      iter.compute(testData, testData.length.toLong, 1, 0, globalSize, localSize)
       val endSelectionTotalTime = System.nanoTime
       times(i) = (startTransformDataTime, endTransformDataTime, startSelectionTotalTime,
         endSelectionTotalTime)
