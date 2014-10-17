@@ -253,8 +253,7 @@ class FilteredChunkIterator[T <: Product]
     deallocBlockSums
   }
 
-  def compute(col: Array[Int], value: Int, comp: Int, globalSize: Long, localSize: Long): Int = {
-    val tupleNum: Long = col.length.toLong
+  def compute(col: Array[Int], tupleNum: Long, value: Int, comp: Int, globalSize: Long, localSize: Long): Int = {
     if (openCLContext == null) {
       openCLContext = new OpenCLContext
       openCLContext.initOpenCL("/org/apache/spark/gpu/kernel.cl")
@@ -310,18 +309,17 @@ class FilteredChunkIterator[T <: Product]
     resCount
   }
 
-  def project(inCol: Array[Int], outCol: Array[Int]) {
+  def project(inCol: Array[Int], tupleNum: Int, outCol: Array[Int]) {
     val global_work_size = Array[Long](globalSize)
     val local_work_size = Array[Long](localSize)
-    val tupleNum: Int = inCol.length
     val scanCol: cl_mem = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE,
       Sizeof.cl_int * tupleNum, null, null)
     println("Global size = %,12d".format(globalSize))
     println("in size = %,12d".format(tupleNum))
     println("out size = %,12d".format(outCol.length))
 
-    println("Column data %s".format(inCol.mkString))
-    hostToDeviceCopy(Pointer.to(inCol), scanCol, Sizeof.cl_int * inCol.length)
+    println("Column data %s".format(inCol.take(tupleNum).mkString))
+    hostToDeviceCopy(Pointer.to(inCol), scanCol, Sizeof.cl_int * tupleNum)
     val result: cl_mem = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE,
         Sizeof.cl_int * outCol.length, null, null)
 
@@ -595,17 +593,18 @@ class FilteredChunkIterator[T <: Product]
     val startSelectionTotalTime = System.nanoTime
 
     if (columnTypes(colIndex) == "INT") {
-      val data = chunk.intData(colIndex).take(chunk.actualSize)
       localSize = math.min(256, chunk.intData(colIndex).length)
-      globalSize = localSize * math.min(1 + (chunk.intData(colIndex).length - 1) / localSize, 2048)
+      globalSize = localSize * math.min(1 + (chunk.actualSize - 1) / localSize, 2048)
 
-      val resultSize = compute(data, value, operation, globalSize, localSize)
+      println("%12s = %,12d".format("Global size", globalSize))
+      println("%12s = %,12d".format("Local size", localSize))
+      val resultSize = compute(chunk.intData(colIndex), chunk.actualSize.toLong, value, operation, globalSize, localSize)
 
       println("actualSize value = %,12d".format(chunk.actualSize))
       println("result value = %,12d".format(resultSize))
       val outData = new Array[Int](resultSize)
       chunk.actualSize = resultSize
-      project(data, outData)
+      project(chunk.intData(colIndex), chunk.actualSize, outData)
 
       println("Out Data: ")
       println(outData.mkString(", "))

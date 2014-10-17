@@ -266,7 +266,7 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
     val globalSize = localSize * math.min(1 + (column1.length - 1) / localSize, 2048)
 
     assert(globalSize === 10)
-    val actualResult = chunkIterator.compute(column1, 5, 3, globalSize, localSize)
+    val actualResult = chunkIterator.compute(column1, column1.length, 5, 3, globalSize, localSize)
     val expectedResult = column1.filter(_ < 5).length
     assert(actualResult === expectedResult)
   }
