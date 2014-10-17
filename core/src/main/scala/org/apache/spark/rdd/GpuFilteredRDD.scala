@@ -311,7 +311,6 @@ class FilteredChunkIterator[T <: Product]
   }
 
   def project(inCol: Array[Int], outCol: Array[Int]) {
-    var kernel: cl_kernel = null
     val global_work_size = Array[Long](globalSize)
     val local_work_size = Array[Long](localSize)
     val tupleNum: Int = inCol.length
@@ -334,7 +333,7 @@ class FilteredChunkIterator[T <: Product]
     deviceToHostCopy(gpuFilter, Pointer.to(filterVals), tupleNum * Sizeof.cl_int)
     println("filterVals %s".format(filterVals.mkString))
 
-    kernel = clCreateKernel(openCLContext.getOpenCLProgram, "scan_int", null)
+    val kernel = clCreateKernel(openCLContext.getOpenCLProgram, "scan_int", null)
     clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(scanCol))
     clSetKernelArg(kernel, 1, Sizeof.cl_int, Pointer.to(Array[Int](Sizeof.cl_int)))
     clSetKernelArg(kernel, 2, Sizeof.cl_long, Pointer.to(Array[Long](tupleNum)))
