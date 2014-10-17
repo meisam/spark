@@ -312,16 +312,28 @@ class FilteredChunkIterator[T <: Product]
 
   def project(inCol: Array[Int], outCol: Array[Int]) {
     var kernel: cl_kernel = null
-    val global_work_size = Array[Long](1)
-    global_work_size(0) = globalSize
-    val local_work_size = Array[Long](1)
-    local_work_size(0) = localSize
+    val global_work_size = Array[Long](globalSize)
+    val local_work_size = Array[Long](localSize)
     val tupleNum: Int = inCol.length
     val scanCol: cl_mem = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE,
       Sizeof.cl_int * tupleNum, null, null)
+    println("Global size = %,12d".format(globalSize))
+    println("in size = %,12d".format(tupleNum))
+    println("out size = %,12d".format(outCol.length))
+
+    println("Column data %s".format(inCol.mkString))
     hostToDeviceCopy(Pointer.to(inCol), scanCol, Sizeof.cl_int * inCol.length)
     val result: cl_mem = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE,
-      Sizeof.cl_int * outCol.length, null, null)
+        Sizeof.cl_int * outCol.length, null, null)
+
+    val psumVals = new Array[Int](globalSize)
+    deviceToHostCopy(gpuPsum, Pointer.to(psumVals), globalSize * Sizeof.cl_int)
+    println("psumVals data %s".format(psumVals.mkString))
+
+    val filterVals = new Array[Int](tupleNum)
+    deviceToHostCopy(gpuFilter, Pointer.to(filterVals), tupleNum * Sizeof.cl_int)
+    println("filterVals %s".format(filterVals.mkString))
+
     kernel = clCreateKernel(openCLContext.getOpenCLProgram, "scan_int", null)
     clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(scanCol))
     clSetKernelArg(kernel, 1, Sizeof.cl_int, Pointer.to(Array[Int](Sizeof.cl_int)))
@@ -585,11 +597,12 @@ class FilteredChunkIterator[T <: Product]
 
     if (columnTypes(colIndex) == "INT") {
       val data = chunk.intData(colIndex).take(chunk.actualSize)
-      val localSize = math.min(256, chunk.intData(colIndex).length)
-      val globalSize = localSize * math.min(1 + (chunk.intData(colIndex).length - 1) / localSize, 2048)
+      localSize = math.min(256, chunk.intData(colIndex).length)
+      globalSize = localSize * math.min(1 + (chunk.intData(colIndex).length - 1) / localSize, 2048)
 
       val resultSize = compute(data, value, operation, globalSize, localSize)
 
+      println("actualSize value = %,12d".format(chunk.actualSize))
       println("result value = %,12d".format(resultSize))
       val outData = new Array[Int](resultSize)
       chunk.actualSize = resultSize
@@ -603,7 +616,7 @@ class FilteredChunkIterator[T <: Product]
     val endSelectionTotalTime = System.nanoTime
 
     val totalTime = endSelectionTotalTime - startTransformDataTime
-    println("Test with size=%,12d".format(size))
+    println("Test with size=%,12d".format(chunk.actualSize))
     println("Total transform time (ns) to copy %,12d elements of data = %,12d".format
       (-1, endTransformDataTime - startTransformDataTime))
     println("Selection time (ns) = %,12d".format
