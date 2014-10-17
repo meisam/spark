@@ -606,6 +606,13 @@ class FilteredChunkIterator[T <: Product]
       chunk.actualSize = resultSize
       project(chunk.intData(colIndex), chunk.actualSize, outData)
 
+      chunk.intData.zipWithIndex.filter(_._1 != null).forall({
+        case (inData, index) => {
+          project(inData, chunk.actualSize, outData)
+          chunk.intData(index) = outData
+        }
+      })
+      chunk.actualSize = resultSize
       println("Out Data: ")
       println(outData.mkString(", "))
       chunk.actualSize = resCount
