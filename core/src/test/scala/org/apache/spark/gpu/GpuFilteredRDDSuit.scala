@@ -270,4 +270,22 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
     val expectedResult = column1.filter(_ < 5).length
     assert(actualResult === expectedResult)
   }
+
+  test("org.apache.spark.rdd.FilteredChunkIterator.next time") {
+
+    val size = 15
+    val SIZE_OF_INTEGER = 4
+    val TEST_DATA_SIZE = (1 << size) / SIZE_OF_INTEGER
+    val selectivity = 10 //percent
+    val value = 1
+
+    val testData = (0 until TEST_DATA_SIZE).map(x => if (x % 10 == 0) value else 0).toArray
+
+    val iter = new FilteredChunkIterator[(Int, Int)](testData.zipWithIndex.iterator,
+      Array("INT", "INT"), openCLContext, 0, 0, value)
+
+    val localSize = math.min(256, testData.length)
+    val globalSize = localSize * math.min(1 + (testData.length - 1) / localSize, 2048)
+    iter.next()
+  }
 }
