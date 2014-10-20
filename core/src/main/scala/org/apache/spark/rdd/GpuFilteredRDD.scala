@@ -1,20 +1,17 @@
 package org.apache.spark.rdd
 
 import org.apache.spark.scheduler.OpenCLContext
-import org.apache.spark.{Partition, TaskContext}
+import org.apache.spark.{ Partition, TaskContext }
 import org.jocl.CL._
 import org.jocl._
 
 import scala.collection.immutable.IndexedSeq
 import scala.reflect.ClassTag
 
-
 /**
  * Created by fathi on 10/1/14.
  */
-class GpuFilteredRDD[T <: Product : ClassTag]
-(prev: RDD[T], val columnTypes: Array[String]
- , colIndex: Int, operation: Int, value: Int)
+class GpuFilteredRDD[T <: Product: ClassTag](prev: RDD[T], val columnTypes: Array[String], colIndex: Int, operation: Int, value: Int)
   extends RDD[RDDChunk[T]](prev) {
 
   override def getPartitions: Array[Partition] = firstParent[RDDChunk[T]].partitions
@@ -22,13 +19,11 @@ class GpuFilteredRDD[T <: Product : ClassTag]
   override val partitioner = prev.partitioner // Since filter cannot change a partition's keys
 
   override def compute(split: Partition, context: TaskContext): FilteredChunkIterator[T] = {
-    new FilteredChunkIterator(firstParent[T].iterator(split, context)
-      , columnTypes, openCLContext, colIndex, operation, value)
+    new FilteredChunkIterator(firstParent[T].iterator(split, context), columnTypes, openCLContext, colIndex, operation, value)
   }
 }
 
-class FilteredChunkIterator[T <: Product]
-(itr: Iterator[T], columnTypes: Array[String], var openCLContext: OpenCLContext, colIndex: Int, operation: Int, value: Int)
+class FilteredChunkIterator[T <: Product](itr: Iterator[T], columnTypes: Array[String], var openCLContext: OpenCLContext, colIndex: Int, operation: Int, value: Int)
   extends Iterator[RDDChunk[T]] {
 
   def isPowerOfTwo(n: Int): Boolean = {
@@ -74,7 +69,6 @@ class FilteredChunkIterator[T <: Product]
   }
 
   def prescanArrayRecursive(outArray: cl_mem, inArray: cl_mem, numElements: Int, level: Int, same: Int, context: OpenCLContext) {
-
 
     val blockSize: Int = BLOCK_SIZE
     val waitEvents = Array(new cl_event)
@@ -178,8 +172,7 @@ class FilteredChunkIterator[T <: Product]
         local_work_size(0) = localSize
         clEnqueueNDRangeKernel(context.queue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
       }
-    }
-    else if (isPowerOfTwo(numElements)) {
+    } else if (isPowerOfTwo(numElements)) {
       kernel = clCreateKernel(context.program, "prescan", null)
       clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(outArray))
       if (same == 0) clSetKernelArg(kernel, 1, Sizeof.cl_mem, Pointer.to(inArray))
@@ -205,8 +198,7 @@ class FilteredChunkIterator[T <: Product]
       global_work_size(0) = globalSize
       local_work_size(0) = localSize
       clEnqueueNDRangeKernel(context.queue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
-    }
-    else {
+    } else {
       kernel = clCreateKernel(context.program, "prescan", null)
       clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(outArray))
       if (same == 0) clSetKernelArg(kernel, 1, Sizeof.cl_mem, Pointer.to(inArray))
@@ -321,7 +313,7 @@ class FilteredChunkIterator[T <: Product]
     println("Column data %s".format(inCol.take(tupleNum).mkString))
     hostToDeviceCopy(Pointer.to(inCol), scanCol, Sizeof.cl_int * tupleNum)
     val result: cl_mem = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE,
-        Sizeof.cl_int * outCol.length, null, null)
+      Sizeof.cl_int * outCol.length, null, null)
 
     val psumVals = new Array[Int](globalSize)
     deviceToHostCopy(gpuPsum, Pointer.to(psumVals), globalSize * Sizeof.cl_int)
@@ -397,7 +389,6 @@ class FilteredChunkIterator[T <: Product]
     val local_work_size = Array[Long](localSize)
     val resultSize = destColumn.length
 
-
     val d_sourceColumns = createReadBuffer(Sizeof.cl_int * globalSize)
     val d_selectionFilter = createReadBuffer(Sizeof.cl_int * globalSize)
     val d_prefixSums = createReadBuffer(Sizeof.cl_int * globalSize)
@@ -435,13 +426,11 @@ class FilteredChunkIterator[T <: Product]
       openCLContext.initOpenCL("/org/apache/spark/gpu/kernel.cl")
     }
 
-
     val endInitTime = System.nanoTime
 
     val startTransferTime = System.nanoTime
     val columnBuffer = createReadBuffer(Sizeof.cl_int * globalSize)
     hostToDeviceCopy(Pointer.to(columnData), columnBuffer, Sizeof.cl_int * columnData.length)
-
 
     val endTransferTime = System.nanoTime
 
@@ -456,7 +445,6 @@ class FilteredChunkIterator[T <: Product]
     clEnqueueNDRangeKernel(openCLContext.getOpenCLQueue, filterKernel, 1, null, global_work_size,
       local_work_size, 0, null, waitEvents(0))
     clWaitForEvents(1, waitEvents)
-
 
     val endFilterTime = System.nanoTime
     val startPrefixSumTime = System.nanoTime
@@ -520,16 +508,14 @@ class FilteredChunkIterator[T <: Product]
     val endCopyResultTime = System.nanoTime
 
     println("Times (%12s | %12s | %12s | %12s | %12s | %12s)".format(
-      "Transfer2GPU", "Filter", "PrefixSum", "FetchSize", "LastScan", "Transfer2Host"
-    ))
+      "Transfer2GPU", "Filter", "PrefixSum", "FetchSize", "LastScan", "Transfer2Host"))
     println("Times (%,12d | %,12d | %,12d | %,12d | %,12d | %,12d)".format(
       -(startTransferTime - endTransferTime),
       -(startFilterTime - endFilterTime),
       -(startPrefixSumTime - endPrefixSumTime),
       -(startFetchSizeTime - endFetchSizeTime),
       -(startScanTime - endScanTime),
-      -(startCopyResultTime - endCopyResultTime)
-    ))
+      -(startCopyResultTime - endCopyResultTime)))
     destColumn
   }
 
@@ -622,12 +608,9 @@ class FilteredChunkIterator[T <: Product]
 
     val totalTime = endSelectionTotalTime - startTransformDataTime
     println("Test with size=%,12d".format(chunk.actualSize))
-    println("Total transform time (ns) to copy %,12d elements of data = %,12d".format
-      (-1, endTransformDataTime - startTransformDataTime))
-    println("Selection time (ns) = %,12d".format
-      (endSelectionTotalTime - startSelectionTotalTime))
-    println("Total selection time (ns) = %,12d".format
-      (totalTime))
+    println("Total transform time (ns) to copy %,12d elements of data = %,12d".format(-1, endTransformDataTime - startTransformDataTime))
+    println("Selection time (ns) = %,12d".format(endSelectionTotalTime - startSelectionTotalTime))
+    println("Total selection time (ns) = %,12d".format(totalTime))
 
     dept += 1
 
@@ -635,13 +618,10 @@ class FilteredChunkIterator[T <: Product]
       throw new RuntimeException("Too many times calling into this function")
     }
 
-
     chunk
   }
 
-
   var dept = 0
-
 
 }
 
