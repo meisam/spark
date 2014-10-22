@@ -171,7 +171,6 @@ class ChunkIterator[T <: Product : ClassTag]
   private val currentChunk: RDDChunk[T] = new RDDChunk[T](columnTypes, chunkCapacity)
 
   override def next(): T = {
-    println("org.apache.spark.rdd.ChunkIterator.next is being called with currentPosition = %,12d".
       format(currentPosition))
     if (currentPosition == chunkCapacity) {
       currentChunk.fill(itr)
