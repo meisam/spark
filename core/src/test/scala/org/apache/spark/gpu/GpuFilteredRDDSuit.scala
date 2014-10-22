@@ -216,7 +216,7 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
     iter.scan(sourceCol, filter, prefixSums, actualResults, count)
 
     assert(actualResults !== null)
-    assert(actualResults.length !== expectedResults.length)
+    assert(actualResults.length === expectedResults.length)
 
     expectedResults.zip(actualResults).zipWithIndex.foreach { case ((expected, actual), i) =>
       assert(expected === actual, "The %sths expected %,12d <> %,12d actual".format(i, expected, actual))
