@@ -44,7 +44,7 @@ class GpuRDD[T <: Product : ClassTag](prev: RDD[T], val columnTypes: Array[Strin
   override def getPartitions: Array[Partition] = firstParent[T].partitions
 }
 
-class RDDChunk[T <: Product](val columnTypes: Array[String])
+class RDDChunk[T <: Product : ClassTag](val columnTypes: Array[String])
   extends Serializable with Logging {
 
   def MAX_SIZE: Int = 1 << 15

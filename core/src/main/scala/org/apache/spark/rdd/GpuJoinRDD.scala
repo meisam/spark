@@ -23,7 +23,8 @@ class GpuJoinRDD[T <: Product : ClassTag, U <: Product : ClassTag]
 
 }
 
-class JoinChunkIterator[T <: Product](itr: Iterator[T], columnTypes: Array[String], var openCLContext: OpenCLContext, colIndex: Int, operation: Int, value: Int)
+class JoinChunkIterator[T <: Product:ClassTag](itr: Iterator[T], columnTypes: Array[String],
+                                       var openCLContext: OpenCLContext, colIndex: Int, operation: Int, value: Int)
   extends Iterator[RDDChunk[T]] with TraversableOnce[RDDChunk[T]] {
 
   def isPowerOfTwo(n: Int): Boolean = {

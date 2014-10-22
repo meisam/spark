@@ -23,7 +23,8 @@ class GpuFilteredRDD[T <: Product : ClassTag](prev: RDD[T], val columnTypes: Arr
   }
 }
 
-class FilteredChunkIterator[T <: Product](itr: Iterator[T], columnTypes: Array[String], var openCLContext: OpenCLContext, colIndex: Int, operation: Int, value: Int)
+class FilteredChunkIterator[T <: Product:ClassTag](itr: Iterator[T], columnTypes: Array[String],
+                                           var openCLContext: OpenCLContext, colIndex: Int, operation: Int, value: Int)
   extends Iterator[RDDChunk[T]] {
 
   def isPowerOfTwo(n: Int): Boolean = {
