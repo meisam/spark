@@ -251,7 +251,7 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
     val collectedChunks: Array[RDDChunk[Product]] = gpuRdd.collect()
     assert(collectedChunks.length === 1)
     val chunk = collectedChunks(0)
-    assert(chunk.actualSize === 1)
+    assert(chunk.size === 1)
     assert(chunk.intData(0)(0) === 1, "values do not match")
     assert(chunk.intData(1)(1) === 1, "values do not match")
   }
@@ -298,9 +298,9 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
     filteredRDD.foreach(chunk => {
 
 
-      printf("Actual size= %,12d \n", chunk.actualSize)
+      printf("Actual size= %,12d \n", chunk.size)
       chunk.intData.foreach(intArray => {
-        println(intArray.take(chunk.actualSize).mkString(","))
+        println(intArray.take(chunk.size).mkString(","))
       })
     })
   }

@@ -49,7 +49,7 @@ class RDDChunk[T <: Product : ClassTag](val columnTypes: Array[String], val capa
 
   def MAX_STRING_SIZE: Int = 1 << 7
 
-  var actualSize = 0
+  var size = 0
 
   val intData: Array[Array[Int]] = Array.ofDim[Int](columnTypes.filter(_ == "INT").length, capacity)
   val longData = Array.ofDim[Long](columnTypes.filter(_ == "LONG").length, capacity)
@@ -64,7 +64,7 @@ class RDDChunk[T <: Product : ClassTag](val columnTypes: Array[String], val capa
     val values: Iterator[Product] = iter.take(capacity)
     values.zipWithIndex.foreach {
       case (v, rowIndex) =>
-        actualSize = rowIndex
+        size = rowIndex
         v.productIterator.zipWithIndex.foreach { case (p, colIndex) =>
           if (columnTypes(colIndex) == "INT") {
             intData(toTypeAwareColumnIndex(colIndex))(rowIndex) = p.asInstanceOf[Int]
