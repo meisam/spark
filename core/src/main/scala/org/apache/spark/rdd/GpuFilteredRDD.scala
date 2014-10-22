@@ -1,7 +1,7 @@
 package org.apache.spark.rdd
 
 import org.apache.spark.scheduler.OpenCLContext
-import org.apache.spark.{ Partition, TaskContext }
+import org.apache.spark.{Partition, TaskContext}
 import org.jocl.CL._
 import org.jocl._
 
@@ -611,6 +611,11 @@ class FilteredChunkIterator[T <: Product](itr: Iterator[T], columnTypes: Array[S
   }
 
 
+  def join[U <: Product : ClassTag](otherRDD: RDD[U], joinColumnIndexThis: Int,
+                                    joinColumnIndexOther: Int): GpuJoinRDD[T, U] = {
+    new GpuJoinRDD[T, U](this.asInstanceOf[RDD[T]], otherRDD, joinColumnIndexThis,
+      joinColumnIndexOther)
+  }
 }
 
 
