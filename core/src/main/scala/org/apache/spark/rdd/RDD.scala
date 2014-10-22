@@ -1390,7 +1390,7 @@ abstract class RDD[T: ClassTag](
   }
 
   def toGpuRDD(columnTypes: Array[String]) = {
-    new GpuRDD(this.asInstanceOf[RDD[Product]], columnTypes);
+    new GpuRDD(this.asInstanceOf[RDD[Product]], columnTypes)
   }
 
   def toGpuFilterRDD(columnTypes: Array[String], columnIndex: Int, operation: Int, value: Int) = {
