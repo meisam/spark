@@ -111,7 +111,6 @@ class RDDChunk[T <: Product : ClassTag](val columnTypes: Array[String], val capa
   def apply(rowIndex: Int): T = {
 
     val values: Array[Any] = columnTypes.zipWithIndex.map({ case (colType, colIndex) =>
-      println(colType, colIndex)
       if (colType == "INT") {
         intData(toTypeAwareColumnIndex(colIndex))(rowIndex)
       } else if (columnTypes(colIndex) == "LONG") {
@@ -172,7 +171,6 @@ class ChunkIterator[T <: Product : ClassTag]
   private val currentChunk: RDDChunk[T] = new RDDChunk[T](columnTypes, chunkCapacity)
 
   override def next(): T = {
-      format(currentPosition))
     if (currentPosition == chunkCapacity) {
       currentChunk.fill(itr)
       currentPosition = 0
