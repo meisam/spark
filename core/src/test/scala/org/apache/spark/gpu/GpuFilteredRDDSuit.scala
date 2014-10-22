@@ -18,7 +18,7 @@
 package org.apache.spark.gpu
 
 import org.apache.spark.SharedSparkContext
-import org.apache.spark.rdd.{FilteredChunkIterator, RDDChunk}
+import org.apache.spark.rdd.{FilteredChunkIterator, GpuFilteredRDD, RDDChunk}
 import org.apache.spark.scheduler.OpenCLContext
 import org.jocl.CL._
 import org.jocl.{Pointer, Sizeof}
@@ -287,4 +287,22 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
     val globalSize = localSize * math.min(1 + (testData.length - 1) / localSize, 2048)
     iter.next()
   }
+
+  test("org.apache.spark.rdd.GpuFilteredRDD full blown test") {
+    val testData = (0 until 10).map(_ % 2).reverse.zipWithIndex.zipWithIndex.map(x => (x._1._1,
+      x._1._2, x._2 * 5))
+
+    val rdd = sc.parallelize(testData)
+    println(rdd.collect().mkString(","))
+    val filteredRDD = new GpuFilteredRDD(rdd, Array("INT", "INT", "INT"), 0, 0, 1)
+    filteredRDD.foreach(chunk => {
+
+
+      printf("Actual size= %,12d \n", chunk.actualSize)
+      chunk.intData.foreach(intArray => {
+        println(intArray.take(chunk.actualSize).mkString(","))
+      })
+    })
+  }
+
 }
