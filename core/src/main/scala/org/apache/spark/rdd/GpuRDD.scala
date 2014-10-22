@@ -44,26 +44,24 @@ class GpuRDD[T <: Product : ClassTag](prev: RDD[T], val columnTypes: Array[Strin
   override def getPartitions: Array[Partition] = firstParent[T].partitions
 }
 
-class RDDChunk[T <: Product : ClassTag](val columnTypes: Array[String])
+class RDDChunk[T <: Product : ClassTag](val columnTypes: Array[String], val capacity: Int = 1 << 15)
   extends Serializable with Logging {
-
-  def MAX_SIZE: Int = 1 << 15
 
   def MAX_STRING_SIZE: Int = 1 << 7
 
   var actualSize = 0
 
-  val intData: Array[Array[Int]] = Array.ofDim[Int](columnTypes.filter(_ == "INT").length, MAX_SIZE)
-  val longData = Array.ofDim[Long](columnTypes.filter(_ == "LONG").length, MAX_SIZE)
-  val floatData = Array.ofDim[Float](columnTypes.filter(_ == "FLOAT").length, MAX_SIZE)
-  val doubleData = Array.ofDim[Double](columnTypes.filter(_ == "DOUBLE").length, MAX_SIZE)
-  val booleanData = Array.ofDim[Boolean](columnTypes.filter(_ == "BOOLEAN").length, MAX_SIZE)
-  val charData = Array.ofDim[Char](columnTypes.filter(_ == "CHAR").length, MAX_SIZE)
+  val intData: Array[Array[Int]] = Array.ofDim[Int](columnTypes.filter(_ == "INT").length, capacity)
+  val longData = Array.ofDim[Long](columnTypes.filter(_ == "LONG").length, capacity)
+  val floatData = Array.ofDim[Float](columnTypes.filter(_ == "FLOAT").length, capacity)
+  val doubleData = Array.ofDim[Double](columnTypes.filter(_ == "DOUBLE").length, capacity)
+  val booleanData = Array.ofDim[Boolean](columnTypes.filter(_ == "BOOLEAN").length, capacity)
+  val charData = Array.ofDim[Char](columnTypes.filter(_ == "CHAR").length, capacity)
   val stringData = Array.ofDim[Char](columnTypes.filter(_ == "STRING").length
-    , MAX_SIZE * MAX_STRING_SIZE)
+    , capacity * MAX_STRING_SIZE)
 
   def fill(iter: Iterator[Product]): Unit = {
-    val values: Iterator[Product] = iter.take(MAX_SIZE)
+    val values: Iterator[Product] = iter.take(capacity)
     values.zipWithIndex.foreach {
       case (v, rowIndex) =>
         actualSize = rowIndex
