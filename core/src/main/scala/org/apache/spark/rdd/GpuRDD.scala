@@ -107,33 +107,54 @@ class RDDChunk[T <: Product : ClassTag](val columnTypes: Array[String], val capa
     taken.filter(_ == targetColumnType).length
   }
 
-  def apply(i: Int): T = {
-    throw new NotImplementedError("org.apache.spark.rdd.RDDChunk.apply is not implemented yet")
+  def apply(rowIndex: Int): T = {
 
-    /*
-    genericType match {
-    case _: Tuple1 => {
-    val arr = rawData.asInstanceOf[Array[Array[Int]]]
-    (arr(0)(i)).asInstanceOf[T]
+    val values: Array[Any] = columnTypes.zipWithIndex.map({ case (colType, colIndex) =>
+      println(colType, colIndex)
+      if (colType == "INT") {
+        intData(toTypeAwareColumnIndex(colIndex))(rowIndex)
+      } else if (columnTypes(colIndex) == "LONG") {
+        longData(toTypeAwareColumnIndex(colIndex))(rowIndex)
+      } else if (columnTypes(colIndex) == "FLOAT") {
+        floatData(toTypeAwareColumnIndex(colIndex))(rowIndex)
+      } else if (columnTypes(colIndex) == "Double") {
+        doubleData(toTypeAwareColumnIndex(colIndex))(rowIndex)
+      } else if (columnTypes(colIndex) == "BOOLEAN") {
+        booleanData(toTypeAwareColumnIndex(colIndex))(rowIndex)
+      } else if (columnTypes(colIndex) == "CHAR") {
+        charData(toTypeAwareColumnIndex(colIndex))(rowIndex)
+      } else if (columnTypes(colIndex) == "STRING") {
+        getStringData(toTypeAwareColumnIndex(colIndex), rowIndex)
+      }
+    })
+
+    val resultTuple = values.length match {
+      case 2 => (values(0), values(1)).asInstanceOf[T]
+      case 3 => (values(0), values(1), values(2)).asInstanceOf[T]
+      case 4 => (values(0), values(1), values(2), values(3)).asInstanceOf[T]
+      case 5 => (values(0), values(1), values(2), values(3), values(4)).asInstanceOf[T]
+      case 6 => (values(0), values(1), values(2), values(3), values(4), values(5)).asInstanceOf[T]
+      case 7 => (values(0), values(1), values(2), values(3), values(4), values(5), values(6)).asInstanceOf[T]
+      case 8 => (values(0), values(1), values(2), values(3), values(4), values(5), values(6), values(7)).asInstanceOf[T]
+      case 9 => (values(0), values(1), values(2), values(3), values(4), values(5), values(6), values(7), values(8)).asInstanceOf[T]
+      case 10 => (values(0), values(1), values(2), values(3), values(4), values(5), values(6), values(7), values(8), values(9)).asInstanceOf[T]
+      case 11 => (values(0), values(1), values(2), values(3), values(4), values(5), values(6), values(7), values(8), values(9), values(10)).asInstanceOf[T]
+      case 12 => (values(0), values(1), values(2), values(3), values(4), values(5), values(6), values(7), values(8), values(9), values(10), values(11)).asInstanceOf[T]
+      case 13 => (values(0), values(1), values(2), values(3), values(4), values(5), values(6), values(7), values(8), values(9), values(10), values(11), values(12)).asInstanceOf[T]
+      case 14 => (values(0), values(1), values(2), values(3), values(4), values(5), values(6), values(7), values(8), values(9), values(10), values(11), values(12), values(13)).asInstanceOf[T]
+      case 15 => (values(0), values(1), values(2), values(3), values(4), values(5), values(6), values(7), values(8), values(9), values(10), values(11), values(12), values(13), values(14)).asInstanceOf[T]
+      case 16 => (values(0), values(1), values(2), values(3), values(4), values(5), values(6), values(7), values(8), values(9), values(10), values(11), values(12), values(13), values(14), values(15)).asInstanceOf[T]
+      case 17 => (values(0), values(1), values(2), values(3), values(4), values(5), values(6), values(7), values(8), values(9), values(10), values(11), values(12), values(13), values(14), values(15), values(16)).asInstanceOf[T]
+      case 18 => (values(0), values(1), values(2), values(3), values(4), values(5), values(6), values(7), values(8), values(9), values(10), values(11), values(12), values(13), values(14), values(15), values(16), values(17)).asInstanceOf[T]
+      case 19 => (values(0), values(1), values(2), values(3), values(4), values(5), values(6), values(7), values(8), values(9), values(10), values(11), values(12), values(13), values(14), values(15), values(16), values(17), values(18)).asInstanceOf[T]
+      case 20 => (values(0), values(1), values(2), values(3), values(4), values(5), values(6), values(7), values(8), values(9), values(10), values(11), values(12), values(13), values(14), values(15), values(16), values(17), values(18), values(19)).asInstanceOf[T]
+      case 21 => (values(0), values(1), values(2), values(3), values(4), values(5), values(6), values(7), values(8), values(9), values(10), values(11), values(12), values(13), values(14), values(15), values(16), values(17), values(18), values(19), values(20)).asInstanceOf[T]
+      case 22 => (values(0), values(1), values(2), values(3), values(4), values(5), values(6), values(7), values(8), values(9), values(10), values(11), values(12), values(13), values(14), values(15), values(16), values(17), values(18), values(19), values(20), values(21)).asInstanceOf[T]
+      case _ => throw new NotImplementedError("org.apache.spark.rdd.RDDChunk.apply is not " +
+        "implemented yet")
+
     }
-    case _: Tuple2 => (rawData(0)(i), rawData(1)(i)).asInstanceOf[T]
-    case _: Tuple3 => (rawData(0)(i), rawData(1)(i), rawData(2)(i)).asInstanceOf[T]
-    case _: Tuple4 => (rawData(0)(i), rawData(1)(i), rawData(2)(i), rawData(3)(i))
-      .asInstanceOf[T]
-    case _: Tuple5 => (rawData(0)(i), rawData(1)(i), rawData(2)(i), rawData(3)(i),
-      rawData(4)(i)).asInstanceOf[T]
-    case _: Tuple6 => (rawData(0)(i), rawData(1)(i), rawData(2)(i), rawData(3)(i),
-      rawData(4)(i), rawData(5)(i)).asInstanceOf[T]
-    case _: Tuple7 => (rawData(0)(i), rawData(1)(i), rawData(2)(i), rawData(3)(i),
-      rawData(4)(i), rawData(5)(i), rawData(6)(i)).asInstanceOf[T]
-    case _: Tuple8 => (rawData(0)(i), rawData(1)(i), rawData(2)(i), rawData(3)(i),
-      rawData(4)(i), rawData(5)(i), rawData(6)(i), rawData(7)(i)).asInstanceOf[T]
-    case _: Tuple9 => (rawData(0)(i), rawData(1)(i), rawData(2)(i), rawData(3)(i),
-      rawData(4)(i), rawData(5)(i), rawData(6)(i), rawData(7)(i), rawData(9)(i)).asInstanceOf[T]
-      case _ =>
-    throw new IllegalArgumentException("%s is and unknown element type".format(classOf[T]))
-    }
-    */
+    resultTuple
   }
 }
 
