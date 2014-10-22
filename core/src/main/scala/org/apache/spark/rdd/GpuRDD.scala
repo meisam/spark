@@ -27,14 +27,15 @@ import scala.reflect.ClassTag
 /**
  *
  */
-class GpuRDD[T <: Product : ClassTag](prev: RDD[T], val columnTypes: Array[String])
+class GpuRDD[T <: Product : ClassTag](prev: RDD[T], val columnTypes: Array[String],
+                                      chunkCapacity: Int)
   extends RDD[T](prev) {
   /**
    * :: DeveloperApi ::
    * Implemented by subclasses to compute a given partition.
    */
   override def compute(split: Partition, context: TaskContext): Iterator[T] = {
-    new ChunkIterator(firstParent[T].iterator(split, context), columnTypes)
+    new ChunkIterator(firstParent[T].iterator(split, context), columnTypes, chunkCapacity)
   }
 
   /**
@@ -44,7 +45,7 @@ class GpuRDD[T <: Product : ClassTag](prev: RDD[T], val columnTypes: Array[Strin
   override def getPartitions: Array[Partition] = firstParent[T].partitions
 }
 
-class RDDChunk[T <: Product : ClassTag](val columnTypes: Array[String], val capacity: Int = 1 << 15)
+class RDDChunk[T <: Product : ClassTag](val columnTypes: Array[String], val capacity: Int)
   extends Serializable with Logging {
 
   def MAX_STRING_SIZE: Int = 1 << 7
@@ -159,7 +160,7 @@ class RDDChunk[T <: Product : ClassTag](val columnTypes: Array[String], val capa
 }
 
 class ChunkIterator[T <: Product : ClassTag]
-(itr: Iterator[T], val columnTypes: Array[String], chunkCapacity: Int = 1 << 32)
+(itr: Iterator[T], val columnTypes: Array[String], chunkCapacity: Int = 1 << 20)
   extends Serializable with Iterator[T] {
 
   override def hasNext: Boolean = {
