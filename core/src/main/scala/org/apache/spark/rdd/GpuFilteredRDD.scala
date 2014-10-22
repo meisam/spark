@@ -11,7 +11,7 @@ import scala.reflect.ClassTag
 /**
  * Created by fathi on 10/1/14.
  */
-class GpuFilteredRDD[T <: Product: ClassTag](prev: RDD[T], val columnTypes: Array[String], colIndex: Int, operation: Int, value: Int)
+class GpuFilteredRDD[T <: Product : ClassTag](prev: RDD[T], val columnTypes: Array[String], colIndex: Int, operation: Int, value: Int)
   extends RDD[RDDChunk[T]](prev) {
 
   override def getPartitions: Array[Partition] = firstParent[RDDChunk[T]].partitions
@@ -301,27 +301,27 @@ class FilteredChunkIterator[T <: Product](itr: Iterator[T], columnTypes: Array[S
     resCount
   }
 
-  def project(inCol: Array[Int], tupleNum: Int, outCol: Array[Int]) {
+  def project(inCol: Array[Int], tupleNum: Int, outCol: Array[Int], outSize: Int) {
     val global_work_size = Array[Long](globalSize)
     val local_work_size = Array[Long](localSize)
     val scanCol: cl_mem = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE,
       Sizeof.cl_int * tupleNum, null, null)
-    println("Global size = %,12d".format(globalSize))
-    println("in size = %,12d".format(tupleNum))
-    println("out size = %,12d".format(outCol.length))
+    //println("Global size = %,12d".format(globalSize))
+    //println("in size = %,12d".format(tupleNum))
+    //println("out size = %,12d".format(outSize))
 
-    println("Column data %s".format(inCol.take(tupleNum).mkString))
+    //println("Column data %s".format(inCol.take(tupleNum).mkString))
     hostToDeviceCopy(Pointer.to(inCol), scanCol, Sizeof.cl_int * tupleNum)
     val result: cl_mem = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE,
-      Sizeof.cl_int * outCol.length, null, null)
+      Sizeof.cl_int * outSize, null, null)
 
     val psumVals = new Array[Int](globalSize)
     deviceToHostCopy(gpuPsum, Pointer.to(psumVals), globalSize * Sizeof.cl_int)
-    println("psumVals data %s".format(psumVals.mkString))
+    //println("psumVals data %s".format(psumVals.mkString))
 
     val filterVals = new Array[Int](tupleNum)
     deviceToHostCopy(gpuFilter, Pointer.to(filterVals), tupleNum * Sizeof.cl_int)
-    println("filterVals %s".format(filterVals.mkString))
+    // println("filterVals %s".format(filterVals.mkString))
 
     val kernel = clCreateKernel(openCLContext.getOpenCLProgram, "scan_int", null)
     clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(scanCol))
@@ -332,7 +332,7 @@ class FilteredChunkIterator[T <: Product](itr: Iterator[T], columnTypes: Array[S
     clSetKernelArg(kernel, 5, Sizeof.cl_mem, Pointer.to(gpuFilter))
     clSetKernelArg(kernel, 6, Sizeof.cl_mem, Pointer.to(result))
     clEnqueueNDRangeKernel(openCLContext.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
-    clEnqueueReadBuffer(openCLContext.getOpenCLQueue, result, CL_TRUE, 0, Sizeof.cl_int * resCount, Pointer.to(outCol), 0, null, null)
+    clEnqueueReadBuffer(openCLContext.getOpenCLQueue, result, CL_TRUE, 0, Sizeof.cl_int * outSize, Pointer.to(outCol), 0, null, null)
   }
 
   def releaseCol(col: cl_mem) {
@@ -588,21 +588,17 @@ class FilteredChunkIterator[T <: Product](itr: Iterator[T], columnTypes: Array[S
 
       println("actualSize value = %,12d".format(chunk.actualSize))
       println("result value = %,12d".format(resultSize))
-      val outData = new Array[Int](resultSize)
       chunk.actualSize = resultSize
-      project(chunk.intData(colIndex), chunk.actualSize, outData)
-
-      chunk.intData.zipWithIndex.filter(_._1 != null).forall({
-        case (inData, index) => {
-          project(inData, chunk.actualSize, outData)
-          chunk.intData(index) = outData
+      chunk.intData.zipWithIndex.filter(_._1 != null).foreach({
+        case (inData: Array[Int], index) => {
+          printf("Projecting column index =%,12d \n", index)
+          println(inData.take(chunk.actualSize).mkString(","))
+          if (index != colIndex) {
+            project(chunk.intData(colIndex), chunk.actualSize, chunk.intData(colIndex), resultSize)
+          }
         }
       })
       chunk.actualSize = resultSize
-      println("Out Data: ")
-      println(outData.mkString(", "))
-      chunk.actualSize = resCount
-      chunk.intData(colIndex) = outData
     }
     val endSelectionTotalTime = System.nanoTime
 
@@ -611,17 +607,9 @@ class FilteredChunkIterator[T <: Product](itr: Iterator[T], columnTypes: Array[S
     println("Total transform time (ns) to copy %,12d elements of data = %,12d".format(-1, endTransformDataTime - startTransformDataTime))
     println("Selection time (ns) = %,12d".format(endSelectionTotalTime - startSelectionTotalTime))
     println("Total selection time (ns) = %,12d".format(totalTime))
-
-    dept += 1
-
-    if (dept >= 2) {
-      throw new RuntimeException("Too many times calling into this function")
-    }
-
     chunk
   }
 
-  var dept = 0
 
 }
 
