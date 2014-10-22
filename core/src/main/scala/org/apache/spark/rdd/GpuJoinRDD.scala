@@ -581,30 +581,30 @@ class JoinChunkIterator[T <: Product:ClassTag](itr: Iterator[T], columnTypes: Ar
 
     if (columnTypes(colIndex) == "INT") {
       localSize = math.min(256, chunk.intData(colIndex).length)
-      globalSize = localSize * math.min(1 + (chunk.actualSize - 1) / localSize, 2048)
+      globalSize = localSize * math.min(1 + (chunk.size - 1) / localSize, 2048)
 
       println("%12s = %,12d".format("Global size", globalSize))
       println("%12s = %,12d".format("Local size", localSize))
-      val resultSize = compute(chunk.intData(colIndex), chunk.actualSize.toLong, value, operation, globalSize, localSize)
+      val resultSize = compute(chunk.intData(colIndex), chunk.size.toLong, value, operation, globalSize, localSize)
 
-      println("actualSize value = %,12d".format(chunk.actualSize))
+      println("actualSize value = %,12d".format(chunk.size))
       println("result value = %,12d".format(resultSize))
-      chunk.actualSize = resultSize
+      chunk.size = resultSize
       chunk.intData.zipWithIndex.filter(_._1 != null).foreach({
         case (inData: Array[Int], index) => {
           printf("Projecting column index =%,12d \n", index)
-          println(inData.take(chunk.actualSize).mkString(","))
+          println(inData.take(chunk.size).mkString(","))
           if (index != colIndex) {
-            project(chunk.intData(colIndex), chunk.actualSize, chunk.intData(colIndex), resultSize)
+            project(chunk.intData(colIndex), chunk.size, chunk.intData(colIndex), resultSize)
           }
         }
       })
-      chunk.actualSize = resultSize
+      chunk.size = resultSize
     }
     val endSelectionTotalTime = System.nanoTime
 
     val totalTime = endSelectionTotalTime - startTransformDataTime
-    println("Test with size=%,12d".format(chunk.actualSize))
+    println("Test with size=%,12d".format(chunk.size))
     println("Total transform time (ns) to copy %,12d elements of data = %,12d".format(-1, endTransformDataTime - startTransformDataTime))
     println("Selection time (ns) = %,12d".format(endSelectionTotalTime - startSelectionTotalTime))
     println("Total selection time (ns) = %,12d".format(totalTime))
