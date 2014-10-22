@@ -18455,12 +18455,6 @@ public final class CL
      */
     public static int clEnqueueNDRangeKernel(cl_command_queue command_queue, cl_kernel kernel, int work_dim, long global_work_offset[], long global_work_size[], long local_work_size[], int num_events_in_wait_list, cl_event event_wait_list[], cl_event event)
     {
-        System.out.println("[TRACE] calling " + kernel.toString());
-        try {
-            throw new Error("To see where we are right now");
-        }catch (Error e) {
-            e.printStackTrace();
-        }
         return checkResult(clEnqueueNDRangeKernelNative(command_queue, kernel, work_dim, global_work_offset, global_work_size, local_work_size, num_events_in_wait_list, event_wait_list, event));
     }
 
