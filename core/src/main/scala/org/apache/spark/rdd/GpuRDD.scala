@@ -137,15 +137,27 @@ class RDDChunk[T <: Product : ClassTag](val columnTypes: Array[String], val capa
   }
 }
 
-class ChunkIterator[T <: Product]
-(itr: Iterator[T], val columnTypes: Array[String])
-  extends Serializable with Iterator[RDDChunk[T]] {
+class ChunkIterator[T <: Product : ClassTag]
+(itr: Iterator[T], val columnTypes: Array[String], chunkCapacity: Int = 1 << 32)
+  extends Serializable with Iterator[T] {
 
-  override def hasNext: Boolean = itr.hasNext
+  override def hasNext: Boolean = {
+    currentPosition < chunkCapacity || itr.hasNext
+  }
 
-  override def next(): RDDChunk[T] = {
-    val chunk = new RDDChunk[T](columnTypes)
-    chunk.fill(itr)
-    chunk
+  private var currentPosition: Int = chunkCapacity
+
+  private val currentChunk: RDDChunk[T] = new RDDChunk[T](columnTypes, chunkCapacity)
+
+  override def next(): T = {
+    println("org.apache.spark.rdd.ChunkIterator.next is being called with currentPosition = %,12d".
+      format(currentPosition))
+    if (currentPosition == chunkCapacity) {
+      currentChunk.fill(itr)
+      currentPosition = 0
+    }
+    val t: T = currentChunk(currentPosition)
+    currentPosition += 1
+    t
   }
 }
