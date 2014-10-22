@@ -60,8 +60,8 @@ class RDDChunk[T <: Product : ClassTag](val columnTypes: Array[String], val capa
   val stringData = Array.ofDim[Char](columnTypes.filter(_ == "STRING").length
     , capacity * MAX_STRING_SIZE)
 
-  def fill(iter: Iterator[Product]): Unit = {
-    val values: Iterator[Product] = iter.take(capacity)
+  def fill(iter: Iterator[T]): Unit = {
+    val values: Iterator[T] = iter.take(capacity)
     values.zipWithIndex.foreach {
       case (v, rowIndex) =>
         size = rowIndex
