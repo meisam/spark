@@ -276,7 +276,6 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
     val size = 15
     val SIZE_OF_INTEGER = 4
     val TEST_DATA_SIZE = (1 << size) / SIZE_OF_INTEGER
-    val selectivity = 10 //percent
     val value = 1
 
     val testData = (0 until TEST_DATA_SIZE).map(x => if (x % 10 == 0) value else 0).toArray
