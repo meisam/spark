@@ -28,12 +28,12 @@ import scala.reflect.ClassTag
  *
  */
 class GpuRDD[T <: Product : ClassTag](prev: RDD[T], val columnTypes: Array[String])
-  extends RDD[RDDChunk[T]](prev) {
+  extends RDD[T](prev) {
   /**
    * :: DeveloperApi ::
    * Implemented by subclasses to compute a given partition.
    */
-  override def compute(split: Partition, context: TaskContext): Iterator[RDDChunk[T]] = {
+  override def compute(split: Partition, context: TaskContext): Iterator[T] = {
     new ChunkIterator(firstParent[T].iterator(split, context), columnTypes)
   }
 
