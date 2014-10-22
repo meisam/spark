@@ -232,7 +232,7 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
     val collectedChunks = gpuRdd.collect()
     assert(collectedChunks.length === 1)
     val chunk = collectedChunks(0)
-    (0 until chunk.MAX_SIZE).foreach(i =>
+    (0 until chunk.capacity).foreach(i =>
       if (i <= 10) {
         assert(chunk.intData(0)(i) === (10 - i), "values do not match")
         assert(chunk.intData(1)(i) === i, "indexes  do not match")
