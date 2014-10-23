@@ -22,7 +22,6 @@ import org.apache.spark.deploy.worker.WorkerArguments
 import org.apache.spark.rdd.ChunkIterator
 import org.scalatest.FunSuite
 
-import scala.collection.immutable.IndexedSeq
 import scala.language.existentials
 
 /**
@@ -37,61 +36,18 @@ class GpuLayout extends FunSuite with SharedSparkContext {
     val testData = (0 to 10).reverse.zipWithIndex.toIterator
 
     val colTypes = Array("INT", "INT")
-    val chunkItr = new ChunkIterator(testData, colTypes)
+    val chunkItr = new ChunkIterator(testData, colTypes, DEFAULT_CAPACITY)
 
-    val chunk = chunkItr.next
-    (0 until chunk.MAX_SIZE).foreach(i =>
-      if (i <= 10) {
-        assert(chunk.intData(0)(i) === (10 - i), "values do not match")
-        assert(chunk.intData(1)(i) === i, "indexes  do not match")
-      } else {
-        assert(chunk.intData(0)(i) === 0, "values do not match")
-        assert(chunk.intData(1)(i) === 0, "values do not match")
-      }
-    )
-  }
-
-  test("GpuRDD(Int, Int) test") {
-    val testData: IndexedSeq[(Int, Int)] = (0 to 10).reverse.zipWithIndex
-
-    val rdd = sc.parallelize(testData)
-    val gpuRdd = rdd.toGpuRDD(Array("INT", "INT"))
-    val collectedChunks: Array[RDDChunk[Product]] = gpuRdd.collect()
-    assert(collectedChunks.length === 1)
-    val chunk = collectedChunks(0)
-    (0 until chunk.MAX_SIZE).foreach(i =>
-      if (i <= 10) {
-        assert(chunk.intData(0)(i) === (10 - i), "values do not match")
-        assert(chunk.intData(1)(i) === i, "indexes  do not match")
-      } else {
-        assert(chunk.intData(0)(i) === 0, "values do not match")
-        assert(chunk.intData(1)(i) === 0, "values do not match")
-      }
-    )
-  }
-
-  test("GpuRDD(Int, String, Int, String) test") {
-    val testData: IndexedSeq[(Int, String, Int, String)] = (0 to 10).reverse.zipWithIndex
-      .map(x => (x._1, "STR_I_%d".format(x._1), x._2, "STR_II_%d".format(x._2)))
-
-    val rdd = sc.parallelize(testData)
-    val gpuRdd = rdd.toGpuRDD(Array("INT", "STRING", "INT", "STRING"))
-    val collectedChunks: Array[RDDChunk[Product]] = gpuRdd.collect()
-    assert(collectedChunks.length === 1)
-    val chunk = collectedChunks(0)
-    (0 until chunk.MAX_SIZE).foreach(i =>
-      if (i <= 10) {
-        assert(chunk.intData(0)(i) === (10 - i), "values do not match at row %d".format(i))
-        assert(chunk.intData(1)(i) === i, "values do not match at row %d".format(i))
-        assert(chunk.getStringData(0, i) === ("STR_I_" + (10 - i)), "at row %d".format(i))
-        assert(chunk.getStringData(1, i) === ("STR_II_" + i), "at row %d".format(i))
-      } else {
-        assert(chunk.intData(0)(i) === 0, "values do not match")
-        assert(chunk.intData(1)(i) === 0, "values do not match at row %d".format(i))
-        assert(chunk.getStringData(0, i) === "", "values do not match at row %d".format(i))
-        assert(chunk.getStringData(1, i) === "", "values do not match at row %d".format(i))
-      }
-    )
+    chunkItr.zipWithIndex.foreach {
+      case ((v1, v2), i) =>
+        if (i <= 10) {
+          assert(v1 === (10 - i), "values do not match")
+          assert(v2 === i, "indexes  do not match")
+        } else {
+          assert(v1 === 0, "values do not match")
+          assert(v2 === 0, "values do not match")
+        }
+    }
   }
 
   test("org.apache.spark.deploy.worker.WorkerArguments.inferDefaultGpu test") {
