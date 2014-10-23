@@ -167,9 +167,9 @@ class ChunkIterator[T <: Product : ClassTag]
     currentPosition < currentChunk.size || itr.hasNext
   }
 
-  private var currentPosition: Int = -1
+  protected var currentPosition: Int = -1
 
-  private val currentChunk: RDDChunk[T] = new RDDChunk[T](columnTypes, chunkCapacity)
+  protected val currentChunk: RDDChunk[T] = new RDDChunk[T](columnTypes, chunkCapacity)
 
   override def next(): T = {
     if (currentPosition >= currentChunk.size || currentPosition < 0) {
