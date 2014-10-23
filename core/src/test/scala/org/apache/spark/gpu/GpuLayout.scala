@@ -19,51 +19,19 @@ package org.apache.spark.gpu
 
 import org.apache.spark.SharedSparkContext
 import org.apache.spark.deploy.worker.WorkerArguments
-import org.apache.spark.rdd.{ChunkIterator, RDDChunk}
+import org.apache.spark.rdd.ChunkIterator
 import org.scalatest.FunSuite
 
 import scala.collection.immutable.IndexedSeq
 import scala.language.existentials
-import scala.reflect.ClassTag
 
 /**
  *
  */
+
 class GpuLayout extends FunSuite with SharedSparkContext {
 
-  class ParametricClass[T: ClassTag](var element: Array[T]) {
-
-    def typeInfo(): Class[_] = {
-      val tag: ClassTag[T] = reflect.classTag[T]
-      tag.runtimeClass
-    }
-
-  }
-
-  test("org.apache.spark.rdd.RDDChunk.initArray test") {
-    val x = new RDDChunk[(Int, String, Float, Double, String)](Array("INT", "STRING", "FLOAT", "DOUBLE", "STRING"))
-    assert(x.intData.length === 1)
-    assert(x.longData.length === 0)
-    assert(x.floatData.length === 1)
-    assert(x.doubleData.length === 1)
-    assert(x.stringData.length === 2)
-  }
-
-  test("org.apache.spark.rdd.RDDChunk.fill test") {
-    val testData = (0 to 10).reverse.zipWithIndex.toIterator
-
-    val chunk = new RDDChunk[(Int, Int)](Array("INT", "INT"))
-    chunk.fill(testData)
-    (0 until chunk.MAX_SIZE).foreach(i =>
-      if (i <= 10) {
-        assert(chunk.intData(0)(i) === (10 - i), "values do not match")
-        assert(chunk.intData(1)(i) === i, "indexes  do not match")
-      } else {
-        assert(chunk.intData(0)(i) === 0, "values do not match")
-        assert(chunk.intData(1)(i) === 0, "values do not match")
-      }
-    )
-  }
+  val DEFAULT_CAPACITY = (1 << 10)
 
   test("org.apache.spark.rdd.ChunkIterator test") {
     val testData = (0 to 10).reverse.zipWithIndex.toIterator
@@ -129,60 +97,6 @@ class GpuLayout extends FunSuite with SharedSparkContext {
   test("org.apache.spark.deploy.worker.WorkerArguments.inferDefaultGpu test") {
     val arguments = new WorkerArguments(Array("spark://localhost:7077"))
     assert(arguments.inferDefaultGpu() === 1, "There is one GPU on this device")
-  }
-
-  test("org.apache.spark.rdd.RDDChunk.toTypeAwareColumnIndex test") {
-    val testData = (0 to 10).map(x => (x, "STR_I_%d".format(x), 1.5f + x, 2.5d + x, "STR_II_%d".format(x), x - 1, "STR_III_%d".format(x)))
-
-    val rdd = sc.parallelize(testData)
-    val gpuRdd = rdd.toGpuRDD(Array("INT", "STRING", "FLOAT", "DOUBLE", "STRING", "INT", "STRING"))
-    val collectedChunks: Array[RDDChunk[Product]] = gpuRdd.collect()
-    assert(collectedChunks.length === 1)
-    val chunk = collectedChunks(0)
-    assert(chunk.toTypeAwareColumnIndex(0) === 0)
-    assert(chunk.toTypeAwareColumnIndex(1) === 0)
-    assert(chunk.toTypeAwareColumnIndex(2) === 0)
-    assert(chunk.toTypeAwareColumnIndex(3) === 0)
-    assert(chunk.toTypeAwareColumnIndex(4) === 1)
-    assert(chunk.toTypeAwareColumnIndex(5) === 1)
-    assert(chunk.toTypeAwareColumnIndex(6) === 2)
-  }
-
-  test("org.apache.spark.rdd.RDDChunk.getStringData test") {
-    val testData = (0 to 10).reverse.zipWithIndex.map(
-      x => ("STR_I_%d".format(x._1), "STR_II_%d".format(x._2)))
-
-    val rdd = sc.parallelize(testData)
-    val gpuRdd = rdd.toGpuRDD(Array("STRING", "STRING"))
-    val collectedChunks: Array[RDDChunk[Product]] = gpuRdd.collect()
-    assert(collectedChunks.length === 1)
-    val chunk = collectedChunks(0)
-    (0 until chunk.MAX_SIZE).foreach(i =>
-      if (i <= 10) {
-        assert(chunk.getStringData(0, i) === ("STR_I_" + (10 - i)), "at row %d".format(i))
-        assert(chunk.getStringData(1, i) === ("STR_II_" + i), "at row %d".format(i))
-      } else {
-        assert(chunk.getStringData(0, i) === "", "values do not match at row %d".format(i))
-        assert(chunk.getStringData(1, i) === "", "values do not match at row %d".format(i))
-      }
-    )
-  }
-
-  test("java.lang.String.getChars(int, int, char[], int) test") {
-    val testData = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    val chars = Array.ofDim[Char](2, 100)
-    //    chars(0) = new Array[Char](100)
-    //    chars(1) = new Array[Char](100)
-
-    testData.getChars(0, testData.length, chars(0), 0)
-
-    (0 until testData.length).foreach(i => {
-      assert(chars(0)(i) === testData(i), "at row %d".format(i))
-    })
-
-    (testData.length until chars(0).length).foreach(i => {
-      assert(chars(0)(i) === 0.toChar, "at row %d".format(i))
-    })
   }
 
 }
