@@ -21,6 +21,7 @@ import org.apache.spark.SharedSparkContext
 import org.apache.spark.rdd.RDD
 import org.scalatest.FunSuite
 
+import scala.collection.immutable.IndexedSeq
 import scala.language.existentials
 
 /**
@@ -86,6 +87,49 @@ class GpuRDDSuit extends FunSuite with SharedSparkContext {
     assert(collectedData.length === expectedData.length)
     collectedData.zip(expectedData).foreach {
       case (v1, v2) => assert(v1 === v2)
+    }
+  }
+
+
+  test("GpuRDD(Int, Int) test") {
+    val testData: IndexedSeq[(Int, Int)] = (0 to 10).reverse.zipWithIndex
+
+    val rdd = sc.parallelize(testData)
+    val gpuRdd = rdd.toGpuRDD(Array("INT", "INT"))
+    val collectedData: Array[Product] = gpuRdd.collect()
+    assert(collectedData.length === testData.length)
+    collectedData.zipWithIndex.foreach({ case ((v1, v2), i) =>
+      if (i <= 10) {
+        assert(v1 === (10 - i), "values do not match")
+        assert(v2 === i, "indexes  do not match")
+      } else {
+        assert(v1 === 0, "values do not match")
+        assert(v2 === 0, "values do not match")
+      }
+    }
+    )
+  }
+
+  test("GpuRDD(Int, String, Int, String) test") {
+    val testData: IndexedSeq[(Int, String, Int, String)] = (0 to 10).reverse.zipWithIndex
+      .map(x => (x._1, "STR_I_%d".format(x._1), x._2, "STR_II_%d".format(x._2)))
+
+    val rdd = sc.parallelize(testData)
+    val gpuRdd = rdd.toGpuRDD(Array("INT", "STRING", "INT", "STRING"))
+    val collectedData = gpuRdd.collect()
+    assert(collectedData.length === testData.length)
+    collectedData.zipWithIndex.foreach { case ((v1, v2, v3, v4), i) =>
+      if (i <= 10) {
+        assert(v1 === (10 - i), "values do not match at row %d".format(i))
+        assert(v2 === ("STR_I_" + (10 - i)), "at row %d".format(i))
+        assert(v3 === i, "values do not match at row %d".format(i))
+        assert(v4 === ("STR_II_" + i), "at row %d".format(i))
+      } else {
+        assert(v1 === 0, "values do not match")
+        assert(v2 === "", "values do not match at row %d".format(i))
+        assert(v3 === 0, "values do not match at row %d".format(i))
+        assert(v4 === "", "values do not match at row %d".format(i))
+      }
     }
   }
 }
