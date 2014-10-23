@@ -1529,9 +1529,10 @@ abstract class RDD[T: ClassTag](
     new GpuRDD(this.asInstanceOf[RDD[Product]], columnTypes, chunkCapacity)
   }
 
-  def toGpuFilterRDD(columnTypes: Array[String], columnIndex: Int, operation: Int, value: Int) = {
+  def toGpuFilterRDD(columnTypes: Array[String], columnIndex: Int, operation: Int, value: Int
+                     , chunkCapacity: Int = (1 << 20)) = {
     new GpuFilteredRDD(this.asInstanceOf[RDD[Product]], columnTypes
-      , columnIndex, operation, value)
+      , columnIndex, operation, value, chunkCapacity)
   }
 
   /**

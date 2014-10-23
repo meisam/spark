@@ -11,21 +11,21 @@ import scala.reflect.ClassTag
 /**
  * Created by fathi on 10/1/14.
  */
-class GpuFilteredRDD[T <: Product : ClassTag](prev: RDD[T], val columnTypes: Array[String], colIndex: Int, operation: Int, value: Int)
-  extends RDD[RDDChunk[T]](prev) {
-
-  override def getPartitions: Array[Partition] = firstParent[RDDChunk[T]].partitions
-
-  override val partitioner = prev.partitioner // Since filter cannot change a partition's keys
+class GpuFilteredRDD[T <: Product : ClassTag]
+(prev: RDD[T], columnTypes: Array[String], colIndex: Int, operation: Int, value: Int,
+ chunkCapacity: Int)
+  extends GpuRDD[T](prev, columnTypes, chunkCapacity) {
 
   override def compute(split: Partition, context: TaskContext): FilteredChunkIterator[T] = {
-    new FilteredChunkIterator(firstParent[T].iterator(split, context), columnTypes, openCLContext, colIndex, operation, value)
+    new FilteredChunkIterator(firstParent[T].iterator(split, context), columnTypes,
+      openCLContext, colIndex, operation, value, chunkCapacity)
   }
 }
 
-class FilteredChunkIterator[T <: Product:ClassTag](itr: Iterator[T], columnTypes: Array[String],
-                                           var openCLContext: OpenCLContext, colIndex: Int, operation: Int, value: Int)
-  extends Iterator[RDDChunk[T]] {
+class FilteredChunkIterator[T <: Product : ClassTag]
+(itr: Iterator[T], columnTypes: Array[String],
+ var openCLContext: OpenCLContext, colIndex: Int, operation: Int, value: Int, chunkCapacity: Int)
+  extends ChunkIterator[T](itr, columnTypes, chunkCapacity) {
 
   def isPowerOfTwo(n: Int): Boolean = {
     return ((n & (n - 1)) == 0)
