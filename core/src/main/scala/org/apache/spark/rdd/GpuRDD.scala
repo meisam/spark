@@ -172,12 +172,16 @@ class ChunkIterator[T <: Product : ClassTag]
   protected val currentChunk: RDDChunk[T] = new RDDChunk[T](columnTypes, chunkCapacity)
 
   override def next(): T = {
+    guaranteeFill
+    val t: T = currentChunk(currentPosition)
+    currentPosition += 1
+    t
+  }
+
+  def guaranteeFill {
     if (currentPosition >= currentChunk.size || currentPosition < 0) {
       currentChunk.fill(itr)
       currentPosition = 0
     }
-    val t: T = currentChunk(currentPosition)
-    currentPosition += 1
-    t
   }
 }
