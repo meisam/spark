@@ -307,22 +307,16 @@ class FilteredChunkIterator[T <: Product:ClassTag](itr: Iterator[T], columnTypes
     val local_work_size = Array[Long](localSize)
     val scanCol: cl_mem = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE,
       Sizeof.cl_int * tupleNum, null, null)
-    //println("Global size = %,12d".format(globalSize))
-    //println("in size = %,12d".format(tupleNum))
-    //println("out size = %,12d".format(outSize))
 
-    //println("Column data %s".format(inCol.take(tupleNum).mkString))
     hostToDeviceCopy(Pointer.to(inCol), scanCol, Sizeof.cl_int * tupleNum)
     val result: cl_mem = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE,
       Sizeof.cl_int * outSize, null, null)
 
     val psumVals = new Array[Int](globalSize)
     deviceToHostCopy(gpuPsum, Pointer.to(psumVals), globalSize * Sizeof.cl_int)
-    //println("psumVals data %s".format(psumVals.mkString))
 
     val filterVals = new Array[Int](tupleNum)
     deviceToHostCopy(gpuFilter, Pointer.to(filterVals), tupleNum * Sizeof.cl_int)
-    // println("filterVals %s".format(filterVals.mkString))
 
     val kernel = clCreateKernel(openCLContext.getOpenCLProgram, "scan_int", null)
     clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(scanCol))
@@ -573,7 +567,7 @@ class FilteredChunkIterator[T <: Product:ClassTag](itr: Iterator[T], columnTypes
   var resCount = 0
 
   override def next(): RDDChunk[T] = {
-    val chunk = new RDDChunk[T](columnTypes)
+    val chunk = new RDDChunk[T](columnTypes, (1 << 20))
     val startTransformDataTime = System.nanoTime
     chunk.fill(itr)
     val endTransformDataTime = System.nanoTime
@@ -583,17 +577,11 @@ class FilteredChunkIterator[T <: Product:ClassTag](itr: Iterator[T], columnTypes
       localSize = math.min(256, chunk.intData(colIndex).length)
       globalSize = localSize * math.min(1 + (chunk.size - 1) / localSize, 2048)
 
-      println("%12s = %,12d".format("Global size", globalSize))
-      println("%12s = %,12d".format("Local size", localSize))
       val resultSize = compute(chunk.intData(colIndex), chunk.size.toLong, value, operation, globalSize, localSize)
 
-      println("actualSize value = %,12d".format(chunk.size))
-      println("result value = %,12d".format(resultSize))
       chunk.size = resultSize
       chunk.intData.zipWithIndex.filter(_._1 != null).foreach({
         case (inData: Array[Int], index) => {
-          printf("Projecting column index =%,12d \n", index)
-          println(inData.take(chunk.size).mkString(","))
           if (index != colIndex) {
             project(chunk.intData(colIndex), chunk.size, chunk.intData(colIndex), resultSize)
           }
@@ -611,12 +599,14 @@ class FilteredChunkIterator[T <: Product:ClassTag](itr: Iterator[T], columnTypes
     chunk
   }
 
-
+/*
   def join[U <: Product : ClassTag](otherRDD: RDD[U], joinColumnIndexThis: Int,
                                     joinColumnIndexOther: Int): GpuJoinRDD[T, U] = {
     new GpuJoinRDD[T, U](this.asInstanceOf[RDD[T]], otherRDD, joinColumnIndexThis,
       joinColumnIndexOther)
   }
+
+  */
 }
 
 
