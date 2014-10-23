@@ -62,10 +62,11 @@ class RDDChunk[T <: Product : ClassTag](val columnTypes: Array[String], val capa
     , capacity * MAX_STRING_SIZE)
 
   def fill(iter: Iterator[T]): Unit = {
+    size = 0
     val values: Iterator[T] = iter.take(capacity)
     values.zipWithIndex.foreach {
       case (v, rowIndex) =>
-        size = rowIndex
+        size = rowIndex + 1
         v.productIterator.zipWithIndex.foreach { case (p, colIndex) =>
           if (columnTypes(colIndex) == "INT") {
             intData(toTypeAwareColumnIndex(colIndex))(rowIndex) = p.asInstanceOf[Int]
@@ -163,15 +164,15 @@ class ChunkIterator[T <: Product : ClassTag]
   extends Serializable with Iterator[T] {
 
   override def hasNext: Boolean = {
-    currentPosition < chunkCapacity || itr.hasNext
+    currentPosition < currentChunk.size || itr.hasNext
   }
 
-  private var currentPosition: Int = chunkCapacity
+  private var currentPosition: Int = -1
 
   private val currentChunk: RDDChunk[T] = new RDDChunk[T](columnTypes, chunkCapacity)
 
   override def next(): T = {
-    if (currentPosition == chunkCapacity) {
+    if (currentPosition >= currentChunk.size || currentPosition < 0) {
       currentChunk.fill(itr)
       currentPosition = 0
     }
