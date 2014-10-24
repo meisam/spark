@@ -20,7 +20,7 @@ package org.apache.spark.gpu
 import java.util.concurrent.CountDownLatch
 
 import org.apache.spark.SharedSparkContext
-import org.apache.spark.rdd.FilteredChunkIterator
+import org.apache.spark.rdd.GpuFilteredPartitionIterator
 import org.apache.spark.scheduler.OpenCLContext
 import org.jocl.CL._
 import org.jocl.{Pointer, Sizeof}
@@ -135,7 +135,7 @@ class GpuPerformanceTestsSuit extends FunSuite with SharedSparkContext {
       val cores = 1
 
       val startTransformDataTime = System.nanoTime
-      val iter = new FilteredChunkIterator[(Int, Int)](testData.zipWithIndex.iterator,
+      val iter = new GpuFilteredPartitionIterator[(Int, Int)](testData.zipWithIndex.iterator,
         Array("INT", "INT"), openCLContext, 0, 0, value)
       val endTransformDataTime = System.nanoTime
 
@@ -172,7 +172,7 @@ class GpuPerformanceTestsSuit extends FunSuite with SharedSparkContext {
       val cores = 1
 
       val startTransformDataTime = System.nanoTime
-      val iter = new FilteredChunkIterator[(Int, Int)](dummyData,
+      val iter = new GpuFilteredPartitionIterator[(Int, Int)](dummyData,
         Array("INT", "INT"), openCLContext, 0, 0, value)
       val endTransformDataTime = System.nanoTime
 
@@ -216,7 +216,7 @@ class GpuPerformanceTestsSuit extends FunSuite with SharedSparkContext {
     var times = new Array[(Long, Long, Long, Long)](ITERATIONS)
     (0 until ITERATIONS).foreach { i =>
       val startTransformDataTime = System.nanoTime
-      val iter = new FilteredChunkIterator[(Int, Int)](testData.zipWithIndex.iterator,
+      val iter = new GpuFilteredPartitionIterator[(Int, Int)](testData.zipWithIndex.iterator,
         Array("INT", "INT"), openCLContext, 0, 0, value)
       val endTransformDataTime = System.nanoTime
 
@@ -244,7 +244,7 @@ class GpuPerformanceTestsSuit extends FunSuite with SharedSparkContext {
 }
 
 class GpuRunner(columnData: Array[Int]
-                , iter: FilteredChunkIterator[(Int, Int)]
+                , iter: GpuFilteredPartitionIterator[(Int, Int)]
                 , countDown: CountDownLatch) extends Thread {
   override def run(): Unit = {
     iter.nonBlockingSelection(columnData)

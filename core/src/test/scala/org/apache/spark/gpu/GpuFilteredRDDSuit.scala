@@ -18,7 +18,7 @@
 package org.apache.spark.gpu
 
 import org.apache.spark.SharedSparkContext
-import org.apache.spark.rdd.{FilteredChunkIterator, GpuFilteredRDD, RDDChunk}
+import org.apache.spark.rdd.{GpuFilteredPartitionIterator, GpuFilteredRDD, GpuPartition}
 import org.apache.spark.scheduler.OpenCLContext
 import org.jocl.CL._
 import org.jocl.{Pointer, Sizeof}
@@ -32,6 +32,7 @@ import scala.language.existentials
  */
 class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
 
+  val DEFAULT_CAPACITY = (1 << 20)
   val openCLContext = new OpenCLContext
   val POW_2_S: IndexedSeq[Long] = (0 to 100).map(_.toLong).map(1L << _)
 
@@ -150,10 +151,8 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
     // the prefix sum should be (0,1,1,1,2,2,2,3,3,3,4,4,4,5,5,5,6,6,6,...)
     val testData = (0 until TEST_DATA_SIZE).map(_ % 3).map(_ % 2).zipWithIndex
 
-    val iter = new FilteredChunkIterator[(Int, Int)](testData.iterator, Array("INT", "INT"), openCLContext, 0, 0, 1)
-    assert(iter.hasNext)
-    val chunk = iter.next()
-    assert(!iter.hasNext)
+    val chunk = new GpuPartition[(Int,Int)]( Array("INT", "INT"), DEFAULT_CAPACITY)
+    chunk.fill(testData.toIterator)
 
     assert(chunk.intData(0) !== null)
     assert(chunk.intData(0).length === testData.map(_._1).filter(_ == 1).length)
@@ -173,7 +172,7 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
     val count = 10
     val testData = (0 until count).map(_ % 2).zipWithIndex
 
-    val iter = new FilteredChunkIterator[(Int, Int)](testData.iterator, Array("INT", "INT"), openCLContext, 0, 0, 1)
+    val iter = new GpuFilteredPartitionIterator[(Int, Int)](testData.iterator, Array("INT", "INT"), openCLContext, 0, 0, 1)
     assert(iter.hasNext)
     val chunk = iter.next()
     assert(!iter.hasNext)
@@ -203,7 +202,7 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
     val resultSize = prefixSums(prefixSums.length - 1)
     val actualResults = Array.ofDim[Int](resultSize)
 
-    val iter = new FilteredChunkIterator[(Int, Int)](sourceCol.zipWithIndex.iterator,
+    val iter = new GpuFilteredPartitionIterator[(Int, Int)](sourceCol.zipWithIndex.iterator,
       Array("INT", "INT"), openCLContext, 0, 0, 1)
     assert(iter.hasNext)
     val chunk = iter.next()
@@ -248,7 +247,7 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
 
     val rdd = sc.parallelize(testData)
     val gpuRdd = rdd.toGpuFilterRDD(Array("INT", "INT"), 0, 0, 1)
-    val collectedChunks: Array[RDDChunk[Product]] = gpuRdd.collect()
+    val collectedChunks: Array[GpuPartition[Product]] = gpuRdd.collect()
     assert(collectedChunks.length === 1)
     val chunk = collectedChunks(0)
     assert(chunk.size === 1)
@@ -259,7 +258,7 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
   test("compute") {
     val testData: IndexedSeq[(Int, Int)] = (0 to 10).zipWithIndex
 
-    val chunkIterator = new FilteredChunkIterator(testData.iterator, Array("INT", "INT"),
+    val chunkIterator = new GpuFilteredPartitionIterator(testData.iterator, Array("INT", "INT"),
       openCLContext, 1, 0, 1)
     val column1 = (1 to 10).toArray
     val localSize = math.min(256, column1.length)
@@ -271,7 +270,7 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
     assert(actualResult === expectedResult)
   }
 
-  test("org.apache.spark.rdd.FilteredChunkIterator.next time") {
+  test("org.apache.spark.rdd.GpuFilteredPartitionIterator.next time") {
 
     val size = 15
     val SIZE_OF_INTEGER = 4
@@ -280,7 +279,7 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
 
     val testData = (0 until TEST_DATA_SIZE).map(x => if (x % 10 == 0) value else 0).toArray
 
-    val iter = new FilteredChunkIterator[(Int, Int)](testData.zipWithIndex.iterator,
+    val iter = new GpuFilteredPartitionIterator[(Int, Int)](testData.zipWithIndex.iterator,
       Array("INT", "INT"), openCLContext, 0, 0, value)
 
     val localSize = math.min(256, testData.length)

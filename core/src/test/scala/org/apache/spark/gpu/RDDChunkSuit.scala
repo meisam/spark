@@ -18,7 +18,7 @@
 package org.apache.spark.gpu
 
 import org.apache.spark.SharedSparkContext
-import org.apache.spark.rdd.RDDChunk
+import org.apache.spark.rdd.GpuPartition
 import org.scalatest.FunSuite
 
 import scala.collection.immutable.IndexedSeq
@@ -31,8 +31,8 @@ class RDDChunkSuit extends FunSuite with SharedSparkContext {
 
   val DEFAULT_CAPACITY = (1 << 10)
 
-  test("org.apache.spark.rdd.RDDChunk.initArray test") {
-    val x = new RDDChunk[(Int, String, Float, Double, String)](Array("INT", "STRING", "FLOAT",
+  test("org.apache.spark.rdd.GpuPartition.initArray test") {
+    val x = new GpuPartition[(Int, String, Float, Double, String)](Array("INT", "STRING", "FLOAT",
       "DOUBLE", "STRING"), DEFAULT_CAPACITY)
     assert(x.intData.length === 1)
     assert(x.longData.length === 0)
@@ -41,10 +41,10 @@ class RDDChunkSuit extends FunSuite with SharedSparkContext {
     assert(x.stringData.length === 2)
   }
 
-  test("org.apache.spark.rdd.RDDChunk.fill test") {
+  test("org.apache.spark.rdd.GpuPartition.fill test") {
     val testData = (0 to 10).reverse.zipWithIndex.toIterator
 
-    val chunk = new RDDChunk[(Int, Int)](Array("INT", "INT"), DEFAULT_CAPACITY)
+    val chunk = new GpuPartition[(Int, Int)](Array("INT", "INT"), DEFAULT_CAPACITY)
     chunk.fill(testData)
     (0 until chunk.capacity).foreach(i =>
       if (i <= 10) {
@@ -57,11 +57,11 @@ class RDDChunkSuit extends FunSuite with SharedSparkContext {
     )
   }
 
-  test("org.apache.spark.rdd.RDDChunk.toTypeAwareColumnIndex test") {
+  test("org.apache.spark.rdd.GpuPartition.toTypeAwareColumnIndex test") {
     val testData = (0 to 10).map(x => (x, "STR_I_%d".format(x), 1.5f + x, 2.5d + x, "STR_II_%d".format(x), x - 1, "STR_III_%d".format(x)))
 
     val rdd = sc.parallelize(testData)
-    val rddChunk = new RDDChunk(Array("INT", "STRING", "FLOAT", "DOUBLE", "STRING", "INT",
+    val rddChunk = new GpuPartition(Array("INT", "STRING", "FLOAT", "DOUBLE", "STRING", "INT",
       "STRING"), DEFAULT_CAPACITY)
     assert(rddChunk.toTypeAwareColumnIndex(0) === 0)
     assert(rddChunk.toTypeAwareColumnIndex(1) === 0)
@@ -72,11 +72,11 @@ class RDDChunkSuit extends FunSuite with SharedSparkContext {
     assert(rddChunk.toTypeAwareColumnIndex(6) === 2)
   }
 
-  test("org.apache.spark.rdd.RDDChunk.getStringData test") {
+  test("org.apache.spark.rdd.GpuPartition.getStringData test") {
     val testData: IndexedSeq[(String, String)] = (0 to 10).reverse.zipWithIndex.map(
       x => ("STR_I_%d".format(x._1), "STR_II_%d".format(x._2)))
 
-    val chunk = new RDDChunk[(String, String)](Array("STRING", "STRING"),
+    val chunk = new GpuPartition[(String, String)](Array("STRING", "STRING"),
       DEFAULT_CAPACITY)
     chunk.fill(testData.toIterator)
     (0 until chunk.capacity).foreach(i =>
