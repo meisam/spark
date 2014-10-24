@@ -17,15 +17,8 @@
 
 package org.apache.spark.rdd
 
-import java.io._
-import java.lang.reflect.{Array => JArray}
+import org.apache.spark.{Partition, TaskContext}
 
-import org.apache.spark.scheduler.OpenCLContext
-import org.apache.spark.{Logging, Partition, TaskContext}
-import org.jocl.CL._
-import org.jocl._
-
-import scala.collection.immutable.IndexedSeq
 import scala.reflect.ClassTag
 
 /**
