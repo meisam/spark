@@ -1,5 +1,7 @@
 package org.apache.spark.rdd
 
+import java.nio.ByteBuffer
+
 import org.apache.spark.Logging
 import org.apache.spark.scheduler.OpenCLContext
 import org.jocl.CL._
@@ -341,7 +343,16 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
     deallocBlockSums
   }
 
-  def compute(col: Array[Int], tupleNum: Long, value: Int, comp: Int, globalSize: Long, localSize: Long): Int = {
+  def pointer[T: ClassTag](values: Array[T]): Pointer = {
+    val tag = scala.reflect.ClassTag[T]
+
+    match tag {
+      case scala.reflect.ClassTag[Int] =>      Pointer.to(values.asInstanceOf[Array[Int]])
+    }
+  }
+
+  def compute[T: ClassTag](col: Array[T], tupleNum: Long, value: T, comp: Int, globalSize: Long,
+                           localSize: Long): Int = {
     if (context == null) {
       context = new OpenCLContext
       context.initOpenCL("/org/apache/spark/gpu/kernel.cl")
@@ -349,7 +360,8 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
     val start: Long = System.nanoTime
     gpuCol = clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * tupleNum, null, null)
 
-    clEnqueueWriteBuffer(context.getOpenCLQueue, gpuCol, CL_TRUE, 0, Sizeof.cl_int * tupleNum, Pointer.to(col), 0, null, null)
+    clEnqueueWriteBuffer(context.getOpenCLQueue, gpuCol, CL_TRUE, 0, Sizeof.cl_int * tupleNum,
+      pointer(col), 0, null, null)
 
     gpuFilter = clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * tupleNum, null, null)
     gpuPsum = clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
@@ -382,7 +394,7 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
     clEnqueueNDRangeKernel(context.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
 
     val startPsum = System.nanoTime()
-    scanImpl(gpuCount, globalSize.asInstanceOf[Int], gpuPsum, context)
+    scanImpl(gpuCount, globalSize.asInstanceOf[Int], gpuPsum)
     val endPsum = System.nanoTime()
 
     val tmp1 = Array[Int](0)
