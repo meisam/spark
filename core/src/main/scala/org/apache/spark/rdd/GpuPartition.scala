@@ -1,33 +1,117 @@
-/*
-package org.apache.spark.rdd
+package org.apache.spark.rdd;
 
+class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val capacity: Int)
+  extends Serializable with Logging {
 
-import org.apache.spark.scheduler.OpenCLContext
-import org.apache.spark.{Partition, TaskContext}
-import org.jocl.CL._
-import org.jocl._
+  def MAX_STRING_SIZE: Int = 1 << 7
 
-import scala.collection.immutable.IndexedSeq
-import scala.reflect.ClassTag
+  var size = 0
 
-class GpuJoinRDD[T <: Product : ClassTag, U <: Product : ClassTag]
-(prev: RDD[T], other: RDD[U],
- joinColumnIndexThis: Int, joinColumnIndexOther: Int)
-  extends RDD[RDDChunk[T]](prev) {
+  val intData: Array[Array[Int]] = Array.ofDim[Int](columnTypes.filter(_ == "INT").length, capacity)
+  val longData = Array.ofDim[Long](columnTypes.filter(_ == "LONG").length, capacity)
+  val floatData = Array.ofDim[Float](columnTypes.filter(_ == "FLOAT").length, capacity)
+  val doubleData = Array.ofDim[Double](columnTypes.filter(_ == "DOUBLE").length, capacity)
+  val booleanData = Array.ofDim[Boolean](columnTypes.filter(_ == "BOOLEAN").length, capacity)
+  val charData = Array.ofDim[Char](columnTypes.filter(_ == "CHAR").length, capacity)
+  val stringData = Array.ofDim[Char](columnTypes.filter(_ == "STRING").length
+    , capacity * MAX_STRING_SIZE)
 
-  override def getPartitions: Array[Partition] = firstParent[RDDChunk[T]].partitions
-
-  override val partitioner = prev.partitioner // Since filter cannot change a partition's keys
-
-  override def compute(split: Partition, context: TaskContext): JoinChunkIterator[T] = {
-    new JoinChunkIterator(firstParent[T].iterator(split, context), columnTypes, openCLContext, joinColumnIndexThis, operation, value)
+  def fill(iter: Iterator[T]): Unit = {
+    size = 0
+    val values: Iterator[T] = iter.take(capacity)
+    values.zipWithIndex.foreach {
+      case (v, rowIndex) =>
+        size = rowIndex + 1
+        v.productIterator.zipWithIndex.foreach { case (p, colIndex) =>
+          if (columnTypes(colIndex) == "INT") {
+            intData(toTypeAwareColumnIndex(colIndex))(rowIndex) = p.asInstanceOf[Int]
+          } else if (columnTypes(colIndex) == "LONG") {
+            longData(toTypeAwareColumnIndex(colIndex))(rowIndex) = p.asInstanceOf[Long]
+          } else if (columnTypes(colIndex) == "FLOAT") {
+            floatData(toTypeAwareColumnIndex(colIndex))(rowIndex) = p.asInstanceOf[Float]
+          } else if (columnTypes(colIndex) == "Double") {
+            doubleData(toTypeAwareColumnIndex(colIndex))(rowIndex) = p.asInstanceOf[Double]
+          } else if (columnTypes(colIndex) == "BOOLEAN") {
+            booleanData(toTypeAwareColumnIndex(colIndex))(rowIndex) = p.asInstanceOf[Boolean]
+          } else if (columnTypes(colIndex) == "CHAR") {
+            charData(toTypeAwareColumnIndex(colIndex))(rowIndex) = p.asInstanceOf[Char]
+          } else if (columnTypes(colIndex) == "STRING") {
+            val str = p.toString
+            str.getChars(0, Math.min(MAX_STRING_SIZE, str.length),
+              stringData(toTypeAwareColumnIndex(colIndex)), rowIndex * MAX_STRING_SIZE)
+          }
+        }
+    }
   }
 
-}
+  def getStringData(typeAwareColumnIndex: Int, rowIndex: Int): String = {
+    val str = new String(stringData(typeAwareColumnIndex), rowIndex * MAX_STRING_SIZE, MAX_STRING_SIZE)
+    val actualLenght = str.indexOf(0)
+    str.substring(0, actualLenght)
+  }
 
-class JoinChunkIterator[T <: Product:ClassTag](itr: Iterator[T], columnTypes: Array[String],
-                                       var openCLContext: OpenCLContext, colIndex: Int, operation: Int, value: Int)
-  extends Iterator[RDDChunk[T]] with TraversableOnce[RDDChunk[T]] {
+  /**
+   * Returns how many columns with the same type appear before the given column
+   * in the underlying type of this chunk. For example, if the underlying type of the chunk is
+   * (Int, Int, String, Int, String) the return values will be (0, 1, 0, 2, 1).
+   *
+   * @param columnIndex The given column index
+   * @return Number of columns with the same type as the given column
+   */
+  def toTypeAwareColumnIndex(columnIndex: Int): Int = {
+    val targetColumnType = columnTypes(columnIndex)
+    val (taken, _) = columnTypes.splitAt(columnIndex)
+    taken.filter(_ == targetColumnType).length
+  }
+
+  def apply(rowIndex: Int): T = {
+
+    val values: Array[Any] = columnTypes.zipWithIndex.map({ case (colType, colIndex) =>
+      if (colType == "INT") {
+        intData(toTypeAwareColumnIndex(colIndex))(rowIndex)
+      } else if (columnTypes(colIndex) == "LONG") {
+        longData(toTypeAwareColumnIndex(colIndex))(rowIndex)
+      } else if (columnTypes(colIndex) == "FLOAT") {
+        floatData(toTypeAwareColumnIndex(colIndex))(rowIndex)
+      } else if (columnTypes(colIndex) == "Double") {
+        doubleData(toTypeAwareColumnIndex(colIndex))(rowIndex)
+      } else if (columnTypes(colIndex) == "BOOLEAN") {
+        booleanData(toTypeAwareColumnIndex(colIndex))(rowIndex)
+      } else if (columnTypes(colIndex) == "CHAR") {
+        charData(toTypeAwareColumnIndex(colIndex))(rowIndex)
+      } else if (columnTypes(colIndex) == "STRING") {
+        getStringData(toTypeAwareColumnIndex(colIndex), rowIndex)
+      }
+    })
+
+    val resultTuple = values.length match {
+      case 2 => (values(0), values(1)).asInstanceOf[T]
+      case 3 => (values(0), values(1), values(2)).asInstanceOf[T]
+      case 4 => (values(0), values(1), values(2), values(3)).asInstanceOf[T]
+      case 5 => (values(0), values(1), values(2), values(3), values(4)).asInstanceOf[T]
+      case 6 => (values(0), values(1), values(2), values(3), values(4), values(5)).asInstanceOf[T]
+      case 7 => (values(0), values(1), values(2), values(3), values(4), values(5), values(6)).asInstanceOf[T]
+      case 8 => (values(0), values(1), values(2), values(3), values(4), values(5), values(6), values(7)).asInstanceOf[T]
+      case 9 => (values(0), values(1), values(2), values(3), values(4), values(5), values(6), values(7), values(8)).asInstanceOf[T]
+      case 10 => (values(0), values(1), values(2), values(3), values(4), values(5), values(6), values(7), values(8), values(9)).asInstanceOf[T]
+      case 11 => (values(0), values(1), values(2), values(3), values(4), values(5), values(6), values(7), values(8), values(9), values(10)).asInstanceOf[T]
+      case 12 => (values(0), values(1), values(2), values(3), values(4), values(5), values(6), values(7), values(8), values(9), values(10), values(11)).asInstanceOf[T]
+      case 13 => (values(0), values(1), values(2), values(3), values(4), values(5), values(6), values(7), values(8), values(9), values(10), values(11), values(12)).asInstanceOf[T]
+      case 14 => (values(0), values(1), values(2), values(3), values(4), values(5), values(6), values(7), values(8), values(9), values(10), values(11), values(12), values(13)).asInstanceOf[T]
+      case 15 => (values(0), values(1), values(2), values(3), values(4), values(5), values(6), values(7), values(8), values(9), values(10), values(11), values(12), values(13), values(14)).asInstanceOf[T]
+      case 16 => (values(0), values(1), values(2), values(3), values(4), values(5), values(6), values(7), values(8), values(9), values(10), values(11), values(12), values(13), values(14), values(15)).asInstanceOf[T]
+      case 17 => (values(0), values(1), values(2), values(3), values(4), values(5), values(6), values(7), values(8), values(9), values(10), values(11), values(12), values(13), values(14), values(15), values(16)).asInstanceOf[T]
+      case 18 => (values(0), values(1), values(2), values(3), values(4), values(5), values(6), values(7), values(8), values(9), values(10), values(11), values(12), values(13), values(14), values(15), values(16), values(17)).asInstanceOf[T]
+      case 19 => (values(0), values(1), values(2), values(3), values(4), values(5), values(6), values(7), values(8), values(9), values(10), values(11), values(12), values(13), values(14), values(15), values(16), values(17), values(18)).asInstanceOf[T]
+      case 20 => (values(0), values(1), values(2), values(3), values(4), values(5), values(6), values(7), values(8), values(9), values(10), values(11), values(12), values(13), values(14), values(15), values(16), values(17), values(18), values(19)).asInstanceOf[T]
+      case 21 => (values(0), values(1), values(2), values(3), values(4), values(5), values(6), values(7), values(8), values(9), values(10), values(11), values(12), values(13), values(14), values(15), values(16), values(17), values(18), values(19), values(20)).asInstanceOf[T]
+      case 22 => (values(0), values(1), values(2), values(3), values(4), values(5), values(6), values(7), values(8), values(9), values(10), values(11), values(12), values(13), values(14), values(15), values(16), values(17), values(18), values(19), values(20), values(21)).asInstanceOf[T]
+      case _ => throw new NotImplementedError("org.apache.spark.rdd.GpuPartition.apply is not " +
+        "implemented yet")
+
+    }
+    resultTuple
+  }
 
   def isPowerOfTwo(n: Int): Boolean = {
     return ((n & (n - 1)) == 0)
@@ -309,22 +393,16 @@ class JoinChunkIterator[T <: Product:ClassTag](itr: Iterator[T], columnTypes: Ar
     val local_work_size = Array[Long](localSize)
     val scanCol: cl_mem = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE,
       Sizeof.cl_int * tupleNum, null, null)
-    //println("Global size = %,12d".format(globalSize))
-    //println("in size = %,12d".format(tupleNum))
-    //println("out size = %,12d".format(outSize))
 
-    //println("Column data %s".format(inCol.take(tupleNum).mkString))
     hostToDeviceCopy(Pointer.to(inCol), scanCol, Sizeof.cl_int * tupleNum)
     val result: cl_mem = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE,
       Sizeof.cl_int * outSize, null, null)
 
     val psumVals = new Array[Int](globalSize)
     deviceToHostCopy(gpuPsum, Pointer.to(psumVals), globalSize * Sizeof.cl_int)
-    //println("psumVals data %s".format(psumVals.mkString))
 
     val filterVals = new Array[Int](tupleNum)
     deviceToHostCopy(gpuFilter, Pointer.to(filterVals), tupleNum * Sizeof.cl_int)
-    // println("filterVals %s".format(filterVals.mkString))
 
     val kernel = clCreateKernel(openCLContext.getOpenCLProgram, "scan_int", null)
     clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(scanCol))
@@ -567,62 +645,10 @@ class JoinChunkIterator[T <: Product:ClassTag](itr: Iterator[T], columnTypes: Ar
   var gpuCount: cl_mem = null
   var gpuPsum: cl_mem = null
 
-  override def hasNext: Boolean = itr.hasNext
-
   var globalSize = 0
 
   var localSize = 0
+
   var resCount = 0
 
-  override def next(): RDDChunk[T] = {
-    val chunk = new RDDChunk[T](columnTypes)
-    val startTransformDataTime = System.nanoTime
-    chunk.fill(itr)
-    val endTransformDataTime = System.nanoTime
-    val startSelectionTotalTime = System.nanoTime
-
-    if (columnTypes(colIndex) == "INT") {
-      localSize = math.min(256, chunk.intData(colIndex).length)
-      globalSize = localSize * math.min(1 + (chunk.size - 1) / localSize, 2048)
-
-      println("%12s = %,12d".format("Global size", globalSize))
-      println("%12s = %,12d".format("Local size", localSize))
-      val resultSize = compute(chunk.intData(colIndex), chunk.size.toLong, value, operation, globalSize, localSize)
-
-      println("actualSize value = %,12d".format(chunk.size))
-      println("result value = %,12d".format(resultSize))
-      chunk.size = resultSize
-      chunk.intData.zipWithIndex.filter(_._1 != null).foreach({
-        case (inData: Array[Int], index) => {
-          printf("Projecting column index =%,12d \n", index)
-          println(inData.take(chunk.size).mkString(","))
-          if (index != colIndex) {
-            project(chunk.intData(colIndex), chunk.size, chunk.intData(colIndex), resultSize)
-          }
-        }
-      })
-      chunk.size = resultSize
-    }
-    val endSelectionTotalTime = System.nanoTime
-
-    val totalTime = endSelectionTotalTime - startTransformDataTime
-    println("Test with size=%,12d".format(chunk.size))
-    println("Total transform time (ns) to copy %,12d elements of data = %,12d".format(-1, endTransformDataTime - startTransformDataTime))
-    println("Selection time (ns) = %,12d".format(endSelectionTotalTime - startSelectionTotalTime))
-    println("Total selection time (ns) = %,12d".format(totalTime))
-
-    dept += 1
-
-    if (dept >= 2) {
-      throw new RuntimeException("Too many times calling into this function")
-    }
-
-    chunk
-  }
-
-  var dept = 0
-
 }
-
-
-*/
