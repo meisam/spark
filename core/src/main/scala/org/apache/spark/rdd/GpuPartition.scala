@@ -12,7 +12,7 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
 
   def MAX_STRING_SIZE: Int = 1 << 7
 
-  var openCLContext: OpenCLContext = null
+  var context: OpenCLContext = null
   var size = 0
 
   val intData: Array[Array[Int]] = Array.ofDim[Int](columnTypes.filter(_ == "INT").length, capacity)
@@ -135,7 +135,7 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
     return 1 << (exp - 1)
   }
 
-  def preallocBlockSums(maxNumElements: Int, context: OpenCLContext) {
+  def preallocBlockSums(maxNumElements: Int) {
     g_numEltsAllocated = maxNumElements
     val blockSize: Int = BLOCK_SIZE
     var numElts: Int = maxNumElements
@@ -163,7 +163,8 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
     } while (numElts > 1)
   }
 
-  def prescanArrayRecursive(outArray: cl_mem, inArray: cl_mem, numElements: Int, level: Int, same: Int, context: OpenCLContext) {
+  def prescanArrayRecursive(outArray: cl_mem, inArray: cl_mem, numElements: Int, level: Int,
+                            same: Int) {
 
     val blockSize: Int = BLOCK_SIZE
     val waitEvents = Array(new cl_event)
@@ -240,7 +241,7 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
         local_work_size = Array[Long](localSize)
         clEnqueueNDRangeKernel(context.queue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
       }
-      prescanArrayRecursive(g_scanBlockSums(level), g_scanBlockSums(level), numBlocks, level + 1, 1, context)
+      prescanArrayRecursive(g_scanBlockSums(level), g_scanBlockSums(level), numBlocks, level + 1, 1)
       kernel = clCreateKernel(context.program, "uniformAdd", null)
       clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(outArray))
       clSetKernelArg(kernel, 1, Sizeof.cl_mem, Pointer.to(g_scanBlockSums(level)))
@@ -326,46 +327,46 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
     g_numLevelsAllocated = 0
   }
 
-  def prescanArray(outArray: cl_mem, inArray: cl_mem, numElements: Int, context: OpenCLContext) {
+  def prescanArray(outArray: cl_mem, inArray: cl_mem, numElements: Int) {
     val prefixsumStartTime = System.nanoTime
-    prescanArrayRecursive(outArray, inArray, numElements, 0, 0, context)
+    prescanArrayRecursive(outArray, inArray, numElements, 0, 0)
     val prefixsumEndTime = System.nanoTime
 
     println("Prefix Sum time = %,12d".format(prefixsumEndTime - prefixsumStartTime))
   }
 
-  def scanImpl(d_input: cl_mem, rLen: Int, d_output: cl_mem, openCLContext: OpenCLContext) {
-    preallocBlockSums(rLen, openCLContext)
-    prescanArray(d_output, d_input, rLen, openCLContext)
+  def scanImpl(d_input: cl_mem, rLen: Int, d_output: cl_mem) {
+    preallocBlockSums(rLen)
+    prescanArray(d_output, d_input, rLen)
     deallocBlockSums
   }
 
   def compute(col: Array[Int], tupleNum: Long, value: Int, comp: Int, globalSize: Long, localSize: Long): Int = {
-    if (openCLContext == null) {
-      openCLContext = new OpenCLContext
-      openCLContext.initOpenCL("/org/apache/spark/gpu/kernel.cl")
+    if (context == null) {
+      context = new OpenCLContext
+      context.initOpenCL("/org/apache/spark/gpu/kernel.cl")
     }
     val start: Long = System.nanoTime
-    gpuCol = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * tupleNum, null, null)
+    gpuCol = clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * tupleNum, null, null)
 
-    clEnqueueWriteBuffer(openCLContext.getOpenCLQueue, gpuCol, CL_TRUE, 0, Sizeof.cl_int * tupleNum, Pointer.to(col), 0, null, null)
+    clEnqueueWriteBuffer(context.getOpenCLQueue, gpuCol, CL_TRUE, 0, Sizeof.cl_int * tupleNum, Pointer.to(col), 0, null, null)
 
-    gpuFilter = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * tupleNum, null, null)
-    gpuPsum = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
-    gpuCount = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
+    gpuFilter = clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * tupleNum, null, null)
+    gpuPsum = clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
+    gpuCount = clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
     var kernel = comp match {
       case 0 =>
-        clCreateKernel(openCLContext.getOpenCLProgram, "genScanFilter_init_int_eq", null)
+        clCreateKernel(context.getOpenCLProgram, "genScanFilter_init_int_eq", null)
       case 1 =>
-        clCreateKernel(openCLContext.getOpenCLProgram, "genScanFilter_init_int_gth", null)
+        clCreateKernel(context.getOpenCLProgram, "genScanFilter_init_int_gth", null)
       case 2 =>
-        clCreateKernel(openCLContext.getOpenCLProgram, "genScanFilter_init_int_geq", null)
+        clCreateKernel(context.getOpenCLProgram, "genScanFilter_init_int_geq", null)
       case 3 =>
-        clCreateKernel(openCLContext.getOpenCLProgram, "genScanFilter_init_int_lth", null)
+        clCreateKernel(context.getOpenCLProgram, "genScanFilter_init_int_lth", null)
       case 4 =>
-        clCreateKernel(openCLContext.getOpenCLProgram, "genScanFilter_init_int_leq", null)
+        clCreateKernel(context.getOpenCLProgram, "genScanFilter_init_int_leq", null)
       case _ =>
-        clCreateKernel(openCLContext.getOpenCLProgram, "genScanFilter_init_int_eq", null)
+        clCreateKernel(context.getOpenCLProgram, "genScanFilter_init_int_eq", null)
     }
     clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(gpuCol))
     clSetKernelArg(kernel, 1, Sizeof.cl_long, Pointer.to(Array[Long](tupleNum)))
@@ -373,23 +374,23 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
     clSetKernelArg(kernel, 3, Sizeof.cl_mem, Pointer.to(gpuFilter))
     val global_work_size = Array[Long](globalSize)
     val local_work_size = Array[Long](localSize)
-    clEnqueueNDRangeKernel(openCLContext.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
-    kernel = clCreateKernel(openCLContext.getOpenCLProgram, "countScanNum", null)
+    clEnqueueNDRangeKernel(context.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
+    kernel = clCreateKernel(context.getOpenCLProgram, "countScanNum", null)
     clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(gpuFilter))
     clSetKernelArg(kernel, 1, Sizeof.cl_long, Pointer.to(Array[Long](tupleNum)))
     clSetKernelArg(kernel, 2, Sizeof.cl_mem, Pointer.to(gpuCount))
-    clEnqueueNDRangeKernel(openCLContext.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
+    clEnqueueNDRangeKernel(context.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
 
     val startPsum = System.nanoTime()
-    scanImpl(gpuCount, globalSize.asInstanceOf[Int], gpuPsum, openCLContext)
+    scanImpl(gpuCount, globalSize.asInstanceOf[Int], gpuPsum, context)
     val endPsum = System.nanoTime()
 
     val tmp1 = Array[Int](0)
     val tmp2 = Array[Int](0)
 
-    clEnqueueReadBuffer(openCLContext.getOpenCLQueue, gpuCount, CL_TRUE, Sizeof.cl_int * (globalSize - 1), Sizeof.cl_int, Pointer.to(tmp1), 0, null, null)
+    clEnqueueReadBuffer(context.getOpenCLQueue, gpuCount, CL_TRUE, Sizeof.cl_int * (globalSize - 1), Sizeof.cl_int, Pointer.to(tmp1), 0, null, null)
 
-    clEnqueueReadBuffer(openCLContext.getOpenCLQueue, gpuPsum, CL_TRUE, Sizeof.cl_int * (globalSize - 1), Sizeof.cl_int, Pointer.to(tmp2), 0, null, null)
+    clEnqueueReadBuffer(context.getOpenCLQueue, gpuPsum, CL_TRUE, Sizeof.cl_int * (globalSize - 1), Sizeof.cl_int, Pointer.to(tmp2), 0, null, null)
 
     resCount = tmp1(0) + tmp2(0)
     val end: Long = System.nanoTime
@@ -399,11 +400,11 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
   def project(inCol: Array[Int], tupleNum: Int, outCol: Array[Int], outSize: Int) {
     val global_work_size = Array[Long](globalSize)
     val local_work_size = Array[Long](localSize)
-    val scanCol: cl_mem = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE,
+    val scanCol: cl_mem = clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_WRITE,
       Sizeof.cl_int * tupleNum, null, null)
 
     hostToDeviceCopy(Pointer.to(inCol), scanCol, Sizeof.cl_int * tupleNum)
-    val result: cl_mem = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE,
+    val result: cl_mem = clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_WRITE,
       Sizeof.cl_int * outSize, null, null)
 
     val psumVals = new Array[Int](globalSize)
@@ -412,7 +413,7 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
     val filterVals = new Array[Int](tupleNum)
     deviceToHostCopy(gpuFilter, Pointer.to(filterVals), tupleNum * Sizeof.cl_int)
 
-    val kernel = clCreateKernel(openCLContext.getOpenCLProgram, "scan_int", null)
+    val kernel = clCreateKernel(context.getOpenCLProgram, "scan_int", null)
     clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(scanCol))
     clSetKernelArg(kernel, 1, Sizeof.cl_int, Pointer.to(Array[Int](Sizeof.cl_int)))
     clSetKernelArg(kernel, 2, Sizeof.cl_long, Pointer.to(Array[Long](tupleNum)))
@@ -420,8 +421,8 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
     clSetKernelArg(kernel, 4, Sizeof.cl_long, Pointer.to(Array[Long](resCount)))
     clSetKernelArg(kernel, 5, Sizeof.cl_mem, Pointer.to(gpuFilter))
     clSetKernelArg(kernel, 6, Sizeof.cl_mem, Pointer.to(result))
-    clEnqueueNDRangeKernel(openCLContext.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
-    clEnqueueReadBuffer(openCLContext.getOpenCLQueue, result, CL_TRUE, 0, Sizeof.cl_int * outSize, Pointer.to(outCol), 0, null, null)
+    clEnqueueNDRangeKernel(context.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
+    clEnqueueReadBuffer(context.getOpenCLQueue, result, CL_TRUE, 0, Sizeof.cl_int * outSize, Pointer.to(outCol), 0, null, null)
   }
 
   def releaseCol(col: cl_mem) {
@@ -443,7 +444,7 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
     val buffer1 = createReadWriteBuffer(Sizeof.cl_int * globalSize)
     val buffer2 = createReadWriteBuffer(Sizeof.cl_int * globalSize)
     hostToDeviceCopy(Pointer.to(counts), buffer1, Sizeof.cl_int * counts.length)
-    val kernel = clCreateKernel(openCLContext.getOpenCLProgram, "prefix_sum_stage", null)
+    val kernel = clCreateKernel(context.getOpenCLProgram, "prefix_sum_stage", null)
     var stride: Int = 0
 
     var switchedBuffers = true
@@ -452,7 +453,7 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
       clSetKernelArg(kernel, if (switchedBuffers) 0 else 1, Sizeof.cl_mem, Pointer.to(buffer1))
       clSetKernelArg(kernel, if (switchedBuffers) 1 else 0, Sizeof.cl_mem, Pointer.to(buffer2))
       clSetKernelArg(kernel, 2, Sizeof.cl_int, Pointer.to(Array[Int](stride)))
-      clEnqueueNDRangeKernel(openCLContext.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
+      clEnqueueNDRangeKernel(context.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
       switchedBuffers = !switchedBuffers
       stride = if (stride == 0) 1 else stride << 1
     }
@@ -487,14 +488,14 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
     hostToDeviceCopy(Pointer.to(filter), d_selectionFilter, Sizeof.cl_int * count)
     hostToDeviceCopy(Pointer.to(prefixSums), d_prefixSums, Sizeof.cl_int * count)
 
-    val kernel = clCreateKernel(openCLContext.getOpenCLProgram, "scan", null)
+    val kernel = clCreateKernel(context.getOpenCLProgram, "scan", null)
 
     clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(d_sourceColumns))
     clSetKernelArg(kernel, 1, Sizeof.cl_mem, Pointer.to(d_selectionFilter))
     clSetKernelArg(kernel, 2, Sizeof.cl_mem, Pointer.to(d_prefixSums))
     clSetKernelArg(kernel, 3, Sizeof.cl_mem, Pointer.to(d_destColumn))
     clSetKernelArg(kernel, 4, Sizeof.cl_int, Pointer.to(Array[Int](count)))
-    clEnqueueNDRangeKernel(openCLContext.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
+    clEnqueueNDRangeKernel(context.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
 
     deviceToHostCopy(d_destColumn, Pointer.to(destColumn), Sizeof.cl_int * resultSize)
   }
@@ -510,9 +511,9 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
     val global_work_size = Array[Long](globalSize)
 
     val local_work_size = Array[Long](localSize)
-    if (openCLContext == null) {
-      openCLContext = new OpenCLContext
-      openCLContext.initOpenCL("/org/apache/spark/gpu/kernel.cl")
+    if (context == null) {
+      context = new OpenCLContext
+      context.initOpenCL("/org/apache/spark/gpu/kernel.cl")
     }
 
     val endInitTime = System.nanoTime
@@ -524,14 +525,14 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
     val endTransferTime = System.nanoTime
 
     val startFilterTime = System.nanoTime
-    val filterBuffer = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
+    val filterBuffer = clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
 
-    val filterKernel = clCreateKernel(openCLContext.getOpenCLProgram, "genScanFilter_init_int_eq", null)
+    val filterKernel = clCreateKernel(context.getOpenCLProgram, "genScanFilter_init_int_eq", null)
     clSetKernelArg(filterKernel, 0, Sizeof.cl_mem, Pointer.to(columnBuffer))
     clSetKernelArg(filterKernel, 1, Sizeof.cl_long, Pointer.to(Array[Long](columnData.length.toLong)))
     clSetKernelArg(filterKernel, 2, Sizeof.cl_int, Pointer.to(Array[Int](value)))
     clSetKernelArg(filterKernel, 3, Sizeof.cl_mem, Pointer.to(filterBuffer))
-    clEnqueueNDRangeKernel(openCLContext.getOpenCLQueue, filterKernel, 1, null, global_work_size,
+    clEnqueueNDRangeKernel(context.getOpenCLQueue, filterKernel, 1, null, global_work_size,
       local_work_size, 0, null, waitEvents(0))
     clWaitForEvents(1, waitEvents)
 
@@ -541,14 +542,14 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
     val prefixSumBuffer1 = createReadWriteBuffer(Sizeof.cl_int * globalSize)
 
     val prefixSumBuffer2 = createReadWriteBuffer(Sizeof.cl_int * globalSize)
-    val copyKernel = clCreateKernel(openCLContext.getOpenCLProgram, "copy_buffer", null)
+    val copyKernel = clCreateKernel(context.getOpenCLProgram, "copy_buffer", null)
     clSetKernelArg(copyKernel, 0, Sizeof.cl_mem, Pointer.to(filterBuffer))
     clSetKernelArg(copyKernel, 1, Sizeof.cl_mem, Pointer.to(prefixSumBuffer1))
-    clEnqueueNDRangeKernel(openCLContext.getOpenCLQueue, copyKernel, 1, null, global_work_size,
+    clEnqueueNDRangeKernel(context.getOpenCLQueue, copyKernel, 1, null, global_work_size,
       local_work_size, 0, null, waitEvents(0))
     clWaitForEvents(1, waitEvents)
 
-    val prefixSumKernel = clCreateKernel(openCLContext.getOpenCLProgram, "prefix_sum_stage", null)
+    val prefixSumKernel = clCreateKernel(context.getOpenCLProgram, "prefix_sum_stage", null)
 
     var stride: Int = 0
 
@@ -557,7 +558,7 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
       clSetKernelArg(prefixSumKernel, if (switchedBuffers) 0 else 1, Sizeof.cl_mem, Pointer.to(prefixSumBuffer1))
       clSetKernelArg(prefixSumKernel, if (switchedBuffers) 1 else 0, Sizeof.cl_mem, Pointer.to(prefixSumBuffer2))
       clSetKernelArg(prefixSumKernel, 2, Sizeof.cl_int, Pointer.to(Array[Int](stride)))
-      clEnqueueNDRangeKernel(openCLContext.getOpenCLQueue, prefixSumKernel, 1, null,
+      clEnqueueNDRangeKernel(context.getOpenCLQueue, prefixSumKernel, 1, null,
         global_work_size, local_work_size, 0, null, waitEvents(0))
       switchedBuffers = !switchedBuffers
       stride = if (stride == 0) 1 else stride << 1
@@ -573,18 +574,18 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
     deviceToHostCopy(prefixSumBuffer, Pointer.to(resultSize), columnData.length, 0)
     val endFetchSizeTime = System.nanoTime
 
-    val d_destColumn = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE,
+    val d_destColumn = clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_WRITE,
       Sizeof.cl_int * resultSize.head, null, null)
 
     val startScanTime = System.nanoTime
-    val scanKernel = clCreateKernel(openCLContext.getOpenCLProgram, "scan", null)
+    val scanKernel = clCreateKernel(context.getOpenCLProgram, "scan", null)
 
     clSetKernelArg(scanKernel, 0, Sizeof.cl_mem, Pointer.to(columnBuffer))
     clSetKernelArg(scanKernel, 1, Sizeof.cl_mem, Pointer.to(filterBuffer))
     clSetKernelArg(scanKernel, 2, Sizeof.cl_mem, Pointer.to(prefixSumBuffer))
     clSetKernelArg(scanKernel, 3, Sizeof.cl_mem, Pointer.to(d_destColumn))
     clSetKernelArg(scanKernel, 4, Sizeof.cl_int, Pointer.to(Array[Int](resultSize.head)))
-    clEnqueueNDRangeKernel(openCLContext.getOpenCLQueue, scanKernel, 1, null, global_work_size,
+    clEnqueueNDRangeKernel(context.getOpenCLQueue, scanKernel, 1, null, global_work_size,
       local_work_size, 0, null, waitEvents(0))
     clWaitForEvents(1, waitEvents)
 
@@ -611,25 +612,25 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
   def nonBlockingSelection(columnData: Array[Int], value: Int) = selection(columnData, value, false)
 
   private def createReadBuffer(size: Long): cl_mem = {
-    clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_ONLY, size, null, null)
+    clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_ONLY, size, null, null)
 
   }
 
   private def createReadWriteBuffer(size: Long): cl_mem = {
-    clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, size, null, null)
+    clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_WRITE, size, null, null)
   }
 
   private def createWriteBuffer(size: Long): cl_mem = {
-    clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_WRITE_ONLY, size, null, null)
+    clCreateBuffer(context.getOpenCLContext, CL_MEM_WRITE_ONLY, size, null, null)
   }
 
   private def hostToDeviceCopy(src: Pointer, dest: cl_mem, length: Long): Unit = {
-    clEnqueueWriteBuffer(openCLContext.getOpenCLQueue, dest, CL_TRUE, 0, length, src,
+    clEnqueueWriteBuffer(context.getOpenCLQueue, dest, CL_TRUE, 0, length, src,
       0, null, null)
   }
 
   private def deviceToHostCopy(src: cl_mem, dest: Pointer, length: Long, offset: Long = 0): Unit = {
-    clEnqueueReadBuffer(openCLContext.getOpenCLQueue, src, CL_TRUE, offset, length, dest, 0, null,
+    clEnqueueReadBuffer(context.getOpenCLQueue, src, CL_TRUE, offset, length, dest, 0, null,
       null)
   }
 
