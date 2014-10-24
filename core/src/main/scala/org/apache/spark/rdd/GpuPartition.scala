@@ -1,10 +1,18 @@
-package org.apache.spark.rdd;
+package org.apache.spark.rdd
+
+import org.apache.spark.Logging
+import org.apache.spark.scheduler.OpenCLContext
+import org.jocl.CL._
+import org.jocl._
+
+import scala.reflect.ClassTag
 
 class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val capacity: Int)
   extends Serializable with Logging {
 
   def MAX_STRING_SIZE: Int = 1 << 7
 
+  var openCLContext: OpenCLContext = null
   var size = 0
 
   val intData: Array[Array[Int]] = Array.ofDim[Int](columnTypes.filter(_ == "INT").length, capacity)
@@ -491,7 +499,7 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
     deviceToHostCopy(d_destColumn, Pointer.to(destColumn), Sizeof.cl_int * resultSize)
   }
 
-  def selection(columnData: Array[Int], isBlocking: Boolean = true): Array[Int] = {
+  def selection(columnData: Array[Int], value: Int, isBlocking: Boolean = true): Array[Int] = {
 
     val waitEvents = Array(new cl_event)
 
@@ -600,7 +608,7 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
     destColumn
   }
 
-  def nonBlockingSelection(columnData: Array[Int]) = selection(columnData, false)
+  def nonBlockingSelection(columnData: Array[Int], value: Int) = selection(columnData, value, false)
 
   private def createReadBuffer(size: Long): cl_mem = {
     clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_ONLY, size, null, null)

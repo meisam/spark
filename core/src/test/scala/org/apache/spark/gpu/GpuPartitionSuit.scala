@@ -27,7 +27,7 @@ import scala.language.existentials
 /**
  *
  */
-class RDDChunkSuit extends FunSuite with SharedSparkContext {
+class GpuPartitionSuit extends FunSuite with SharedSparkContext {
 
   val DEFAULT_CAPACITY = (1 << 10)
 
