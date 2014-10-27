@@ -1,13 +1,13 @@
 package org.apache.spark.rdd
 
-import java.nio.ByteBuffer
-
 import org.apache.spark.Logging
 import org.apache.spark.scheduler.OpenCLContext
 import org.jocl.CL._
 import org.jocl._
 
 import scala.reflect.ClassTag
+import scala.reflect.runtime.universe.TypeTag
+import scala.reflect.runtime.{universe => ru}
 
 class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val capacity: Int)
   extends Serializable with Logging {
@@ -343,11 +343,25 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
     deallocBlockSums
   }
 
-  def pointer[T: ClassTag](values: Array[T]): Pointer = {
-    val tag = scala.reflect.ClassTag[T]
-
-    match tag {
-      case scala.reflect.ClassTag[Int] =>      Pointer.to(values.asInstanceOf[Array[Int]])
+  def pointer[T: ClassTag : TypeTag](values: Array[T]): Pointer = {
+    val mirror = ru.runtimeMirror(getClass.getClassLoader)
+    val classSym = mirror.classSymbol(values.getClass.getComponentType)
+    val typeTag: ru.Type = classSym.toType
+    if (implicitly[TypeTag[T]].tpe =:= implicitly[TypeTag[Int]].tpe) {
+      Pointer.to(values.asInstanceOf[Array[Int]])
+    } else if (implicitly[TypeTag[T]].tpe =:= implicitly[TypeTag[Long]].tpe) {
+      Pointer.to(values.asInstanceOf[Array[Long]])
+    } else if (implicitly[TypeTag[T]].tpe =:= implicitly[TypeTag[Float]].tpe) {
+      Pointer.to(values.asInstanceOf[Array[Float]])
+    } else if (implicitly[TypeTag[T]].tpe =:= implicitly[TypeTag[Double]].tpe) {
+      Pointer.to(values.asInstanceOf[Array[Double]])
+    } else if (implicitly[TypeTag[T]].tpe =:= implicitly[TypeTag[Char]].tpe) {
+      Pointer.to(values.asInstanceOf[Array[Char]])
+    } else if (implicitly[TypeTag[T]].tpe =:= implicitly[TypeTag[Char]].tpe) {
+      Pointer.to(values.asInstanceOf[Array[Char]])
+    } else {
+      throw new NotImplementedError("Cannot create a pointer to an array of %s.".format(
+        implicitly[TypeTag[T]].tpe.toString))
     }
   }
 
