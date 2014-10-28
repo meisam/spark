@@ -525,6 +525,23 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
     deviceToHostCopy(d_destColumn, Pointer.to(destColumn), Sizeof.cl_int * resultSize)
   }
 
+  def getColumn[V: ClassTag](columnIndex: Int): Array[V] = {
+    val typeAwareColumnIndex = toTypeAwareColumnIndex(columnIndex)
+
+    val ct: ClassTag[V] = implicitly[ClassTag[V]]
+
+    ct match {
+      case ClassTag.Int => intData(typeAwareColumnIndex).asInstanceOf[Array[V]]
+      case ClassTag.Long => intData(typeAwareColumnIndex).asInstanceOf[Array[V]]
+      case ClassTag.Float => intData(typeAwareColumnIndex).asInstanceOf[Array[V]]
+      case ClassTag.Double => intData(typeAwareColumnIndex).asInstanceOf[Array[V]]
+      case ClassTag.Char => intData(typeAwareColumnIndex).asInstanceOf[Array[V]]
+      // TODO fix  the String type
+      // case implicitly[ClassTag[String]] => intData(typeAwareColumnIndex).asInstanceOf[Array[V]]
+      case _ => throw new NotImplementedError("Unknown type ")
+    }
+  }
+
   def selection(columnData: Array[Int], value: Int, isBlocking: Boolean = true): Array[Int] = {
 
     val waitEvents = Array(new cl_event)
