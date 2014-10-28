@@ -346,7 +346,6 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
   def pointer[T: ClassTag : TypeTag](values: Array[T]): Pointer = {
     val mirror = ru.runtimeMirror(getClass.getClassLoader)
     val classSym = mirror.classSymbol(values.getClass.getComponentType)
-    val typeTag: ru.Type = classSym.toType
     if (implicitly[TypeTag[T]].tpe =:= implicitly[TypeTag[Int]].tpe) {
       Pointer.to(values.asInstanceOf[Array[Int]])
     } else if (implicitly[TypeTag[T]].tpe =:= implicitly[TypeTag[Long]].tpe) {
@@ -365,8 +364,29 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
     }
   }
 
-  def compute[T: ClassTag](col: Array[T], tupleNum: Long, value: T, comp: Int, globalSize: Long,
-                           localSize: Long): Int = {
+  def pointer[T: ClassTag : TypeTag](value: T): Pointer = {
+    val mirror = ru.runtimeMirror(getClass.getClassLoader)
+    val classSym = mirror.classSymbol(value.getClass)
+    if (implicitly[TypeTag[T]].tpe =:= implicitly[TypeTag[Int]].tpe) {
+      Pointer.to(Array(value.asInstanceOf[Int]))
+    } else if (implicitly[TypeTag[T]].tpe =:= implicitly[TypeTag[Long]].tpe) {
+      Pointer.to(Array(value.asInstanceOf[Long]))
+    } else if (implicitly[TypeTag[T]].tpe =:= implicitly[TypeTag[Float]].tpe) {
+      Pointer.to(Array(value.asInstanceOf[Float]))
+    } else if (implicitly[TypeTag[T]].tpe =:= implicitly[TypeTag[Double]].tpe) {
+      Pointer.to(Array(value.asInstanceOf[Double]))
+    } else if (implicitly[TypeTag[T]].tpe =:= implicitly[TypeTag[Char]].tpe) {
+      Pointer.to(Array(value.asInstanceOf[Char]))
+    } else if (implicitly[TypeTag[T]].tpe =:= implicitly[TypeTag[Char]].tpe) {
+      Pointer.to(Array(value.asInstanceOf[Char]))
+    } else {
+      throw new NotImplementedError("Cannot create a pointer to an array of %s.".format(
+        implicitly[TypeTag[T]].tpe.toString))
+    }
+  }
+
+  def compute[T: ClassTag : TypeTag](col: Array[T], tupleNum: Long, value: T, comp: Int, globalSize: Long,
+                                     localSize: Long): Int = {
     if (context == null) {
       context = new OpenCLContext
       context.initOpenCL("/org/apache/spark/gpu/kernel.cl")
@@ -396,7 +416,7 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
     }
     clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(gpuCol))
     clSetKernelArg(kernel, 1, Sizeof.cl_long, Pointer.to(Array[Long](tupleNum)))
-    clSetKernelArg(kernel, 2, Sizeof.cl_int, Pointer.to(Array[Int](value)))
+    clSetKernelArg(kernel, 2, Sizeof.cl_int, pointer( val ue) )
     clSetKernelArg(kernel, 3, Sizeof.cl_mem, Pointer.to(gpuFilter))
     val global_work_size = Array[Long](globalSize)
     val local_work_size = Array[Long](localSize)
