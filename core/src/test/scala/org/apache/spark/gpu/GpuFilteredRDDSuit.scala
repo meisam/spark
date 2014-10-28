@@ -195,23 +195,20 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
 
     val count = 10
     val sourceCol = (0 until count).toArray
-    val filter = sourceCol.map(_ % 2)
+    val filter = sourceCol.map(x => (1 + x ) % 2 )
 
-    val prefixSums = Array(0, 1, 1, 2, 2, 3, 3, 4, 4, 5)
+    val prefixSums = Array(1, 1, 2, 2, 3, 3, 4, 4, 5, 5)
     val resultSize = prefixSums(prefixSums.length - 1)
     val actualResults = Array.ofDim[Int](resultSize)
 
-    val iter = new GpuFilteredPartitionIterator[(Int, Int)](sourceCol.zipWithIndex.iterator,
-      Array("INT", "INT"), openCLContext, 0, 0, 1)
-    assert(iter.hasNext)
-    val chunk = iter.next()
-    //    assert(!iter.hasNext)
+    val chunk = new GpuPartition[(Int, Int)](Array("INT", "INT"),DEFAULT_CAPACITY)
+    chunk.context = openCLContext
+    chunk.fill(sourceCol.zipWithIndex.iterator)
 
     assert(chunk.intData(0) !== null)
-    assert(chunk.intData(0).length === sourceCol.filter(_ == 1).length)
 
     val expectedResults = (0 until count / 2).map(_ * 2).toArray
-    iter.scan(sourceCol, filter, prefixSums, actualResults, count)
+    chunk.scan(sourceCol, filter, prefixSums, actualResults, count)
 
     assert(actualResults !== null)
     assert(actualResults.length === expectedResults.length)
