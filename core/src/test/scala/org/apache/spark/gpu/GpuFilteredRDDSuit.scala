@@ -152,10 +152,10 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
     val testData = (0 until TEST_DATA_SIZE).map(_ % 3).map(_ % 2).zipWithIndex
 
     val chunk = new GpuPartition[(Int, Int)](Array("INT", "INT"), DEFAULT_CAPACITY)
+    chunk.context = openCLContext
     chunk.fill(testData.toIterator)
 
     assert(chunk.intData(0) !== null)
-    assert(chunk.intData(0).length === testData.map(_._1).filter(_ == 1).length)
 
     val expectedResults = (0 until TEST_DATA_SIZE).map(x => (2 + x) / 3).toArray
     val actualResults = new Array[Int](chunk.intData(0).length)
@@ -173,20 +173,15 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
     val count = 10
     val testData = (0 until count).map(_ % 2).zipWithIndex
 
-    val iter = new GpuFilteredPartitionIterator[(Int, Int)](testData.iterator, Array("INT",
-      "INT"), openCLContext, 0, 0, 1, DEFAULT_CAPACITY)
-    assert(iter.hasNext)
     val chunk = new GpuPartition[(Int, Int)](Array("INT", "INT"), DEFAULT_CAPACITY)
 
-    chunk.selection()
-    assert(!iter.hasNext)
-
+    chunk.context = openCLContext
+    chunk.fill(testData.toIterator)
     assert(chunk.intData(0) !== null)
-    assert(chunk.intData(0).length === testData.map(_._1).filter(_ == 1).length)
 
     val expectedResults = Array(0, 1, 1, 2, 2, 3, 3, 4, 4, 5)
     val actualResults = new Array[Int](chunk.intData(0).length)
-    iter.prefixSum(chunk.intData(0), actualResults)
+    chunk.prefixSum(chunk.intData(0), actualResults)
 
     assert(actualResults !== null)
     assert(actualResults.length !== expectedResults.length)
