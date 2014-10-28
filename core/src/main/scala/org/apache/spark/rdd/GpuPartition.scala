@@ -703,3 +703,17 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
   var resCount = 0
 
 }
+
+class ComparissonOperation extends Enumeration {
+
+}
+
+object ComparissonOperation extends Enumeration {
+  type WeekDay = Value
+  val __< = Value("<")
+  val __<= = Value("<=")
+  val __> = Value(">")
+  val __>= = Value(">=")
+  val __= = Value("=")
+  val __!= = Value("!=")
+}
