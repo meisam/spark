@@ -356,7 +356,7 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
       Pointer.to(values.asInstanceOf[Array[Double]])
     } else if (implicitly[TypeTag[T]].tpe =:= implicitly[TypeTag[Char]].tpe) {
       Pointer.to(values.asInstanceOf[Array[Char]])
-    } else if (implicitly[TypeTag[T]].tpe =:= implicitly[TypeTag[Char]].tpe) {
+    } else if (implicitly[TypeTag[T]].tpe =:= implicitly[TypeTag[Char]].tpe) { //TODO fix Strings
       Pointer.to(values.asInstanceOf[Array[Char]])
     } else {
       throw new NotImplementedError("Cannot create a pointer to an array of %s.".format(
