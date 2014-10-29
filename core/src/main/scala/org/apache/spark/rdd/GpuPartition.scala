@@ -9,12 +9,12 @@ import scala.reflect.ClassTag
 import scala.reflect.runtime.universe.TypeTag
 import scala.reflect.runtime.{universe => ru}
 
-class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val capacity: Int)
+class GpuPartition[T <: Product : ClassTag]
+(context: OpenCLContext, columnTypes: Array[String], val capacity: Int)
   extends Serializable with Logging {
 
   def MAX_STRING_SIZE: Int = 1 << 7
 
-  var context: OpenCLContext = null
   var size = 0
 
   val intData: Array[Array[Int]] = Array.ofDim[Int](columnTypes.filter(_ == "INT").length, capacity)
@@ -361,7 +361,8 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
       Pointer.to(values.asInstanceOf[Array[Double]])
     } else if (implicitly[TypeTag[T]].tpe =:= implicitly[TypeTag[Char]].tpe) {
       Pointer.to(values.asInstanceOf[Array[Char]])
-    } else if (implicitly[TypeTag[T]].tpe =:= implicitly[TypeTag[Char]].tpe) { //TODO fix Strings
+    } else if (implicitly[TypeTag[T]].tpe =:= implicitly[TypeTag[Char]].tpe) {
+      //TODO fix Strings
       Pointer.to(values.asInstanceOf[Array[Char]])
     } else {
       throw new NotImplementedError("Cannot create a pointer to an array of %s.".format(
@@ -370,10 +371,6 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
   }
 
   def compute[T: ClassTag : TypeTag](col: Array[T], tupleNum: Long, value: T, comp: Int): Int = {
-    if (context == null) {
-      context = new OpenCLContext
-      context.initOpenCL("/org/apache/spark/gpu/kernel.cl")
-    }
     val start: Long = System.nanoTime
     gpuCol = clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * tupleNum, null, null)
 
