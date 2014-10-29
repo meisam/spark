@@ -1,5 +1,7 @@
 package org.apache.spark.rdd
 
+import org.apache.spark.scheduler.OpenCLContext
+
 import scala.reflect.ClassTag
 
 class GpuPartitionIterator[T <: Product : ClassTag]
@@ -12,7 +14,11 @@ class GpuPartitionIterator[T <: Product : ClassTag]
 
   protected var currentPosition: Int = -1
 
-  protected val currentChunk: GpuPartition[T] = new GpuPartition[T](columnTypes, chunkCapacity)
+  protected val context: OpenCLContext = new OpenCLContext
+
+  context.initOpenCL("/org/apache/spark/gpu/kernel.cl")
+
+  protected val currentChunk: GpuPartition[T] = new GpuPartition[T](context, columnTypes, chunkCapacity)
 
   override def next(): T = {
     guaranteeFill
