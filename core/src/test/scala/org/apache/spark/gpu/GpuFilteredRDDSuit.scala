@@ -195,13 +195,13 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
 
     val count = 10
     val sourceCol = (0 until count).toArray
-    val filter = sourceCol.map(x => (1 + x ) % 2 )
+    val filter = sourceCol.map(x => (1 + x) % 2)
 
     val prefixSums = Array(1, 1, 2, 2, 3, 3, 4, 4, 5, 5)
     val resultSize = prefixSums(prefixSums.length - 1)
     val actualResults = Array.ofDim[Int](resultSize)
 
-    val chunk = new GpuPartition[(Int, Int)](Array("INT", "INT"),DEFAULT_CAPACITY)
+    val chunk = new GpuPartition[(Int, Int)](Array("INT", "INT"), DEFAULT_CAPACITY)
     chunk.context = openCLContext
     chunk.fill(sourceCol.zipWithIndex.iterator)
 
@@ -223,7 +223,10 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
     val testData: IndexedSeq[(Int, Int)] = (0 to 10).reverse.zipWithIndex
 
     val chunk = new GpuPartition[(Int, Int)](Array("INT", "INT"), DEFAULT_CAPACITY)
-    chunk.selection()
+    chunk.context = openCLContext
+    chunk.fill(testData.toIterator)
+    chunk.filter(1, 1, ComparisonOperation.<)
+
     (0 until chunk.capacity).foreach(i =>
       if (i <= 10) {
         assert(chunk.intData(0)(i) === (10 - i), "values do not match")
