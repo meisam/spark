@@ -528,9 +528,7 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
   def getColumn[V: ClassTag](columnIndex: Int): Array[V] = {
     val typeAwareColumnIndex = toTypeAwareColumnIndex(columnIndex)
 
-    val ct: ClassTag[V] = implicitly[ClassTag[V]]
-
-    ct match {
+    implicitly[ClassTag[V]] match {
       case ClassTag.Int => intData(typeAwareColumnIndex).asInstanceOf[Array[V]]
       case ClassTag.Long => intData(typeAwareColumnIndex).asInstanceOf[Array[V]]
       case ClassTag.Float => intData(typeAwareColumnIndex).asInstanceOf[Array[V]]
