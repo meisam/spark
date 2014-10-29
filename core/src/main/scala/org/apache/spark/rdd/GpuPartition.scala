@@ -585,13 +585,8 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
     // using double buffers to avoid copying data
     val prefixSumBuffer1 = createReadWriteBuffer(Sizeof.cl_int * globalSize)
 
-    val prefixSumBuffer2 = createReadWriteBuffer(Sizeof.cl_int * globalSize)
-    val copyKernel = clCreateKernel(context.getOpenCLProgram, "copy_buffer", null)
-    clSetKernelArg(copyKernel, 0, Sizeof.cl_mem, Pointer.to(filterBuffer))
-    clSetKernelArg(copyKernel, 1, Sizeof.cl_mem, Pointer.to(prefixSumBuffer1))
-    clEnqueueNDRangeKernel(context.getOpenCLQueue, copyKernel, 1, null, global_work_size,
-      local_work_size, 0, null, waitEvents(0))
-    clWaitForEvents(1, waitEvents)
+  def filter[V: ClassTag : TypeTag](columnIndex: Int, value: V, operation: ComparisonOperation.Value):
+  Int = {
 
     val prefixSumKernel = clCreateKernel(context.getOpenCLProgram, "prefix_sum_stage", null)
 
@@ -815,16 +810,16 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
 
 }
 
-class ComparissonOperation extends Enumeration {
+class ComparisonOperation extends Enumeration {
 
 }
 
-object ComparissonOperation extends Enumeration {
+object ComparisonOperation extends Enumeration {
   type WeekDay = Value
-  val __< = Value("<")
-  val __<= = Value("<=")
-  val __> = Value(">")
-  val __>= = Value(">=")
-  val __= = Value("=")
-  val __!= = Value("!=")
+  val < = Value("lth")
+  val <= = Value("leq")
+  val > = Value("gth")
+  val >= = Value("geq")
+  val == = Value("eq")
+  val != = Value("neq")
 }
