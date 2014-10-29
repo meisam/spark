@@ -26,6 +26,12 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
   val stringData = Array.ofDim[Char](columnTypes.filter(_ == "STRING").length
     , capacity * MAX_STRING_SIZE)
 
+  def inferBestWorkGroupSize(): Unit = {
+    this.localSize = math.min(BLOCK_SIZE, size)
+    this.globalSize = localSize * math.min(1 + (size - 1) / localSize, BLOCK_SIZE)
+  }
+
+
   def fill(iter: Iterator[T]): Unit = {
     size = 0
     val values: Iterator[T] = iter.take(capacity)
