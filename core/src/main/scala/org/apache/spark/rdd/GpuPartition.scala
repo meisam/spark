@@ -542,23 +542,17 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
     }
   }
 
-  def filter[V: ClassTag : TypeTag](columnIndex: Int, value: V, operation: ComparissonOperation):
-  Array[Int] = {
-
-    val waitEvents = Array(new cl_event)
-
-
-    val columnData: Array[V] = getColumn[V](columnIndex)
-    val globalSize = POW_2_S.filter(_ >= columnData.length).head
-
-    val localSize = Math.min(globalSize, 256)
-    val global_work_size = Array[Long](globalSize)
-
-    val local_work_size = Array[Long](localSize)
-    if (context == null) {
-      context = new OpenCLContext
-      context.initOpenCL("/org/apache/spark/gpu/kernel.cl")
+  def baseSize[V: ClassTag](): Int = {
+    implicitly[ClassTag[V]] match {
+      case ClassTag.Int => Sizeof.cl_int
+      case ClassTag.Long => Sizeof.cl_long
+      case ClassTag.Float => Sizeof.cl_float
+      case ClassTag.Double => Sizeof.cl_double
+      case ClassTag.Char => Sizeof.cl_char
+      // TODO fix  the String type
+      case _ => throw new NotImplementedError("Unknown type %s".format(implicitly[ClassTag[V]]))
     }
+  }
 
     val endInitTime = System.nanoTime
 
