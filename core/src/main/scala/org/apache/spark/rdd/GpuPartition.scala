@@ -760,10 +760,10 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
   val BLOCK_SIZE: Int = 256
   val NUM_BANKS: Int = 16
   val LOG_NUM_BANKS: Int = 4
+
   var g_scanBlockSums: Array[cl_mem] = null
   var g_numEltsAllocated: Int = 0
   var g_numLevelsAllocated: Int = 0
-
   var gpuCol: cl_mem = null
   var gpuFilter: cl_mem = null
   var gpuCount: cl_mem = null
