@@ -1,10 +1,12 @@
 package org.apache.spark.rdd
 
+import org.apache.spark.scheduler.OpenCLContext
+
 import scala.reflect.ClassTag
 
 class GpuFilteredPartition[T <: Product : ClassTag]
-(columnTypes: Array[String], colIndex: Int, operation: Int, value: Int,
- capacity: Int) extends GpuPartition[T](columnTypes, capacity) {
+(context: OpenCLContext, columnTypes: Array[String], colIndex: Int, operation: Int, value: Int,
+ capacity: Int) extends GpuPartition[T](context, columnTypes, capacity) {
   override def fill(iter: Iterator[T]): Unit = {
     val startTransformDataTime = System.nanoTime
     val endTransformDataTime = System.nanoTime

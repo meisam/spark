@@ -18,7 +18,7 @@
 package org.apache.spark.gpu
 
 import org.apache.spark.SharedSparkContext
-import org.apache.spark.rdd.{GpuFilteredPartitionIterator, GpuFilteredRDD, GpuPartition}
+import org.apache.spark.rdd.{ComparisonOperation, GpuPartition}
 import org.apache.spark.scheduler.OpenCLContext
 import org.jocl.CL._
 import org.jocl.{Pointer, Sizeof}
@@ -151,8 +151,7 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
     // the prefix sum should be (0,1,1,1,2,2,2,3,3,3,4,4,4,5,5,5,6,6,6,...)
     val testData = (0 until TEST_DATA_SIZE).map(_ % 3).map(_ % 2).zipWithIndex
 
-    val chunk = new GpuPartition[(Int, Int)](Array("INT", "INT"), DEFAULT_CAPACITY)
-    chunk.context = openCLContext
+    val chunk = new GpuPartition[(Int, Int)](openCLContext, Array("INT", "INT"), DEFAULT_CAPACITY)
     chunk.fill(testData.toIterator)
 
     assert(chunk.intData(0) !== null)
@@ -173,9 +172,8 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
     val count = 10
     val testData = (0 until count).map(_ % 2).zipWithIndex
 
-    val chunk = new GpuPartition[(Int, Int)](Array("INT", "INT"), DEFAULT_CAPACITY)
+    val chunk = new GpuPartition[(Int, Int)](openCLContext, Array("INT", "INT"), DEFAULT_CAPACITY)
 
-    chunk.context = openCLContext
     chunk.fill(testData.toIterator)
     assert(chunk.intData(0) !== null)
 
@@ -201,8 +199,7 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
     val resultSize = prefixSums(prefixSums.length - 1)
     val actualResults = Array.ofDim[Int](resultSize)
 
-    val chunk = new GpuPartition[(Int, Int)](Array("INT", "INT"), DEFAULT_CAPACITY)
-    chunk.context = openCLContext
+    val chunk = new GpuPartition[(Int, Int)](openCLContext,Array("INT", "INT"), DEFAULT_CAPACITY)
     chunk.fill(sourceCol.zipWithIndex.iterator)
 
     assert(chunk.intData(0) !== null)
@@ -222,8 +219,7 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
     // This crashes  the OpenCL device
     val testData: IndexedSeq[(Int, Int)] = (0 to 10).reverse.zipWithIndex
 
-    val chunk = new GpuPartition[(Int, Int)](Array("INT", "INT"), DEFAULT_CAPACITY)
-    chunk.context = openCLContext
+    val chunk = new GpuPartition[(Int, Int)](openCLContext, Array("INT", "INT"), DEFAULT_CAPACITY)
     chunk.fill(testData.toIterator)
     chunk.filter(1, 1, ComparisonOperation.<)
 
@@ -238,18 +234,15 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
     )
   }
 
-  test("GpuFilterdRDD(Int, Int) test") {
-    val testData: IndexedSeq[(Int, Int)] = (0 to 10).zipWithIndex
-
-    val rdd = sc.parallelize(testData)
-    val gpuRdd = rdd.toGpuFilterRDD(Array("INT", "INT"), 0, 0, 1)
-    val collectedChunks: Array[GpuPartition[Product]] = gpuRdd.collect()
-    assert(collectedChunks.length === 1)
-    val chunk = collectedChunks(0)
-    assert(chunk.size === 1)
-    assert(chunk.intData(0)(0) === 1, "values do not match")
-    assert(chunk.intData(1)(1) === 1, "values do not match")
-  }
+      val rdd = sc.parallelize(testData)
+      val gpuRdd = rdd.toGpuFilterRDD(Array("INT", "INT"), 0, 0, 1)
+      val collectedChunks: Array[GpuPartition[Product]] = gpuRdd.collect()
+      assert(collectedChunks.length === 1)
+      val chunk = collectedChunks(0)
+      assert(chunk.size === 1)
+      assert(chunk.intData(0)(0) === 1, "values do not match")
+      assert(chunk.intData(1)(1) === 1, "values do not match")
+    }
 
   test("compute") {
     val testData: IndexedSeq[(Int, Int)] = (0 to 10).zipWithIndex
