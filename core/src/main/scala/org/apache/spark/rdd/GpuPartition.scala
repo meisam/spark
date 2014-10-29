@@ -554,30 +554,17 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
     }
   }
 
-    val endInitTime = System.nanoTime
-
-    val startTransferTime = System.nanoTime
-    val columnBuffer = createReadBuffer(Sizeof.cl_int * globalSize)
-    hostToDeviceCopy(pointer(columnData), columnBuffer, Sizeof.cl_int * columnData.length)
-
-    val endTransferTime = System.nanoTime
-
-    val startFilterTime = System.nanoTime
-    val filterBuffer = clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
-
-    val filterKernel = clCreateKernel(context.getOpenCLProgram, "genScanFilter_init_int_eq", null)
-    clSetKernelArg(filterKernel, 0, Sizeof.cl_mem, Pointer.to(columnBuffer))
-    clSetKernelArg(filterKernel, 1, Sizeof.cl_long, Pointer.to(Array[Long](columnData.length.toLong)))
-    clSetKernelArg(filterKernel, 2, Sizeof.cl_int, Pointer.to(Array[Int](value)))
-    clSetKernelArg(filterKernel, 3, Sizeof.cl_mem, Pointer.to(filterBuffer))
-    clEnqueueNDRangeKernel(context.getOpenCLQueue, filterKernel, 1, null, global_work_size,
-      local_work_size, 0, null, waitEvents(0))
-    clWaitForEvents(1, waitEvents)
-
-    val endFilterTime = System.nanoTime
-    val startPrefixSumTime = System.nanoTime
-    // using double buffers to avoid copying data
-    val prefixSumBuffer1 = createReadWriteBuffer(Sizeof.cl_int * globalSize)
+  def typeNameString[V: ClassTag](): String = {
+    implicitly[ClassTag[V]] match {
+      case ClassTag.Int => "int"
+      case ClassTag.Long => "long"
+      case ClassTag.Float => "float"
+      case ClassTag.Double => "double"
+      case ClassTag.Char => "char"
+      // TODO fix  the String type
+      case _ => throw new NotImplementedError("Unknown type ")
+    }
+  }
 
   def filter[V: ClassTag : TypeTag](columnIndex: Int, value: V, operation: ComparisonOperation.Value):
   Int = {
