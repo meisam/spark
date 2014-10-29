@@ -428,15 +428,15 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
     val scanCol: cl_mem = clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_WRITE,
       Sizeof.cl_int * tupleNum, null, null)
 
-    hostToDeviceCopy(Pointer.to(inCol), scanCol, Sizeof.cl_int * tupleNum)
+    hostToDeviceCopy[Int](Pointer.to(inCol), scanCol, tupleNum)
     val result: cl_mem = clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_WRITE,
       Sizeof.cl_int * outSize, null, null)
 
     val psumVals = new Array[Int](globalSize)
-    deviceToHostCopy(gpuPsum, Pointer.to(psumVals), globalSize * Sizeof.cl_int)
+    deviceToHostCopy[Int](gpuPsum, Pointer.to(psumVals), globalSize)
 
     val filterVals = new Array[Int](tupleNum)
-    deviceToHostCopy(gpuFilter, Pointer.to(filterVals), tupleNum * Sizeof.cl_int)
+    deviceToHostCopy[Int](gpuFilter, Pointer.to(filterVals), tupleNum)
 
     val kernel = clCreateKernel(context.getOpenCLProgram, "scan_int", null)
     clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(scanCol))
@@ -466,9 +466,9 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
     val local_work_size = Array[Long](localSize)
 
     // using double buffers to avoid copying data
-    val buffer1 = createReadWriteBuffer(Sizeof.cl_int * globalSize)
-    val buffer2 = createReadWriteBuffer(Sizeof.cl_int * globalSize)
-    hostToDeviceCopy(Pointer.to(counts), buffer1, Sizeof.cl_int * counts.length)
+    val buffer1 = createReadWriteBuffer[Int](globalSize.toInt)
+    val buffer2 = createReadWriteBuffer[Int](globalSize.toInt)
+    hostToDeviceCopy[Int](Pointer.to(counts), buffer1, counts.length)
     val kernel = clCreateKernel(context.getOpenCLProgram, "prefix_sum_stage", null)
     var stride: Int = 0
 
@@ -483,7 +483,7 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
       stride = if (stride == 0) 1 else stride << 1
     }
     val results = if (switchedBuffers) buffer1 else buffer2
-    deviceToHostCopy(results, Pointer.to(prefixSums), Sizeof.cl_int * globalSize)
+    deviceToHostCopy[Int](results, Pointer.to(prefixSums), globalSize)
   }
 
   def scan(sourceCol: Array[Int], filter: Array[Int], prefixSums: Array[Int], destColumn: Array[Int], count: Int): Unit = {
@@ -504,14 +504,14 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
     val local_work_size = Array[Long](localSize)
     val resultSize = destColumn.length
 
-    val d_sourceColumns = createReadBuffer(Sizeof.cl_int * globalSize)
-    val d_selectionFilter = createReadBuffer(Sizeof.cl_int * globalSize)
-    val d_prefixSums = createReadBuffer(Sizeof.cl_int * globalSize)
-    val d_destColumn = createReadWriteBuffer(Sizeof.cl_int * globalSize)
+    val d_sourceColumns = createReadBuffer[Int](globalSize.toInt)
+    val d_selectionFilter = createReadBuffer[Int](globalSize.toInt)
+    val d_prefixSums = createReadBuffer[Int](globalSize.toInt)
+    val d_destColumn = createReadWriteBuffer[Int](globalSize.toInt)
 
-    hostToDeviceCopy(Pointer.to(sourceCol), d_sourceColumns, Sizeof.cl_int * count)
-    hostToDeviceCopy(Pointer.to(filter), d_selectionFilter, Sizeof.cl_int * count)
-    hostToDeviceCopy(Pointer.to(prefixSums), d_prefixSums, Sizeof.cl_int * count)
+    hostToDeviceCopy[Int](Pointer.to(sourceCol), d_sourceColumns, count)
+    hostToDeviceCopy[Int](Pointer.to(filter), d_selectionFilter, count)
+    hostToDeviceCopy[Int](Pointer.to(prefixSums), d_prefixSums, count)
 
     val kernel = clCreateKernel(context.getOpenCLProgram, "scan", null)
 
@@ -522,7 +522,7 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
     clSetKernelArg(kernel, 4, Sizeof.cl_int, Pointer.to(Array[Int](count)))
     clEnqueueNDRangeKernel(context.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
 
-    deviceToHostCopy(d_destColumn, Pointer.to(destColumn), Sizeof.cl_int * resultSize)
+    deviceToHostCopy[Int](d_destColumn, Pointer.to(destColumn), resultSize)
   }
 
   def getColumn[V: ClassTag](columnIndex: Int): Array[V] = {
@@ -630,11 +630,9 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
 
     val endScanTime = System.nanoTime
 
-    val startCopyResultTime = System.nanoTime
-    val destColumn = new Array[Int](resultSize.head)
-    deviceToHostCopy(d_destColumn, Pointer.to(destColumn), Sizeof.cl_int * resultSize.head)
+    deviceToHostCopy[Int](gpuCount, pointer(tmp1), 1)
 
-    val endCopyResultTime = System.nanoTime
+    deviceToHostCopy[Int](gpuPsum, pointer(tmp2), 1)
 
     println("Times (%12s | %12s | %12s | %12s | %12s | %12s)".format(
       "Transfer2GPU", "Filter", "PrefixSum", "FetchSize", "LastScan", "Transfer2Host"))
@@ -667,8 +665,8 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
     val endInitTime = System.nanoTime
 
     val startTransferTime = System.nanoTime
-    val columnBuffer = createReadBuffer(Sizeof.cl_int * globalSize)
-    hostToDeviceCopy(Pointer.to(columnData), columnBuffer, Sizeof.cl_int * columnData.length)
+    val columnBuffer = createReadBuffer[Int](globalSize.toInt)
+    hostToDeviceCopy[Int](Pointer.to(columnData), columnBuffer, columnData.length)
 
     val endTransferTime = System.nanoTime
 
@@ -687,9 +685,9 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
     val endFilterTime = System.nanoTime
     val startPrefixSumTime = System.nanoTime
     // using double buffers to avoid copying data
-    val prefixSumBuffer1 = createReadWriteBuffer(Sizeof.cl_int * globalSize)
+    val prefixSumBuffer1 = createReadWriteBuffer[Int](globalSize.toInt)
 
-    val prefixSumBuffer2 = createReadWriteBuffer(Sizeof.cl_int * globalSize)
+    val prefixSumBuffer2 = createReadWriteBuffer[Int](globalSize.toInt)
     val copyKernel = clCreateKernel(context.getOpenCLProgram, "copy_buffer", null)
     clSetKernelArg(copyKernel, 0, Sizeof.cl_mem, Pointer.to(filterBuffer))
     clSetKernelArg(copyKernel, 1, Sizeof.cl_mem, Pointer.to(prefixSumBuffer1))
@@ -719,7 +717,7 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
     val startFetchSizeTime = System.nanoTime
     val resultSize = Array(columnData.length)
 
-    deviceToHostCopy(prefixSumBuffer, Pointer.to(resultSize), columnData.length, 0)
+    deviceToHostCopy[Int](prefixSumBuffer, Pointer.to(resultSize), columnData.length, 0)
     val endFetchSizeTime = System.nanoTime
 
     val d_destColumn = clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_WRITE,
@@ -741,7 +739,7 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
 
     val startCopyResultTime = System.nanoTime
     val destColumn = new Array[Int](resultSize.head)
-    deviceToHostCopy(d_destColumn, Pointer.to(destColumn), Sizeof.cl_int * resultSize.head)
+    deviceToHostCopy[Int](d_destColumn, Pointer.to(destColumn), resultSize.head)
 
     val endCopyResultTime = System.nanoTime
 
@@ -759,12 +757,13 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
 
   def nonBlockingSelection(columnData: Array[Int], value: Int) = selection(columnData, value, false)
 
-  private def createReadBuffer(size: Long): cl_mem = {
+  private def createReadBuffer[V: ClassTag](elementCount: Int): cl_mem = {
+    val size = elementCount * baseSize[V]
     clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_ONLY, size, null, null)
-
   }
 
-  private def createReadWriteBuffer(size: Long): cl_mem = {
+  private def createReadWriteBuffer[V: ClassTag](elementCount: Int): cl_mem = {
+    val size = elementCount * baseSize[V]
     clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_WRITE, size, null, null)
   }
 
@@ -772,12 +771,14 @@ class GpuPartition[T <: Product : ClassTag](val columnTypes: Array[String], val 
     clCreateBuffer(context.getOpenCLContext, CL_MEM_WRITE_ONLY, size, null, null)
   }
 
-  private def hostToDeviceCopy(src: Pointer, dest: cl_mem, length: Long): Unit = {
+  private def hostToDeviceCopy[V: ClassTag](src: Pointer, dest: cl_mem, elementCount: Long): Unit = {
+    val length = elementCount * baseSize[V]
     clEnqueueWriteBuffer(context.getOpenCLQueue, dest, CL_TRUE, 0, length, src,
       0, null, null)
   }
 
-  private def deviceToHostCopy(src: cl_mem, dest: Pointer, length: Long, offset: Long = 0): Unit = {
+  private def deviceToHostCopy[V: ClassTag](src: cl_mem, dest: Pointer, elementCount: Long, offset: Long = 0): Unit = {
+    val length = elementCount * baseSize[V]
     clEnqueueReadBuffer(context.getOpenCLQueue, src, CL_TRUE, offset, length, dest, 0, null,
       null)
   }
