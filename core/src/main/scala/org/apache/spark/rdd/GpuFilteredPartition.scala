@@ -14,10 +14,7 @@ class GpuFilteredPartition[T <: Product : ClassTag]
     val startSelectionTotalTime = System.nanoTime
 
     if (columnTypes(colIndex) == "INT") {
-      localSize = math.min(256, intData(colIndex).length)
-      globalSize = localSize * math.min(1 + (size - 1) / localSize, 2048)
-
-      val resultSize = compute(intData(colIndex), size.toLong, value, operation, globalSize, localSize)
+      val resultSize = compute(intData(colIndex), size.toLong, value, operation)
 
       size = resultSize
       intData.zipWithIndex.filter(_._1 != null).foreach({
