@@ -530,10 +530,11 @@ class GpuPartition[T <: Product : ClassTag]
 
     implicitly[ClassTag[V]] match {
       case ClassTag.Int => intData(typeAwareColumnIndex).asInstanceOf[Array[V]]
-      case ClassTag.Long => intData(typeAwareColumnIndex).asInstanceOf[Array[V]]
-      case ClassTag.Float => intData(typeAwareColumnIndex).asInstanceOf[Array[V]]
-      case ClassTag.Double => intData(typeAwareColumnIndex).asInstanceOf[Array[V]]
-      case ClassTag.Char => intData(typeAwareColumnIndex).asInstanceOf[Array[V]]
+      case ClassTag.Long => longData(typeAwareColumnIndex).asInstanceOf[Array[V]]
+      case ClassTag.Float => floatData(typeAwareColumnIndex).asInstanceOf[Array[V]]
+      case ClassTag.Double => doubleData(typeAwareColumnIndex).asInstanceOf[Array[V]]
+      case ClassTag.Boolean => booleanData(typeAwareColumnIndex).asInstanceOf[Array[V]]
+      case ClassTag.Char => charData(typeAwareColumnIndex).asInstanceOf[Array[V]]
       // TODO fix  the String type
       // case implicitly[ClassTag[String]] => intData(typeAwareColumnIndex).asInstanceOf[Array[V]]
       case _ => throw new NotImplementedError("Unknown type ")
