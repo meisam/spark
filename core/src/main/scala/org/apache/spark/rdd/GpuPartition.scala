@@ -485,7 +485,7 @@ class GpuPartition[T <: Product : ClassTag]
     resCount
   }
 
-  private def createReadBuffer[V: ClassTag](elementCount: Int): cl_mem = {
+  protected def createReadBuffer[V: ClassTag](elementCount: Int): cl_mem = {
     val size = elementCount * baseSize[V]
     clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_ONLY, size, null, null)
   }
