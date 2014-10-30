@@ -13,4 +13,22 @@ U: ClassTag : TypeTag]
  joinColIndexLeft: Int, joinColIndexRight: Int, capacity: Int)
   extends GpuPartition[T](context, columnTypes, capacity) {
 
+  def buildHashTable() = {
+  }
+
+  def joinOnGpu(): Int = {
+    -1
+  }
+
+  def join(): Int = {
+    buildHashTable
+
+    joinOnGpu
+  }
+
+  override def fill(iter: Iterator[T]): Unit = {
+    super.fill(iter)
+    val resultSize = join
+  }
+
 }
