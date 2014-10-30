@@ -545,7 +545,6 @@ class ComparisonOperation extends Enumeration {
 }
 
 object ComparisonOperation extends Enumeration {
-  type WeekDay = Value
   val < = Value("lth")
   val <= = Value("leq")
   val > = Value("gth")
