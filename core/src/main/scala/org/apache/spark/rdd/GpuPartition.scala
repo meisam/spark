@@ -27,7 +27,7 @@ class GpuPartition[T <: Product : ClassTag]
     , capacity * MAX_STRING_SIZE)
 
   def inferBestWorkGroupSize(): Unit = {
-    this.localSize = math.min(BLOCK_SIZE, size)
+    this.localSize = if (size == 0) 1 else math.min(BLOCK_SIZE, size)
     this.globalSize = localSize * math.min(1 + (size - 1) / localSize, BLOCK_SIZE)
   }
 
