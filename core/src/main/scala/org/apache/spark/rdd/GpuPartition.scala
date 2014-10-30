@@ -432,45 +432,6 @@ class GpuPartition[T <: Product : ClassTag]
     deviceToHostCopy[Int](results, Pointer.to(prefixSums), globalSize)
   }
 
-  def scan(sourceCol: Array[Int], filter: Array[Int], prefixSums: Array[Int], destColumn: Array[Int], count: Int): Unit = {
-    if (sourceCol.length != filter.length
-      || filter.length != prefixSums.length) {
-      throw new IllegalArgumentException("All arrays should have the same size(%,12d, %,12d, %,12d, %,12d)".
-        format(sourceCol.length, filter.length, prefixSums.length, destColumn.length))
-    }
-
-    if (prefixSums.reverse.head != destColumn.length) {
-      throw new IllegalArgumentException(("Size of dest coulumn is not the same as number of " +
-        "filtered columns (%,12d, %,12d)").format(prefixSums.reverse.head, destColumn.length))
-    }
-
-    val globalSize = POW_2_S.filter(_ >= count).head
-    val localSize = Math.min(globalSize, BLOCK_SIZE)
-    val global_work_size = Array[Long](globalSize)
-    val local_work_size = Array[Long](localSize)
-    val resultSize = destColumn.length
-
-    val d_sourceColumns = createReadBuffer[Int](globalSize.toInt)
-    val d_selectionFilter = createReadBuffer[Int](globalSize.toInt)
-    val d_prefixSums = createReadBuffer[Int](globalSize.toInt)
-    val d_destColumn = createReadWriteBuffer[Int](globalSize.toInt)
-
-    hostToDeviceCopy[Int](Pointer.to(sourceCol), d_sourceColumns, count)
-    hostToDeviceCopy[Int](Pointer.to(filter), d_selectionFilter, count)
-    hostToDeviceCopy[Int](Pointer.to(prefixSums), d_prefixSums, count)
-
-    val kernel = clCreateKernel(context.getOpenCLProgram, "scan", null)
-
-    clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(d_sourceColumns))
-    clSetKernelArg(kernel, 1, Sizeof.cl_mem, Pointer.to(d_selectionFilter))
-    clSetKernelArg(kernel, 2, Sizeof.cl_mem, Pointer.to(d_prefixSums))
-    clSetKernelArg(kernel, 3, Sizeof.cl_mem, Pointer.to(d_destColumn))
-    clSetKernelArg(kernel, 4, Sizeof.cl_int, Pointer.to(Array[Int](count)))
-    clEnqueueNDRangeKernel(context.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
-
-    deviceToHostCopy[Int](d_destColumn, Pointer.to(destColumn), resultSize)
-  }
-
   def getColumn[V: ClassTag](columnIndex: Int): Array[V] = {
     val typeAwareColumnIndex = toTypeAwareColumnIndex(columnIndex)
 
