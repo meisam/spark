@@ -438,6 +438,11 @@ class GpuPartition[T <: Product : ClassTag]
     }
   }
 
+  def dataPosition(columnIndex: Int) = {
+    //TODO For now, data is always stored on device (cpu)
+    DataPosition.HOST
+  }
+
   def filter[V: ClassTag : TypeTag](columnIndex: Int, value: V, operation: ComparisonOperation.Value):
   Int = {
 
