@@ -18,7 +18,7 @@
 package org.apache.spark.gpu
 
 import org.apache.spark.SharedSparkContext
-import org.apache.spark.rdd.{ComparisonOperation, GpuFilteredPartition, GpuPartition}
+import org.apache.spark.rdd.{ComparisonOperation, GpuFilteredPartition, GpuFilteredRDD, GpuPartition}
 import org.apache.spark.scheduler.OpenCLContext
 import org.jocl.CL._
 import org.jocl.{Pointer, Sizeof}
@@ -234,13 +234,47 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
     )
   }
 
-  test("GpuFilterdRDD(Int, Int) == test") {
+  test("GpuFilterdRDD(Int, Int) == 1 match test") {
     val testData: IndexedSeq[(Int, Int)] = (1000 until 1000 + 10).zipWithIndex
 
     val gpuPartition = new GpuFilteredPartition[(Int, Int), Int](openCLContext, Array("INT", "INT"),
-      0, ComparisonOperation.==, 1, DEFAULT_CAPACITY)
+      0, ComparisonOperation.==, 1000 + 1, DEFAULT_CAPACITY)
     gpuPartition.fill(testData.toIterator)
     val expectedData = testData.filter(_._1 == 1000 + 1)
+
+    assert(gpuPartition.size === expectedData.length)
+
+    expectedData.foreach { case (value, index) =>
+      assert(gpuPartition.intData(0)(index) === value, "values do not match")
+      assert(gpuPartition.intData(1)(index) === index, "values do not match")
+    case _ => fail("We should not be here")
+    }
+  }
+
+  test("GpuFilterdRDD(Int, Int) == 0 match test") {
+    val testData: IndexedSeq[(Int, Int)] = (1000 until 1000 + 10).zipWithIndex
+
+    val gpuPartition = new GpuFilteredPartition[(Int, Int), Int](openCLContext, Array("INT", "INT"),
+      0, ComparisonOperation.==, 20000, DEFAULT_CAPACITY)
+    gpuPartition.fill(testData.toIterator)
+    val expectedData = testData.filter(_._1 == 20000)
+
+    assert(gpuPartition.size === expectedData.length)
+
+    expectedData.foreach { case (value, index) =>
+      assert(gpuPartition.intData(0)(index) === value, "values do not match")
+      assert(gpuPartition.intData(1)(index) === index, "values do not match")
+    case _ => fail("We should not be here")
+    }
+  }
+
+  test("GpuFilterdRDD(Int, Int) == many matches test") {
+    val testData: IndexedSeq[(Int, Int)] = (1000 until 1000 + 10).map(_ % 3).zipWithIndex
+
+    val gpuPartition = new GpuFilteredPartition[(Int, Int), Int](openCLContext, Array("INT", "INT"),
+      0, ComparisonOperation.==, 2, DEFAULT_CAPACITY)
+    gpuPartition.fill(testData.toIterator)
+    val expectedData = testData.filter(_._1 == 2)
 
     assert(gpuPartition.size === expectedData.length)
 
@@ -285,5 +319,4 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
       assert(gpuPartition.intData(1)(index) === index, "values do not match")
     }
   }
-
 }
