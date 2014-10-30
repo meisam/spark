@@ -320,6 +320,23 @@ __kernel void count_hash_num(__global int *dim, long  inNum, __global int *num, 
         }
 }
 
+// The following kernel is for traditional hash joins (Comment by Yuan)
+
+__kernel void build_hash_table(__global int *dim, long inNum, __global int *psum, __global int * bucket, int hsize){
+
+    size_t stride = get_global_size(0);
+    size_t offset = get_global_id(0);
+
+        for(size_t i=offset;i<inNum;i+=stride){
+                int joinKey = dim[i];
+                int hKey = joinKey & (hsize-1);
+                int pos = atomic_add(&psum[hKey],1) * 2;
+                bucket[pos] = joinKey;
+                pos += 1;
+                int dimId = i+1;
+                bucket[pos] = dimId;
+        }
+
 }
 
 
