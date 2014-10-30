@@ -34,6 +34,23 @@ define_gen_scan_kernels(double)
 define_gen_scan_kernels(boolean)
 define_gen_scan_kernels(char)
 
+// Sets all the values on the given buffer to zero
+#define declare_cl_memset(buffer_type)                                      \
+__kernel void cl_memset_##buffer_type(__global buffer_type * ar, int num){  \
+        size_t stride = get_global_size(0);                                 \
+        size_t offset = get_global_id(0);                                   \
+                                                                            \
+        for(size_t i=offset; i<num; i+= stride)                             \
+                ar[i] = 0;                                                  \
+}                                                                           \
+
+declare_cl_memset(int)
+declare_cl_memset(long)
+declare_cl_memset(float)
+declare_cl_memset(double)
+declare_cl_memset(boolean)
+declare_cl_memset(char)
+    
 __kernel void countScanNum(__global int *filter, long tupleNum, __global int * count){
     size_t stride = get_global_size(0);
     size_t tid = get_global_id(0);
