@@ -370,60 +370,6 @@ class GpuPartition[T <: Product : ClassTag]
     }
   }
 
-  def compute[T: ClassTag : TypeTag](col: Array[T], tupleNum: Long, value: T, comp: Int): Int = {
-    val start: Long = System.nanoTime
-    gpuCol = clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * tupleNum, null, null)
-
-    clEnqueueWriteBuffer(context.getOpenCLQueue, gpuCol, CL_TRUE, 0, Sizeof.cl_int * tupleNum,
-      pointer(col), 0, null, null)
-
-    gpuFilter = clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * tupleNum, null, null)
-    gpuPsum = clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
-    gpuCount = clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
-    var kernel = comp match {
-      case 0 =>
-        clCreateKernel(context.getOpenCLProgram, "genScanFilter_init_int_eq", null)
-      case 1 =>
-        clCreateKernel(context.getOpenCLProgram, "genScanFilter_init_int_gth", null)
-      case 2 =>
-        clCreateKernel(context.getOpenCLProgram, "genScanFilter_init_int_geq", null)
-      case 3 =>
-        clCreateKernel(context.getOpenCLProgram, "genScanFilter_init_int_lth", null)
-      case 4 =>
-        clCreateKernel(context.getOpenCLProgram, "genScanFilter_init_int_leq", null)
-      case _ =>
-        clCreateKernel(context.getOpenCLProgram, "genScanFilter_init_int_eq", null)
-    }
-    clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(gpuCol))
-    clSetKernelArg(kernel, 1, Sizeof.cl_long, Pointer.to(Array[Long](tupleNum)))
-    clSetKernelArg(kernel, 2, Sizeof.cl_int, pointer(Array(value)))
-    clSetKernelArg(kernel, 3, Sizeof.cl_mem, Pointer.to(gpuFilter))
-    val global_work_size = Array[Long](globalSize)
-    val local_work_size = Array[Long](localSize)
-    clEnqueueNDRangeKernel(context.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
-    kernel = clCreateKernel(context.getOpenCLProgram, "countScanNum", null)
-    clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(gpuFilter))
-    clSetKernelArg(kernel, 1, Sizeof.cl_long, Pointer.to(Array[Long](tupleNum)))
-    clSetKernelArg(kernel, 2, Sizeof.cl_mem, Pointer.to(gpuCount))
-    clEnqueueNDRangeKernel(context.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
-
-    val startPsum = System.nanoTime()
-    scanImpl(gpuCount, globalSize, gpuPsum)
-    val endPsum = System.nanoTime()
-
-    val tmp1 = Array[Int](0)
-    val tmp2 = Array[Int](0)
-
-    clEnqueueReadBuffer(context.getOpenCLQueue, gpuCount, CL_TRUE, Sizeof.cl_int * (globalSize - 1), Sizeof.cl_int, Pointer.to(tmp1), 0, null, null)
-
-    clEnqueueReadBuffer(context.getOpenCLQueue, gpuPsum, CL_TRUE, Sizeof.cl_int * (globalSize - 1), Sizeof.cl_int, Pointer.to(tmp2), 0, null, null)
-
-    resCount = tmp1(0) + tmp2(0)
-    val end: Long = System.nanoTime
-    resCount
-  }
-
-
   def project[V: ClassTag : TypeTag](columnIndex: Int, outSize: Int) {
     if (outSize == 0)
       return
