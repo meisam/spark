@@ -299,3 +299,27 @@ __kernel void uniformAdd(__global int *g_data,
     g_data[address]              += uni;
     g_data[address + get_local_size(0)] += (get_local_id(0) + get_local_size(0) < n) * uni;
 }
+
+/////////////////////////////////////////////////////////////////////
+
+//      kernels required for join
+
+/////////////////////////////////////////////////////////////////////
+
+
+// The following kernel is for traditional hash joins (Comment by Yuan)
+
+__kernel void count_hash_num(__global int *dim, long  inNum, __global int *num, int hsize){
+    size_t stride = get_global_size(0);
+    size_t offset = get_global_id(0);
+
+        for(size_t i=offset;i<inNum;i+=stride){
+                int joinKey = dim[i];
+                int hKey = joinKey & (hsize-1);
+                atomic_add(&(num[hKey]),1);
+        }
+}
+
+}
+
+
