@@ -20,49 +20,49 @@ class GpuFilteredPartition[T <: Product : ClassTag, U: ClassTag : TypeTag]
     intData.zipWithIndex.filter(_._1 != null).foreach({
       case (_, index) => {
         if (index != colIndex) {
-          project[Int](colIndex, size, resultSize)
+          project[Int](colIndex, resultSize)
         }
       }
     })
     longData.zipWithIndex.filter(_._1 != null).foreach({
       case (_, index) => {
         if (index != colIndex) {
-          project[Long](colIndex, size, resultSize)
+          project[Long](colIndex, resultSize)
         }
       }
     })
     floatData.zipWithIndex.filter(_._1 != null).foreach({
       case (_, index) => {
         if (index != colIndex) {
-          project[Float](colIndex, size, resultSize)
+          project[Float](colIndex, resultSize)
         }
       }
     })
     doubleData.zipWithIndex.filter(_._1 != null).foreach({
       case (_, index) => {
         if (index != colIndex) {
-          project[Double](colIndex, size, resultSize)
+          project[Double](colIndex, resultSize)
         }
       }
     })
     booleanData.zipWithIndex.filter(_._1 != null).foreach({
       case (_, index) => {
         if (index != colIndex) {
-          project[Boolean](colIndex, size, resultSize)
+          project[Boolean](colIndex, resultSize)
         }
       }
     })
     charData.zipWithIndex.filter(_._1 != null).foreach({
       case (_, index) => {
         if (index != colIndex) {
-          project[Char](colIndex, size, resultSize)
+          project[Char](colIndex, resultSize)
         }
       }
     })
     stringData.zipWithIndex.filter(_._1 != null).foreach({
       case (_, index) => {
         if (index != colIndex) {
-          project[String](colIndex, size, resultSize)
+          project[String](colIndex, resultSize)
         }
       }
     })
