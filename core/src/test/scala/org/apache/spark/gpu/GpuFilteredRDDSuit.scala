@@ -60,7 +60,7 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
     val gpuFilter = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
     val gpuPsum = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
     val gpuCount = clCreateBuffer(openCLContext.getOpenCLContext, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
-    var kernel = clCreateKernel(openCLContext.getOpenCLProgram, "genScanFilter_init_int_eq", null)
+    var kernel = clCreateKernel(openCLContext.getOpenCLProgram, "genScanFilter_init_int_eql", null)
     clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(gpuCol))
     clSetKernelArg(kernel, 1, Sizeof.cl_long, Pointer.to(Array[Long](testData.length.toLong)))
     clSetKernelArg(kernel, 2, Sizeof.cl_int, Pointer.to(Array[Int](value)))
