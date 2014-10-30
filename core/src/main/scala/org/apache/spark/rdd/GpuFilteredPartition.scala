@@ -18,9 +18,51 @@ class GpuFilteredPartition[T <: Product : ClassTag, U: ClassTag : TypeTag]
     val resultSize = filter[U](colIndex, value, operation)
 
     intData.zipWithIndex.filter(_._1 != null).foreach({
-      case (inData: Array[Int], index) => {
+      case (_, index) => {
         if (index != colIndex) {
-          project(intData(colIndex), size, intData(colIndex), resultSize)
+          project[Int](colIndex, size, resultSize)
+        }
+      }
+    })
+    longData.zipWithIndex.filter(_._1 != null).foreach({
+      case (_, index) => {
+        if (index != colIndex) {
+          project[Long](colIndex, size, resultSize)
+        }
+      }
+    })
+    floatData.zipWithIndex.filter(_._1 != null).foreach({
+      case (_, index) => {
+        if (index != colIndex) {
+          project[Float](colIndex, size, resultSize)
+        }
+      }
+    })
+    doubleData.zipWithIndex.filter(_._1 != null).foreach({
+      case (_, index) => {
+        if (index != colIndex) {
+          project[Double](colIndex, size, resultSize)
+        }
+      }
+    })
+    booleanData.zipWithIndex.filter(_._1 != null).foreach({
+      case (_, index) => {
+        if (index != colIndex) {
+          project[Boolean](colIndex, size, resultSize)
+        }
+      }
+    })
+    charData.zipWithIndex.filter(_._1 != null).foreach({
+      case (_, index) => {
+        if (index != colIndex) {
+          project[Char](colIndex, size, resultSize)
+        }
+      }
+    })
+    stringData.zipWithIndex.filter(_._1 != null).foreach({
+      case (_, index) => {
+        if (index != colIndex) {
+          project[String](colIndex, size, resultSize)
         }
       }
     })
