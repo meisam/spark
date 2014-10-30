@@ -607,9 +607,9 @@ class GpuPartition[T <: Product : ClassTag]
     val tmp1 = Array[Int](0)
     val tmp2 = Array[Int](0)
 
-    deviceToHostCopy[Int](gpuCount, pointer(tmp1), 1)
+    deviceToHostCopy[Int](gpuCount, pointer(tmp1), 1, globalSize -1)
 
-    deviceToHostCopy[Int](gpuPsum, pointer(tmp2), 1)
+    deviceToHostCopy[Int](gpuPsum, pointer(tmp2), 1, globalSize -1)
 
     resCount = tmp1(0) + tmp2(0)
     val end: Long = System.nanoTime
