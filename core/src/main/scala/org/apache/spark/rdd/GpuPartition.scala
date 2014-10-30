@@ -512,6 +512,13 @@ class GpuPartition[T <: Product : ClassTag]
       null)
   }
 
+  protected def deviceToDeviceCopy[V: ClassTag](src: cl_mem, dest: cl_mem, elementCount: Long,
+                                           offset: Long = 0): Unit = {
+    val length = elementCount * baseSize[V]
+    val offsetInBytes = offset * baseSize[V]
+    clEnqueueCopyBuffer(context.getOpenCLQueue, src, dest, 0, offsetInBytes, length, 0, null, null)
+  }
+
   def release {
     clReleaseMemObject(gpuPsum)
     clReleaseMemObject(gpuCount)
