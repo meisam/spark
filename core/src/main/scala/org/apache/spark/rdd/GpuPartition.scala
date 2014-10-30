@@ -400,38 +400,6 @@ class GpuPartition[T <: Product : ClassTag]
     clReleaseMemObject(col)
   }
 
-  def prefixSum(counts: Array[Int], prefixSums: Array[Int]): Unit = {
-
-    if (counts.length != prefixSums.length) {
-      throw new IllegalArgumentException("Input and output arrays should have the same size (%,12d != %,12d)".format(counts.length, prefixSums.length))
-    }
-
-    val globalSize = POW_2_S.filter(_ >= counts.length).head
-    val localSize = Math.min(globalSize, BLOCK_SIZE)
-    val global_work_size = Array[Long](globalSize)
-    val local_work_size = Array[Long](localSize)
-
-    // using double buffers to avoid copying data
-    val buffer1 = createReadWriteBuffer[Int](globalSize.toInt)
-    val buffer2 = createReadWriteBuffer[Int](globalSize.toInt)
-    hostToDeviceCopy[Int](Pointer.to(counts), buffer1, counts.length)
-    val kernel = clCreateKernel(context.getOpenCLProgram, "prefix_sum_stage", null)
-    var stride: Int = 0
-
-    var switchedBuffers = true
-
-    while (stride <= counts.length) {
-      clSetKernelArg(kernel, if (switchedBuffers) 0 else 1, Sizeof.cl_mem, Pointer.to(buffer1))
-      clSetKernelArg(kernel, if (switchedBuffers) 1 else 0, Sizeof.cl_mem, Pointer.to(buffer2))
-      clSetKernelArg(kernel, 2, Sizeof.cl_int, Pointer.to(Array[Int](stride)))
-      clEnqueueNDRangeKernel(context.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
-      switchedBuffers = !switchedBuffers
-      stride = if (stride == 0) 1 else stride << 1
-    }
-    val results = if (switchedBuffers) buffer1 else buffer2
-    deviceToHostCopy[Int](results, Pointer.to(prefixSums), globalSize)
-  }
-
   def getColumn[V: ClassTag](columnIndex: Int): Array[V] = {
     val typeAwareColumnIndex = toTypeAwareColumnIndex(columnIndex)
 
