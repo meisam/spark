@@ -282,37 +282,3 @@ __kernel void uniformAdd(__global int *g_data,
     g_data[address]              += uni;
     g_data[address + get_local_size(0)] += (get_local_id(0) + get_local_size(0) < n) * uni;
 }
-
-__kernel void prefix_sum_stage(__global int *prefix_sum_in,
-                           __global int *prefix_sum_out,
-                           const int stride)
-{
-    int thread_idx = get_global_id(0);
-    if (stride == 0) {
-        prefix_sum_out[thread_idx] = prefix_sum_in[thread_idx];
-        return;
-    }
-    unsigned long my_sum = prefix_sum_in[thread_idx];
-    unsigned long neighbors_sum = (thread_idx < stride)? 0 :prefix_sum_in[thread_idx - stride];
-    prefix_sum_out[thread_idx] = my_sum + neighbors_sum;
-}
-
-__kernel void scan(__global int *source_col,
-                        __global int *filter,
-                        __global int *prefix_sum,
-                        __global int *dest_col,
-                        const int n)
-{
-    int thread_idx = get_global_id(0);
-    if ((thread_idx < n) && (filter[thread_idx] == 1)) {
-        int my_write_index = prefix_sum[thread_idx] - 1;
-        dest_col[my_write_index] = source_col[thread_idx];
-    }
-}
-
-__kernel void copy_buffer(__global int *source,
-                        __global int *dest)
-{
-    int thread_idx = get_global_id(0);
-    dest[thread_idx] = source[thread_idx];
-}
