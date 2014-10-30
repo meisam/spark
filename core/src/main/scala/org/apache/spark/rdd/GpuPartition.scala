@@ -423,32 +423,31 @@ class GpuPartition[T <: Product : ClassTag]
     resCount
   }
 
-  def project(inCol: Array[Int], tupleNum: Int, outCol: Array[Int], outSize: Int) {
+
+  def project[V: ClassTag : TypeTag](columnIndex: Int, outSize: Int) {
+    if (outSize == 0)
+      return
+    val colData: Array[V] = getColumn(columnIndex)
     val global_work_size = Array[Long](globalSize)
     val local_work_size = Array[Long](localSize)
-    val scanCol: cl_mem = clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_WRITE,
-      Sizeof.cl_int * tupleNum, null, null)
+    val scanCol: cl_mem = createReadWriteBuffer[V](size)
 
-    hostToDeviceCopy[Int](Pointer.to(inCol), scanCol, tupleNum)
-    val result: cl_mem = clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_WRITE,
-      Sizeof.cl_int * outSize, null, null)
+    hostToDeviceCopy[V](pointer(colData), scanCol, size)
 
-    val psumVals = new Array[Int](globalSize)
-    deviceToHostCopy[Int](gpuPsum, Pointer.to(psumVals), globalSize)
+    val result: cl_mem = createReadWriteBuffer[V](outSize)
 
-    val filterVals = new Array[Int](tupleNum)
-    deviceToHostCopy[Int](gpuFilter, Pointer.to(filterVals), tupleNum)
-
-    val kernel = clCreateKernel(context.getOpenCLProgram, "scan_int", null)
+    val columnTypeName = typeNameString[V]
+    val kernelName: String = "scan_%s".format(columnTypeName)
+    val kernel = clCreateKernel(context.getOpenCLProgram, kernelName, null)
     clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(scanCol))
     clSetKernelArg(kernel, 1, Sizeof.cl_int, Pointer.to(Array[Int](Sizeof.cl_int)))
-    clSetKernelArg(kernel, 2, Sizeof.cl_long, Pointer.to(Array[Long](tupleNum)))
+    clSetKernelArg(kernel, 2, Sizeof.cl_long, Pointer.to(Array[Long](size)))
     clSetKernelArg(kernel, 3, Sizeof.cl_mem, Pointer.to(gpuPsum))
     clSetKernelArg(kernel, 4, Sizeof.cl_long, Pointer.to(Array[Long](resCount)))
     clSetKernelArg(kernel, 5, Sizeof.cl_mem, Pointer.to(gpuFilter))
     clSetKernelArg(kernel, 6, Sizeof.cl_mem, Pointer.to(result))
     clEnqueueNDRangeKernel(context.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
-    clEnqueueReadBuffer(context.getOpenCLQueue, result, CL_TRUE, 0, Sizeof.cl_int * outSize, Pointer.to(outCol), 0, null, null)
+    deviceToHostCopy[V](result, pointer(colData), outSize)
   }
 
   def releaseCol(col: cl_mem) {
