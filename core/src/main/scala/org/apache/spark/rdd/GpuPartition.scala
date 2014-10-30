@@ -552,3 +552,9 @@ object ComparisonOperation extends Enumeration {
   val == = Value("eql")
   val != = Value("neq")
 }
+
+object DataPosition extends Enumeration {
+  val HOST = Value("host")
+  val DEVICE = Value("device")
+
+}
