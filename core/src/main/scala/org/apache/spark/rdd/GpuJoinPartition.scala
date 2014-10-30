@@ -88,6 +88,26 @@ U: ClassTag : TypeTag]
   }
 
   def joinOnGpu(): Int = {
+    var gpuFactFilter: cl_mem = null
+
+    val dataPos = dataPosition(joinColIndexLeft)
+
+    //  long foreignKeySize = jNode->leftTable->attrTotalSize[jNode->leftKeyIndex];
+    //  long filterSize = jNode->leftTable->attrSize[jNode->leftKeyIndex] * jNode->leftTable->tupleNum;
+
+    val gpu_fact: cl_mem = dataPos match {
+      case DataPosition.HOST =>
+        createReadBuffer[U](this.size)
+      case DataPosition.DEVICE =>
+        throw new NotImplementedError("DataPosition.DEVICE is not supported!")
+      case _ =>
+        throw new NotImplementedError("Unknown DataPosition type!")
+    }
+    hostToDeviceCopy[U](pointer(getColumn[U](joinColIndexLeft)), gpu_fact, this.size.toLong)
+
+     gpuFactFilter = createReadWriteBuffer[U](size)
+
+    val memsetKernel = clCreateKernel(context.program, "cl_memset_int", null)
     -1
   }
 
