@@ -787,6 +787,6 @@ object ComparisonOperation extends Enumeration {
   val <= = Value("leq")
   val > = Value("gth")
   val >= = Value("geq")
-  val == = Value("eq")
+  val == = Value("eql")
   val != = Value("neq")
 }
