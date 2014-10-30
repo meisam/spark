@@ -547,7 +547,8 @@ class GpuPartition[T <: Product : ClassTag]
       case ClassTag.Long => Sizeof.cl_long
       case ClassTag.Float => Sizeof.cl_float
       case ClassTag.Double => Sizeof.cl_double
-      case ClassTag.Char => Sizeof.cl_char
+      case ClassTag.Boolean => Sizeof.cl_char // NOTE C and Java primitive types have different sizes
+      case ClassTag.Char => Sizeof.cl_short // NOTE C and Java primitive types have different sizes
       // TODO fix  the String type
       case _ => throw new NotImplementedError("Unknown type %s".format(implicitly[ClassTag[V]]))
     }
@@ -559,6 +560,7 @@ class GpuPartition[T <: Product : ClassTag]
       case ClassTag.Long => "long"
       case ClassTag.Float => "float"
       case ClassTag.Double => "double"
+      case ClassTag.Boolean => "boolean"
       case ClassTag.Char => "char"
       // TODO fix  the String type
       case _ => throw new NotImplementedError("Unknown type ")
