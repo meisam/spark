@@ -335,11 +335,7 @@ class GpuPartition[T <: Product : ClassTag]
   }
 
   def prescanArray(outArray: cl_mem, inArray: cl_mem, numElements: Int) {
-    val prefixsumStartTime = System.nanoTime
     prescanArrayRecursive(outArray, inArray, numElements, 0, 0)
-    val prefixsumEndTime = System.nanoTime
-
-    println("Prefix Sum time = %,12d".format(prefixsumEndTime - prefixsumStartTime))
   }
 
   def scanImpl(d_input: cl_mem, rLen: Int, d_output: cl_mem) {
@@ -445,7 +441,6 @@ class GpuPartition[T <: Product : ClassTag]
   def filter[V: ClassTag : TypeTag](columnIndex: Int, value: V, operation: ComparisonOperation.Value):
   Int = {
 
-    val start: Long = System.nanoTime
     val tupleNum = this.size
     gpuCol = createReadWriteBuffer[V](tupleNum)
 
@@ -477,9 +472,7 @@ class GpuPartition[T <: Product : ClassTag]
     clSetKernelArg(kernel, 2, Sizeof.cl_mem, Pointer.to(gpuCount))
     clEnqueueNDRangeKernel(context.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
 
-    val startPsum = System.nanoTime()
     scanImpl(gpuCount, globalSize, gpuPsum)
-    val endPsum = System.nanoTime()
 
     val tmp1 = Array[Int](0)
     val tmp2 = Array[Int](0)
@@ -489,7 +482,6 @@ class GpuPartition[T <: Product : ClassTag]
     deviceToHostCopy[Int](gpuPsum, pointer(tmp2), 1, globalSize - 1)
 
     resCount = tmp1(0) + tmp2(0)
-    val end: Long = System.nanoTime
     resCount
   }
 

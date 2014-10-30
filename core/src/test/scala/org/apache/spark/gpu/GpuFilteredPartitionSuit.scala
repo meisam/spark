@@ -132,8 +132,6 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
       (v.toLong, ((i % 3) == 0))
     }).toArray
 
-    println(testData.mkString(","))
-    println("----------")
     val gpuPartition = new GpuFilteredPartition[(Long, Boolean), Long](openCLContext, Array("LONG", "BOOLEAN"),
       0, ComparisonOperation.<=, START + 5L, DEFAULT_CAPACITY)
     gpuPartition.fill(testData.toIterator)
