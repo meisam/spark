@@ -490,22 +490,22 @@ class GpuPartition[T <: Product : ClassTag]
     clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_ONLY, size, null, null)
   }
 
-  private def createReadWriteBuffer[V: ClassTag](elementCount: Int): cl_mem = {
+  protected def createReadWriteBuffer[V: ClassTag](elementCount: Int): cl_mem = {
     val size = elementCount * baseSize[V]
     clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_WRITE, size, null, null)
   }
 
-  private def createWriteBuffer(size: Long): cl_mem = {
+  protected def createWriteBuffer(size: Long): cl_mem = {
     clCreateBuffer(context.getOpenCLContext, CL_MEM_WRITE_ONLY, size, null, null)
   }
 
-  private def hostToDeviceCopy[V: ClassTag](src: Pointer, dest: cl_mem, elementCount: Long): Unit = {
+  protected def hostToDeviceCopy[V: ClassTag](src: Pointer, dest: cl_mem, elementCount: Long): Unit = {
     val length = elementCount * baseSize[V]
     clEnqueueWriteBuffer(context.getOpenCLQueue, dest, CL_TRUE, 0, length, src,
       0, null, null)
   }
 
-  private def deviceToHostCopy[V: ClassTag](src: cl_mem, dest: Pointer, elementCount: Long, offset: Long = 0): Unit = {
+  protected def deviceToHostCopy[V: ClassTag](src: cl_mem, dest: Pointer, elementCount: Long, offset: Long = 0): Unit = {
     val length = elementCount * baseSize[V]
     val offsetInBytes = offset * baseSize[V]
     clEnqueueReadBuffer(context.getOpenCLQueue, src, CL_TRUE, offsetInBytes, length, dest, 0, null,
