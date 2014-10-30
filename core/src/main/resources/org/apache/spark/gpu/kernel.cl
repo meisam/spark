@@ -54,6 +54,17 @@ __kernel void genScanFilter_init_int_eq(__global int *col, long tupleNum, int wh
         }
 }
 
+__kernel void genScanFilter_init_int_neq(__global int *col, long tupleNum, int where, __global int * filter){
+        size_t stride = get_global_size(0);
+        size_t tid = get_global_id(0);
+        int con;
+
+        for(size_t i = tid; i<tupleNum;i+=stride){
+                con = col[i] != where;
+                filter[i] = con;
+        }
+}
+
 
 
 __kernel void genScanFilter_and_int_eq(__global int *col, long tupleNum, int where, __global int * filter){
