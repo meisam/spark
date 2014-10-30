@@ -188,33 +188,6 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
     }
   }
 
-  test("kernel.my scan test") {
-    val TEST_DATA_SIZE = 3 + (1 << 4)
-
-    val count = 10
-    val sourceCol = (0 until count).toArray
-    val filter = sourceCol.map(x => (1 + x) % 2)
-
-    val prefixSums = Array(1, 1, 2, 2, 3, 3, 4, 4, 5, 5)
-    val resultSize = prefixSums(prefixSums.length - 1)
-    val actualResults = Array.ofDim[Int](resultSize)
-
-    val chunk = new GpuPartition[(Int, Int)](openCLContext, Array("INT", "INT"), DEFAULT_CAPACITY)
-    chunk.fill(sourceCol.zipWithIndex.iterator)
-
-    assert(chunk.intData(0) !== null)
-
-    val expectedResults = (0 until count / 2).map(_ * 2).toArray
-    chunk.scan(sourceCol, filter, prefixSums, actualResults, count)
-
-    assert(actualResults !== null)
-    assert(actualResults.length === expectedResults.length)
-
-    expectedResults.zip(actualResults).zipWithIndex.foreach { case ((expected, actual), i) =>
-      assert(expected === actual, "The %sths expected %,12d <> %,12d actual".format(i, expected, actual))
-    }
-  }
-
   test("org.apache.spark.rdd.GpuRDD.filter test") {
     // This crashes  the OpenCL device
     val testData: IndexedSeq[(Int, Int)] = (0 to 10).reverse.zipWithIndex
