@@ -20,14 +20,14 @@ U: ClassTag : TypeTag]
     // Number of primary keys for each hash value
     val gpu_hashNum = createReadWriteBuffer[Int](hsize)
 
-    val memSetKernel = clCreateKernel(context.program, "cl_memset_int", null)
-    clSetKernelArg(memSetKernel, 0, Sizeof.cl_mem, Pointer.to(gpu_hashNum))
-    clSetKernelArg(memSetKernel, 1, Sizeof.cl_int, pointer(Array(hsize)))
+    val memSetIntKernel = clCreateKernel(context.program, "cl_memset_int", null)
+    clSetKernelArg(memSetIntKernel, 0, Sizeof.cl_mem, Pointer.to(gpu_hashNum))
+    clSetKernelArg(memSetIntKernel, 1, Sizeof.cl_int, pointer(Array(hsize)))
 
     val global_work_size = Array[Long](globalSize)
     val local_work_size = Array[Long](localSize)
 
-    clEnqueueNDRangeKernel(context.getOpenCLQueue, memSetKernel, 1, null, global_work_size, local_work_size, 0,
+    clEnqueueNDRangeKernel(context.getOpenCLQueue, memSetIntKernel, 1, null, global_work_size, local_work_size, 0,
       null, null)
 
     val threadNum = globalSize
@@ -105,9 +105,38 @@ U: ClassTag : TypeTag]
     }
     hostToDeviceCopy[U](pointer(getColumn[U](joinColIndexLeft)), gpu_fact, this.size.toLong)
 
-     gpuFactFilter = createReadWriteBuffer[U](size)
+    gpuFactFilter = createReadWriteBuffer[U](size)
 
-    val memsetKernel = clCreateKernel(context.program, "cl_memset_int", null)
+    val kernelName = "cl_memset_%s".format(super.typeNameString[U])
+    val memSetKernel = clCreateKernel(context.program, kernelName, null)
+    clSetKernelArg(memSetKernel, 0, Sizeof.cl_mem, Pointer.to(gpuFactFilter))
+    clSetKernelArg(memSetKernel, 1, Sizeof.cl_int, pointer(Array[Int](this.size)))
+
+    clEnqueueNDRangeKernel(context.queue, memSetKernel, 1, null, global_work_size,
+      local_work_size, 0, null, null)
+
+    val countJoinKernel = clCreateKernel(context.program, "count_join_result", null)
+    clSetKernelArg(countJoinKernel, 0, Sizeof.cl_mem, Pointer.to(gpu_hashNum))
+    clSetKernelArg(countJoinKernel, 1, Sizeof.cl_mem, Pointer.to(gpu_psum))
+    clSetKernelArg(countJoinKernel, 2, Sizeof.cl_mem, Pointer.to(gpu_bucket))
+    clSetKernelArg(countJoinKernel, 3, Sizeof.cl_mem, Pointer.to(gpu_fact))
+    clSetKernelArg(countJoinKernel, 4, Sizeof.cl_long,pointer(Array[Long](this.size.toLong)))
+    clSetKernelArg(countJoinKernel, 5, Sizeof.cl_mem, Pointer.to(gpu_count))
+    clSetKernelArg(countJoinKernel, 6, Sizeof.cl_mem, Pointer.to(gpuFactFilter))
+    clSetKernelArg(countJoinKernel, 7, Sizeof.cl_int, pointer(Array[Int](hsize)))
+    clEnqueueNDRangeKernel(context.queue, countJoinKernel, 1, null, global_work_size, local_work_size, 0, null, null)
+            
+    
+    val gpuCountTotal = Array[Int](0)
+
+    deviceToHostCopy[Int](gpu_count, pointer(gpuCountTotal), 1, threadNum - 1)
+    scanImpl(gpu_count, threadNum, gpu_resPsum)
+
+    val gpuResSumTotal = Array[Int](0)
+    deviceToHostCopy[Int](gpu_resPsum, pointer(gpuResSumTotal), 1, threadNum - 1)
+
+                val count = gpuCountTotal.head + gpuResSumTotal.head
+                this.size = count
     -1
   }
 
