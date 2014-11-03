@@ -18,7 +18,7 @@
 package org.apache.spark.gpu
 
 import org.apache.spark.SharedSparkContext
-import org.apache.spark.rdd.{GpuJoinPartition, ComparisonOperation, GpuFilteredPartition, GpuPartition}
+import org.apache.spark.rdd.{GpuJoinPartition, GpuPartition}
 import org.apache.spark.scheduler.OpenCLContext
 import org.scalatest.FunSuite
 
@@ -39,9 +39,9 @@ class GpuJoinPartitionSuit extends FunSuite with SharedSparkContext {
   }
 
   test("GpuJoinPartition(Int, Int) == 1 match test") {
-    val testData: IndexedSeq[(Int, Int)] = (1000 until 1000 + 10).zipWithIndex
+    val testData: IndexedSeq[(Int, Int)] = Array(10, 11, 10, 11, 12, 13).zipWithIndex
 
-    val rightTableData = (1000 until 1000 + 10).zipWithIndex.filter(_._1 % 3 == 0)
+    val rightTableData = Array(9, 10, 12, 13, 15).zipWithIndex
 
     val gpuPartition = new GpuPartition[(Int, Int)](openCLContext, Array("INT", "INT"),
       DEFAULT_CAPACITY)
@@ -52,13 +52,14 @@ class GpuJoinPartitionSuit extends FunSuite with SharedSparkContext {
       Array("INT", "INT"), gpuPartition, 0, 0, DEFAULT_CAPACITY)
 
     gpuJoinPartition.fill(testData.toIterator)
-    val expectedData = testData.filter(_._1 == 1000 + 1)
+    val expectedData = Array((10, 0, 1), (10, 2, 1), (12, 4, 2))
 
     assert(gpuPartition.size === expectedData.length)
 
-    expectedData.foreach { case (value, index) =>
-      assert(gpuPartition.intData(0)(index) === value, "values do not match")
-      assert(gpuPartition.intData(1)(index) === index, "values do not match")
+    expectedData.zipWithIndex.foreach { case ((keyValue, leftValue, rightValue), index) =>
+      assert(gpuPartition.intData(0)(index) === keyValue, "values do not match")
+      assert(gpuPartition.intData(1)(index) === leftValue, "values do not match")
+      assert(gpuPartition.intData(2)(index) === rightValue, "values do not match")
     case _ => fail("We should not be here")
     }
   }
