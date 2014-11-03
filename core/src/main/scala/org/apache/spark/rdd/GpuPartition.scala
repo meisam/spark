@@ -433,21 +433,13 @@ class GpuPartition[T <: Product : ClassTag]
   }
 
   def baseSize[V: ClassTag](): Int = {
-    baseSize(implicitly[ClassTag[V]])
-    implicitly[ClassTag[V]] match {
-      case ClassTag.Int => Sizeof.cl_int
-      case ClassTag.Long => Sizeof.cl_long
-      case ClassTag.Float => Sizeof.cl_float
-      case ClassTag.Double => Sizeof.cl_double
-      case ClassTag.Boolean => Sizeof.cl_char // NOTE C and Java primitive types have different sizes
-      case ClassTag.Char => Sizeof.cl_short // NOTE C and Java primitive types have different sizes
-      // TODO fix  the String type
-      case _ => throw new NotImplementedError("Unknown type %s".format(implicitly[ClassTag[V]]))
-    }
+    baseSize2(implicitly[ClassTag[V]])
   }
 
-  def baseSize(ct: ClassTag[_]): Int = {
+  def baseSize2(ct: ClassTag[_]): Int = {
     ct match {
+      case ClassTag.Byte => Sizeof.cl_char
+      case ClassTag.Short => Sizeof.cl_short
       case ClassTag.Int => Sizeof.cl_int
       case ClassTag.Long => Sizeof.cl_long
       case ClassTag.Float => Sizeof.cl_float
@@ -455,7 +447,7 @@ class GpuPartition[T <: Product : ClassTag]
       case ClassTag.Boolean => Sizeof.cl_char // NOTE C and Java primitive types have different sizes
       case ClassTag.Char => Sizeof.cl_short // NOTE C and Java primitive types have different sizes
       // TODO fix  the String type
-      case _ => throw new NotImplementedError("Unknown type %s".format(implicitly[ClassTag[V]]))
+      case _ => throw new NotImplementedError("Unknown type %s".format(ct.toString()))
     }
   }
 
@@ -548,7 +540,7 @@ class GpuPartition[T <: Product : ClassTag]
   protected def hostToDeviceCopy(ct: ClassTag[_])(src: Pointer, dest: cl_mem,
                                                       elementCount: Long,
                                               offset: Int = 0): Unit = {
-    val length = elementCount * baseSize(ct)
+    val length = elementCount * baseSize2(ct)
     clEnqueueWriteBuffer(context.getOpenCLQueue, dest, CL_TRUE, offset, length, src,
       0, null, null)
   }
