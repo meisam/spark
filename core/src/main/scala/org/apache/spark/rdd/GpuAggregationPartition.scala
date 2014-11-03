@@ -17,3 +17,16 @@ class GpuAggregationPartition[T <: Product : ClassTag]
     this.aggregate()
   }
 }
+
+object AggregationOperation extends Enumeration {
+
+  def count = Value("count")
+
+  def min = Value("min")
+
+  def max = Value("max")
+
+  def sum = Value("sum")
+
+  def avg = Value("avg")
+}
