@@ -10,7 +10,7 @@ import scala.reflect.runtime.universe.TypeTag
 import scala.reflect.runtime.{universe => ru}
 
 class GpuPartition[T <: Product : ClassTag]
-(context: OpenCLContext, columnTypes: Array[String], val capacity: Int)
+(context: OpenCLContext, val columnTypes: Array[String], val capacity: Int)
   extends Serializable with Logging {
 
   def MAX_STRING_SIZE: Int = 1 << 7
