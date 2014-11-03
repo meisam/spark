@@ -543,6 +543,14 @@ class GpuPartition[T <: Product : ClassTag]
       0, null, null)
   }
 
+  protected def hostToDeviceCopy(ct: ClassTag[_])(src: Pointer, dest: cl_mem,
+                                                      elementCount: Long,
+                                              offset: Int = 0): Unit = {
+    val length = elementCount * baseSize(ct)
+    clEnqueueWriteBuffer(context.getOpenCLQueue, dest, CL_TRUE, offset, length, src,
+      0, null, null)
+  }
+
   protected def deviceToHostCopy[V: ClassTag](src: cl_mem, dest: Pointer, elementCount: Long, offset: Long = 0): Unit = {
     val length = elementCount * baseSize[V]
     val offsetInBytes = offset * baseSize[V]
