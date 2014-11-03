@@ -432,7 +432,21 @@ class GpuPartition[T <: Product : ClassTag]
   }
 
   def baseSize[V: ClassTag](): Int = {
+    baseSize(implicitly[ClassTag[V]])
     implicitly[ClassTag[V]] match {
+      case ClassTag.Int => Sizeof.cl_int
+      case ClassTag.Long => Sizeof.cl_long
+      case ClassTag.Float => Sizeof.cl_float
+      case ClassTag.Double => Sizeof.cl_double
+      case ClassTag.Boolean => Sizeof.cl_char // NOTE C and Java primitive types have different sizes
+      case ClassTag.Char => Sizeof.cl_short // NOTE C and Java primitive types have different sizes
+      // TODO fix  the String type
+      case _ => throw new NotImplementedError("Unknown type %s".format(implicitly[ClassTag[V]]))
+    }
+  }
+
+  def baseSize(ct: ClassTag[_]): Int = {
+    ct match {
       case ClassTag.Int => Sizeof.cl_int
       case ClassTag.Long => Sizeof.cl_long
       case ClassTag.Float => Sizeof.cl_float
