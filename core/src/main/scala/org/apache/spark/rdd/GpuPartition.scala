@@ -412,6 +412,25 @@ class GpuPartition[T <: Product : ClassTag]
     }
   }
 
+  def scalaTypeOf(colType: String): ClassTag[_ >: Int with Long with Float with Double with Boolean with Char <: AnyVal] = {
+    colType match {
+      case "INT" =>
+        ClassTag.Int
+      case "LONG" =>
+        ClassTag.Long
+      case "FLOAT" =>
+        ClassTag.Float
+      case "Double" =>
+        ClassTag.Double
+      case "BOOLEAN" =>
+        ClassTag.Boolean
+      case "CHAR" =>
+        ClassTag.Char
+      case _ =>
+        throw new NotImplementedError("%s is not a valid Type".format(colType))
+    }
+  }
+
   def baseSize[V: ClassTag](): Int = {
     implicitly[ClassTag[V]] match {
       case ClassTag.Int => Sizeof.cl_int
