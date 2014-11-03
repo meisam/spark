@@ -14,6 +14,7 @@ class GpuPartition[T <: Product : ClassTag]
   extends Serializable with Logging {
 
   def MAX_STRING_SIZE: Int = 1 << 7
+  def HASH_SIZE = 131072
 
   var size = 0
 
