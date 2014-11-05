@@ -460,7 +460,7 @@ class GpuPartition[T <: Product : ClassTag]
       case ClassTag.Boolean => "boolean"
       case ClassTag.Char => "char"
       // TODO fix  the String type
-      case _ => throw new NotImplementedError("Unknown type ")
+      case _ => throw new NotImplementedError("Unknown type %s".format(implicitly[ClassTag[V]]))
     }
   }
 
