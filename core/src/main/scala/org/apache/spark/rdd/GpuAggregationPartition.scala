@@ -68,7 +68,7 @@ class GpuAggregationPartition[T <: Product : ClassTag]
     hostToDeviceCopy[Int](pointer(cpuOffsets), gpuOffsets, cpuOffsets.length)
 
     val gpuGbType = createReadBuffer[Int](groupByColumnIndexes.length)
-    hostToDeviceCopy(pointer(groupByColumnIndexes), gpuGbType, groupByColumnIndexes.length)
+    hostToDeviceCopy[Int](pointer(groupByColumnIndexes), gpuGbType, groupByColumnIndexes.length)
 
     val gpuGbSize = createReadBuffer[Int](groupByColumnIndexes.length)
     val groupBySize = groupByColumnIndexes.map(columnTypes(_)).map(scalaTypeOf).map(baseSize2)
