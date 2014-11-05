@@ -1,5 +1,13 @@
 typedef unsigned char boolean;
 
+#define HSIZE 131072
+
+enum data_types{
+    INT,
+    FLOAT,
+    STRING
+};
+
 #define genScanFilter(assign_name,assign_operation,column_type, operation_name, operation)   \
 __kernel void genScanFilter_##assign_name##_##column_type##_##operation_name                 \
 (__global column_type *col, long tupleNum, column_type where, __global int * filter)         \
