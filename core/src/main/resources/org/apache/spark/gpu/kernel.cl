@@ -1,7 +1,7 @@
 typedef unsigned char boolean;
 
 #define genScanFilter(assign_name,assign_operation,column_type, operation_name, operation)   \
-__kernel void genScanFilter_##assign_name##_##column_type##_##operation_name                 \       
+__kernel void genScanFilter_##assign_name##_##column_type##_##operation_name                 \
 (__global column_type *col, long tupleNum, column_type where, __global int * filter)         \
 {                                                                                            \
     size_t stride = get_global_size(0);                                                      \
