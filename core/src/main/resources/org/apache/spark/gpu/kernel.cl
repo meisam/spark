@@ -379,6 +379,97 @@ __kernel  void count_join_result(__global int* num, __global int* psum, __global
 //      kernels required for aggregation
 
 /////////////////////////////////////////////////////////////////////
+
+char * gpuItoa(int value, char* result, int base){
+
+    if (base < 2 || base > 36) {
+        *result = '\0';
+        return result;
+    }
+
+    char* ptr = result, *ptr1 = result, tmp_char;
+    int tmp_value;
+
+    do {
+        tmp_value = value;
+        value /= base;
+        *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz" [35 + (tmp_value - value * base)];
+    } while ( value );
+
+    if (tmp_value < 0)
+        *ptr++ = '-';
+
+    *ptr-- = '\0';
+
+    while(ptr1 < ptr) {
+        tmp_char = *ptr;
+        *ptr--= *ptr1;
+        *ptr1++ = tmp_char;
+    }
+    return result;
+
+}
+
+char * gpuStrcpy(char * dst, const char * src){
+
+    char * orig = dst;
+    while(*src)
+        *dst++ = *src++;
+    *dst = '\0';
+
+    return orig;
+}
+
+char* gpuStrncat(char *dest, const char *src, size_t n)
+{
+    int dest_len = 0;
+    int i;
+
+    char * tmp = dest;
+    while(*tmp != '\0'){
+        tmp++;
+        dest_len ++;
+    }
+
+    for (i = 0 ; i < n && src[i] != '\0' ; i++)
+        dest[dest_len + i] = src[i];
+
+    dest[dest_len + i] = '\0';
+    return dest;
+}
+
+char * gpuStrcat(char * dest, const char * src){
+    char *tmp =dest;
+    int dest_len = 0;
+    int i;
+
+    while (*tmp!= '\0'){
+        tmp++ ;
+        dest_len ++;
+    }
+
+    for(i=0; src[i] !='\0'; i++){
+        dest[dest_len + i] = src[i];
+    }
+
+    dest[dest_len + i] = '\0';
+
+    return dest;
+}
+
+unsigned int StringHash(const char* s)
+{
+    unsigned int hash = 0;
+    int c;
+
+    while((c = *s++))
+    {
+        hash = ((hash << 5) + hash) ^ c;
+    }
+
+    return hash;
+}
+
 __kernel void build_groupby_key(__global char * content, __global long * colOffset, int gbColNum, __global int * gbIndex, __global int * gbType, __global int * gbSize, long tupleNum, __global int * key, __global int *num){
 
     size_t stride = get_global_size(0);
