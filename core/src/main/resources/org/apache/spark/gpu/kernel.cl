@@ -475,37 +475,32 @@ __kernel void build_groupby_key(__global char * content, __global long * colOffs
     size_t stride = get_global_size(0);
     size_t tid = get_global_id(0);
 
-        for(size_t i = tid; i< tupleNum; i+= stride){
+    for(size_t i = tid; i < tupleNum; i+= stride) {
+        char buf[128] = {0};
+        for (int j = 0; j< gbColNum; j++) {
 
-                char buf[128] = {0};
-
-                for (int j=0; j< gbColNum; j++){
-
-                        char tbuf[32]={0};
-
-                        int index = gbIndex[j];
+            char tbuf[32] = {0};
+            int index = gbIndex[j];
             long offset = colOffset[index];
 
-                        if (index == -1){
-                                gpuItoa(1,tbuf,10);
-                                gpuStrncat(buf,tbuf,1);
+            if (index == -1){
+                gpuItoa(1,tbuf,10);
+                gpuStrncat(buf,tbuf,1);
 
-                        }else if (gbType[j] == STRING){
+            } else if (gbType[j] == STRING) {
+                for(int k = 0; k < gbSize[j]; k++)
+                    tbuf[k] = content[offset + i * gbSize[j] + k];
 
-                for(int k=0;k<gbSize[j];k++)
-                    tbuf[k] = content[offset+i*gbSize[j]+k];
+                gpuStrncat(buf, tbuf, gbSize[j]);
 
-                                gpuStrncat(buf, tbuf, gbSize[j]);
-
-                        }else if (gbType[j] == INT){
-
-                                int key = ((__global int *)(content+offset))[i];
-                                gpuItoa(key,tbuf,10);
-                                gpuStrcat(buf,tbuf);
-                        }
-                }
-                int hkey = StringHash(buf) % HSIZE;
-                key[i]= hkey;
-                num[hkey] = 1;
+            } else if (gbType[j] == INT){
+                int key = ((__global int *)(content+offset))[i];
+                gpuItoa(key, tbuf, 10);
+                gpuStrcat(buf, tbuf);
+            }
         }
+        int hkey = StringHash(buf) % HSIZE;
+        key[i]= hkey;
+        num[hkey] = 1;
+    }
 }
