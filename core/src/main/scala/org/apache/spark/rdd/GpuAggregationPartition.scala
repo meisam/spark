@@ -22,7 +22,7 @@ class GpuAggregationPartition[T <: Product : ClassTag]
       case (sum: Int, x: Int) => align(x) + sum
     })
 
-    val totalSize = cpuOffsets.last + baseSize2(scalaTypeOf(columnTypes.last))
+    val totalSize = cpuOffsets.last
 
     val gpuContent = createReadBuffer[Byte](totalSize) // [Byte] because everything is in bytes
 
