@@ -64,8 +64,8 @@ class GpuAggregationPartition[T <: Product : ClassTag]
       offsetIndex += 1
     }
 
-    val gpuOffsets = createReadBuffer[Int](this.typeNameString().length)
-    hostToDeviceCopy[Int](pointer(cpuOffsets), gpuOffsets, this.typeNameString().length)
+    val gpuOffsets = createReadBuffer[Int](cpuOffsets.length)
+    hostToDeviceCopy[Int](pointer(cpuOffsets), gpuOffsets, cpuOffsets.length)
 
     val gpuGbType = createReadBuffer[Int](groupByColumnIndexes.length)
     hostToDeviceCopy(pointer(groupByColumnIndexes), gpuGbType, groupByColumnIndexes.length)
