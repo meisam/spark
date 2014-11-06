@@ -31,7 +31,7 @@ class GpuAggregationPartition[T <: Product : TypeTag]
 
     val tupleCount = this.size // TODO this.size or parent.size?
     intData.foreach { column =>
-      hostToDeviceCopy[Int](pointer(column), gpuContent, tupleCount, cpuOffsets(offsetIndex))
+      hostToDeviceCopy[Byte](pointer(column), gpuContent, tupleCount /*, cpuOffsets(offsetIndex)*/)
       offsetIndex += 1
     }
 
