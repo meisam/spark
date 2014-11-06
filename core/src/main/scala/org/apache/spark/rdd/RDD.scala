@@ -1525,9 +1525,9 @@ abstract class RDD[T: ClassTag](
     new JavaRDD(this)(elementClassTag)
   }
 
-  def toGpuRDD(columnTypes: Array[String], chunkCapacity: Int = (1 << 20)) = {
-    new GpuRDD(this.asInstanceOf[RDD[Product]], columnTypes, chunkCapacity)
   }
+  def toGpuRDD[TT<: Product: TypeTag: ClassTag](chunkCapacity: Int = (1 << 20)) = {
+    new GpuRDD(this.asInstanceOf[RDD[TT]], chunkCapacity)
 
   def toGpuFilterRDD(columnTypes: Array[String], columnIndex: Int, operation: Int, value: Int
                      , chunkCapacity: Int = (1 << 20)) = {
