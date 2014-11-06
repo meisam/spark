@@ -14,6 +14,13 @@ class GpuPartition[T <: Product : TypeTag]
 (context: OpenCLContext, val capacity: Int)
   extends Serializable with Logging {
 
+  type JavaType = JavaUniverse#Type
+
+  val columnTypes = typeOf[T] match {
+    case ru.TypeRef(tpe, sym, typeArgs) => typeArgs
+    case _ => throw new NotImplementedError("Unknown type %s".format(typeOf[T]))
+  }
+
   def MAX_STRING_SIZE: Int = 1 << 7
   def HASH_SIZE = 131072
 
