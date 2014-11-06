@@ -440,8 +440,8 @@ class GpuPartition[T <: Product : TypeTag]
     }
   }
 
-  def baseSize[V: ClassTag](): Int = {
-    baseSize2(implicitly[ClassTag[V]])
+  def baseSize[V: TypeTag]: Int = {
+    baseSize(extractType[V])
   }
 
   def baseSize(ct: JavaType): Int = {
@@ -559,7 +559,7 @@ class GpuPartition[T <: Product : TypeTag]
   protected def hostToDeviceCopy(ct: ClassTag[_])(src: Pointer, dest: cl_mem,
                                                       elementCount: Long,
                                               offset: Int = 0): Unit = {
-    val length = elementCount * baseSize2(ct)
+    val length = elementCount * baseSize(ct)
     clEnqueueWriteBuffer(context.getOpenCLQueue, dest, CL_TRUE, offset, length, src,
       0, null, null)
   }
