@@ -488,7 +488,7 @@ class GpuPartition[T <: Product : TypeTag]
     DataPosition.HOST
   }
 
-  def filter[V: ClassTag : TypeTag](columnIndex: Int, value: V, operation: ComparisonOperation.Value):
+  def filter[V: TypeTag](columnIndex: Int, value: V, operation: ComparisonOperation.Value):
   Int = {
 
     val tupleNum = this.size
