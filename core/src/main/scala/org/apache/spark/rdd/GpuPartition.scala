@@ -535,12 +535,12 @@ class GpuPartition[T <: Product : TypeTag]
     resCount
   }
 
-  protected def createReadBuffer[V: ClassTag](elementCount: Int): cl_mem = {
+  protected def createReadBuffer[V: TypeTag](elementCount: Int): cl_mem = {
     val size = elementCount * baseSize[V]
     clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_ONLY, size, null, null)
   }
 
-  protected def createReadWriteBuffer[V: ClassTag](elementCount: Int): cl_mem = {
+  protected def createReadWriteBuffer[V: TypeTag](elementCount: Int): cl_mem = {
     val size = elementCount * baseSize[V]
     clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_WRITE, size, null, null)
   }
@@ -549,30 +549,30 @@ class GpuPartition[T <: Product : TypeTag]
     clCreateBuffer(context.getOpenCLContext, CL_MEM_WRITE_ONLY, size, null, null)
   }
 
-  protected def hostToDeviceCopy[V: ClassTag](src: Pointer, dest: cl_mem, elementCount: Long,
-                                              offset: Int = 0): Unit = {
+  protected def hostToDeviceCopy[V: TypeTag](src: Pointer, dest: cl_mem, elementCount: Long,
+                                             offset: Int = 0): Unit = {
     val length = elementCount * baseSize[V]
     clEnqueueWriteBuffer(context.getOpenCLQueue, dest, CL_TRUE, offset, length, src,
       0, null, null)
   }
 
-  protected def hostToDeviceCopy(ct: ClassTag[_])(src: Pointer, dest: cl_mem,
-                                                      elementCount: Long,
-                                              offset: Int = 0): Unit = {
+  protected def hostToDeviceCopy(ct: JavaType)(src: Pointer, dest: cl_mem,
+                                               elementCount: Long,
+                                               offset: Int = 0): Unit = {
     val length = elementCount * baseSize(ct)
     clEnqueueWriteBuffer(context.getOpenCLQueue, dest, CL_TRUE, offset, length, src,
       0, null, null)
   }
 
-  protected def deviceToHostCopy[V: ClassTag](src: cl_mem, dest: Pointer, elementCount: Long, offset: Long = 0): Unit = {
+  protected def deviceToHostCopy[V: TypeTag](src: cl_mem, dest: Pointer, elementCount: Long, offset: Long = 0): Unit = {
     val length = elementCount * baseSize[V]
     val offsetInBytes = offset * baseSize[V]
     clEnqueueReadBuffer(context.getOpenCLQueue, src, CL_TRUE, offsetInBytes, length, dest, 0, null,
       null)
   }
 
-  protected def deviceToDeviceCopy[V: ClassTag](src: cl_mem, dest: cl_mem, elementCount: Long,
-                                           offset: Long = 0): Unit = {
+  protected def deviceToDeviceCopy[V: TypeTag](src: cl_mem, dest: cl_mem, elementCount: Long,
+                                               offset: Long = 0): Unit = {
     val length = elementCount * baseSize[V]
     val offsetInBytes = offset * baseSize[V]
     clEnqueueCopyBuffer(context.getOpenCLQueue, src, dest, 0, offsetInBytes, length, 0, null, null)
