@@ -5,9 +5,9 @@ typedef unsigned char boolean;
 // The order of these definitions should be the same as the order in the counterpart scala files
 // The scala definitions are in GpuPartiotion
 
-enum data_types{
-    BYTE = 0
-    SHORT = 1
+enum data_types {
+    BYTE = 0,
+    SHORT = 1,
     INT = 2,
     LONG = 3,
     FLOAT = 4,
