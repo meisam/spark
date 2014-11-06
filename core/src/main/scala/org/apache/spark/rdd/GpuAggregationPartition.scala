@@ -2,14 +2,15 @@ package org.apache.spark.rdd
 
 import org.apache.spark.scheduler.OpenCLContext
 import org.jocl.CL._
-import org.jocl.{Pointer, Sizeof, cl_mem}
+import org.jocl.{Pointer, Sizeof}
 
-import scala.reflect.ClassTag
+import scala.reflect.api.JavaUniverse
+import scala.reflect.runtime.universe.TypeTag
 
-class GpuAggregationPartition[T <: Product : ClassTag]
-(context: OpenCLContext, columnTypes: Array[String], groupByColumnIndexes: Array[Int],
+class GpuAggregationPartition[T <: Product : TypeTag]
+(context: OpenCLContext, groupByColumnIndexes: Array[Int],
  aggregations: Array[AggregationOperation.Value], capacity: Int)
-  extends GpuPartition[T](context, columnTypes, capacity) {
+  extends GpuPartition[T](context, capacity) {
   //
   def aggregate(): Unit = {
 
