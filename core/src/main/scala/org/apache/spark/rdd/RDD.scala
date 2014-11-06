@@ -25,6 +25,7 @@ import scala.collection.{mutable, Map}
 import scala.collection.mutable.ArrayBuffer
 import scala.language.implicitConversions
 import scala.reflect.{classTag, ClassTag}
+import scala.reflect.runtime.universe.TypeTag
 
 import com.clearspring.analytics.stream.cardinality.HyperLogLogPlus
 import org.apache.hadoop.io.{Writable, BytesWritable, NullWritable, Text}
@@ -1525,14 +1526,8 @@ abstract class RDD[T: ClassTag](
     new JavaRDD(this)(elementClassTag)
   }
 
-  }
   def toGpuRDD[TT<: Product: TypeTag: ClassTag](chunkCapacity: Int = (1 << 20)) = {
     new GpuRDD(this.asInstanceOf[RDD[TT]], chunkCapacity)
-
-  def toGpuFilterRDD(columnTypes: Array[String], columnIndex: Int, operation: Int, value: Int
-                     , chunkCapacity: Int = (1 << 20)) = {
-    new GpuFilteredRDD(this.asInstanceOf[RDD[Product]], columnTypes
-      , columnIndex, operation, value, chunkCapacity)
   }
 
   /**
