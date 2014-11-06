@@ -2,10 +2,19 @@ typedef unsigned char boolean;
 
 #define HSIZE 131072
 
+// The order of these definitions should be the same as the order in the counterpart scala files
+// The scala definitions are in GpuPartiotion
+
 enum data_types{
-    INT,
-    FLOAT,
-    STRING
+    BYTE = 0
+    SHORT = 1
+    INT = 2,
+    LONG = 3,
+    FLOAT = 4,
+    DOUBLE = 5,
+    BOOLEAN = 6,
+    CHAR = 7,
+    STRING = 8
 };
 
 #define genScanFilter(assign_name,assign_operation,column_type, operation_name, operation)   \
