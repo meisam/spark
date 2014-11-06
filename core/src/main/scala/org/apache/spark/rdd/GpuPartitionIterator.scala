@@ -3,10 +3,19 @@ package org.apache.spark.rdd
 import org.apache.spark.scheduler.OpenCLContext
 
 import scala.reflect.ClassTag
+import scala.reflect.runtime.universe.{TypeTag, typeOf}
+import scala.reflect.runtime.{universe => ru}
 
-class GpuPartitionIterator[T <: Product : ClassTag]
-(itr: Iterator[T], val columnTypes: Array[String], chunkCapacity: Int = 1 << 20)
+class GpuPartitionIterator[T <: Product : TypeTag]
+(itr: Iterator[T], chunkCapacity: Int = 1 << 20)
   extends Serializable with Iterator[T] {
+
+
+  val columnTypes = typeOf[T] match {
+    case ru.TypeRef(tpe, sym, typeArgs) => typeArgs
+    case _ => throw new NotImplementedError("Unknown type %s".format(typeOf[T]))
+  }
+
 
   override def hasNext: Boolean = {
     currentPosition < currentChunk.size || itr.hasNext
@@ -18,7 +27,7 @@ class GpuPartitionIterator[T <: Product : ClassTag]
 
   context.initOpenCL("/org/apache/spark/gpu/kernel.cl")
 
-  protected val currentChunk: GpuPartition[T] = new GpuPartition[T](context, columnTypes, chunkCapacity)
+  protected val currentChunk: GpuPartition[T] = new GpuPartition[T](context, chunkCapacity)
 
   override def next(): T = {
     guaranteeFill
