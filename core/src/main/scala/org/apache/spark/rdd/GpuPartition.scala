@@ -367,7 +367,8 @@ class GpuPartition[T <: Product : TypeTag]
     Array[X](value)
   }
 
-  def pointer[T: ClassTag : TypeTag](values: Array[T]): Pointer = {
+  def pointer[T: TypeTag](values: Array[T]): Pointer = {
+
     val mirror = ru.runtimeMirror(getClass.getClassLoader)
     val classSym = mirror.classSymbol(values.getClass.getComponentType)
     if (implicitly[TypeTag[T]].tpe =:= implicitly[TypeTag[Int]].tpe) {
