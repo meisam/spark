@@ -511,7 +511,7 @@ class GpuPartition[T <: Product : TypeTag]
 
     clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(gpuCol))
     clSetKernelArg(kernel, 1, Sizeof.cl_long, Pointer.to(Array[Long](tupleNum)))
-    clSetKernelArg(kernel, 2, baseSize[V], pointer(Array(value)))
+    clSetKernelArg(kernel, 2, baseSize[V], pointer(toArray(value)))
     clSetKernelArg(kernel, 3, Sizeof.cl_mem, Pointer.to(gpuFilter))
     val global_work_size = Array[Long](globalSize)
     val local_work_size = Array[Long](localSize)
