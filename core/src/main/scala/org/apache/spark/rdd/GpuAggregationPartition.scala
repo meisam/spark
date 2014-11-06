@@ -18,10 +18,10 @@ class GpuAggregationPartition[T <: Product : TypeTag]
       offset + (if (offset % 4 == 0) 0 else 4 - (offset % 4))
     }
 
-    val cpuOffsets: Array[Int] = columnTypes.map(c => baseSize2(scalaTypeOf(c))).scanLeft(0)(
+    val cpuOffsets: Array[Int] = columnTypes.map(baseSize(_)).scanLeft(0)(
     {
       case (sum: Int, x: Int) => align(x) + sum
-    })
+    }).toArray[Int]
 
     val totalSize = cpuOffsets.last
 
@@ -72,8 +72,8 @@ class GpuAggregationPartition[T <: Product : TypeTag]
     hostToDeviceCopy[Int](pointer(groupByColumnIndexes), gpuGbType, groupByColumnIndexes.length)
 
     val gpuGbSize = createReadBuffer[Int](groupByColumnIndexes.length)
-    val groupBySize = groupByColumnIndexes.map(columnTypes(_)).map(scalaTypeOf).map(baseSize2)
-      .scanLeft(0: Int)({ case (sum, x) => sum + x}) // TODO or sum + align(x)
+    val groupBySize: Array[Int] = groupByColumnIndexes.map(columnTypes(_)).map(baseSize(_))
+      .scanLeft(0: Int)({ case (sum, x) => sum + x}).toIterator.toArray // TODO or sum + align(x)
 
     hostToDeviceCopy[Int](pointer(groupBySize), gpuGbSize, groupByColumnIndexes.length)
 
