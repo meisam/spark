@@ -6,11 +6,12 @@ import org.jocl.CL._
 import org.jocl._
 
 import scala.reflect.ClassTag
-import scala.reflect.runtime.universe.TypeTag
+import scala.reflect.api.JavaUniverse
+import scala.reflect.runtime.universe.{TypeTag, typeOf}
 import scala.reflect.runtime.{universe => ru}
 
-class GpuPartition[T <: Product : ClassTag]
-(context: OpenCLContext, val columnTypes: Array[String], val capacity: Int)
+class GpuPartition[T <: Product : TypeTag]
+(context: OpenCLContext, val capacity: Int)
   extends Serializable with Logging {
 
   def MAX_STRING_SIZE: Int = 1 << 7
