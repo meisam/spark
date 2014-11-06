@@ -5,10 +5,10 @@ import org.apache.spark.scheduler.OpenCLContext
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe.TypeTag
 
-class GpuFilteredPartition[T <: Product : ClassTag, U: ClassTag : TypeTag]
-(context: OpenCLContext, columnTypes: Array[String], colIndex: Int,
+class GpuFilteredPartition[T <: Product : TypeTag, U: TypeTag]
+(context: OpenCLContext, colIndex: Int,
  operation: ComparisonOperation.Value, value: U, capacity: Int)
-  extends GpuPartition[T](context, columnTypes, capacity) {
+  extends GpuPartition[T](context, capacity) {
 
   override def fill(iter: Iterator[T]): Unit = {
     super.fill(iter)
