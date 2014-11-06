@@ -2,12 +2,12 @@ package org.apache.spark.rdd
 
 import org.apache.spark.scheduler.OpenCLContext
 
-import scala.reflect.ClassTag
+import scala.reflect.runtime.universe.TypeTag
 
-class GpuFilteredPartitionIterator[T <: Product : ClassTag]
-(itr: Iterator[T], columnTypes: Array[String],
- var openCLContext: OpenCLContext, colIndex: Int, operation: Int, value: Int, chunkCapacity: Int)
-  extends GpuPartitionIterator[T](itr, columnTypes, chunkCapacity) {
+class GpuFilteredPartitionIterator[T <: Product : TypeTag, V: TypeTag]
+(itr: Iterator[T], var openCLContext: OpenCLContext,
+ colIndex: Int, operation: Int, value: V, chunkCapacity: Int)
+  extends GpuPartitionIterator[T](itr, chunkCapacity) {
 
   override def hasNext: Boolean = itr.hasNext
 }
