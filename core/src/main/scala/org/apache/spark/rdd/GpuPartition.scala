@@ -468,19 +468,13 @@ class GpuPartition[T <: Product : TypeTag]
     }
   }
 
+
+  def typeNameString[V: TypeTag](): String = {
+    typeNameString(extractType[V])
   }
 
-  def typeNameString[V: ClassTag](): String = {
-    implicitly[ClassTag[V]] match {
-      case ClassTag.Int => "int"
-      case ClassTag.Long => "long"
-      case ClassTag.Float => "float"
-      case ClassTag.Double => "double"
-      case ClassTag.Boolean => "boolean"
-      case ClassTag.Char => "char"
-      // TODO fix  the String type
-      case _ => throw new NotImplementedError("Unknown type %s".format(implicitly[ClassTag[V]]))
-    }
+  def typeNameString(ct: JavaType): String = {
+    ct.toString.toLowerCase()
   }
 
   def dataPosition(columnIndex: Int) = {
