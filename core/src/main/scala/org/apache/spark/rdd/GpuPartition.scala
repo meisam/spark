@@ -437,6 +437,10 @@ class GpuPartition[T <: Product : TypeTag]
     }
   }
 
+  def extractType[V: TypeTag]: JavaType = {
+    typeOf[V] match {
+      case ru.TypeRef(tpe, sym, typeArgs) => tpe
+      case _ => throw new NotImplementedError("Unknown type %s".format(typeOf[V]))
     }
   }
 
