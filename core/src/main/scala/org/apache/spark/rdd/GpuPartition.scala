@@ -50,19 +50,23 @@ class GpuPartition[T <: Product : TypeTag]
       case (v, rowIndex) =>
         size = rowIndex + 1
         v.productIterator.zipWithIndex.foreach { case (p, colIndex) =>
-          if (columnTypes(colIndex) == "INT") {
+          if (columnTypes(colIndex) == TypeTag.Byte.tpe) {
+            byteData(toTypeAwareColumnIndex(colIndex))(rowIndex) = p.asInstanceOf[Byte]
+          } else if (columnTypes(colIndex) == TypeTag.Short.tpe) {
+            shortData(toTypeAwareColumnIndex(colIndex))(rowIndex) = p.asInstanceOf[Short]
+          } else if (columnTypes(colIndex) == TypeTag.Int.tpe) {
             intData(toTypeAwareColumnIndex(colIndex))(rowIndex) = p.asInstanceOf[Int]
-          } else if (columnTypes(colIndex) == "LONG") {
+          } else if (columnTypes(colIndex) == TypeTag.Long.tpe) {
             longData(toTypeAwareColumnIndex(colIndex))(rowIndex) = p.asInstanceOf[Long]
-          } else if (columnTypes(colIndex) == "FLOAT") {
+          } else if (columnTypes(colIndex) == TypeTag.Float.tpe) {
             floatData(toTypeAwareColumnIndex(colIndex))(rowIndex) = p.asInstanceOf[Float]
-          } else if (columnTypes(colIndex) == "Double") {
+          } else if (columnTypes(colIndex) == TypeTag.Double.tpe) {
             doubleData(toTypeAwareColumnIndex(colIndex))(rowIndex) = p.asInstanceOf[Double]
-          } else if (columnTypes(colIndex) == "BOOLEAN") {
+          } else if (columnTypes(colIndex) == TypeTag.Boolean.tpe) {
             booleanData(toTypeAwareColumnIndex(colIndex))(rowIndex) = p.asInstanceOf[Boolean]
-          } else if (columnTypes(colIndex) == "CHAR") {
+          } else if (columnTypes(colIndex) == TypeTag.Char.tpe) {
             charData(toTypeAwareColumnIndex(colIndex))(rowIndex) = p.asInstanceOf[Char]
-          } else if (columnTypes(colIndex) == "STRING") {
+          } else if (columnTypes(colIndex) == ColumnarTypes.StringTypeTag) {
             val str = p.toString
             str.getChars(0, Math.min(MAX_STRING_SIZE, str.length),
               stringData(toTypeAwareColumnIndex(colIndex)), rowIndex * MAX_STRING_SIZE)
