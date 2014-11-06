@@ -26,13 +26,15 @@ class GpuPartition[T <: Product : TypeTag]
 
   var size = 0
 
-  val intData: Array[Array[Int]] = Array.ofDim[Int](columnTypes.filter(_ == "INT").length, capacity)
-  val longData = Array.ofDim[Long](columnTypes.filter(_ == "LONG").length, capacity)
-  val floatData = Array.ofDim[Float](columnTypes.filter(_ == "FLOAT").length, capacity)
-  val doubleData = Array.ofDim[Double](columnTypes.filter(_ == "DOUBLE").length, capacity)
-  val booleanData = Array.ofDim[Boolean](columnTypes.filter(_ == "BOOLEAN").length, capacity)
-  val charData = Array.ofDim[Char](columnTypes.filter(_ == "CHAR").length, capacity)
-  val stringData = Array.ofDim[Char](columnTypes.filter(_ == "STRING").length
+  val byteData = Array.ofDim[Byte](columnTypes.count(_ == TypeTag.Byte.tpe), capacity)
+  val shortData = Array.ofDim[Short](columnTypes.count(_ == TypeTag.Short.tpe), capacity)
+  val intData = Array.ofDim[Int](columnTypes.count(_ == TypeTag.Int.tpe), capacity)
+  val longData = Array.ofDim[Long](columnTypes.count(_ == TypeTag.Long.tpe), capacity)
+  val floatData = Array.ofDim[Float](columnTypes.count(_ == TypeTag.Float.tpe), capacity)
+  val doubleData = Array.ofDim[Double](columnTypes.count(_ == TypeTag.Double.tpe), capacity)
+  val booleanData = Array.ofDim[Boolean](columnTypes.count(_ == TypeTag.Boolean.tpe), capacity)
+  val charData = Array.ofDim[Char](columnTypes.count(_ == TypeTag.Char.tpe), capacity)
+  val stringData = Array.ofDim[Char](columnTypes.count(_ == ColumnarTypes.StringTypeTag.tpe)
     , capacity * MAX_STRING_SIZE)
 
   def inferBestWorkGroupSize(): Unit = {
