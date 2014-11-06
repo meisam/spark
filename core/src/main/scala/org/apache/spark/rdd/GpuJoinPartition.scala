@@ -7,11 +7,11 @@ import org.jocl._
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe.TypeTag
 
-class GpuJoinPartition[T <: Product : ClassTag, T2 <: Product : ClassTag : TypeTag,
+class GpuJoinPartition[T <: Product : TypeTag, T2 <: Product : TypeTag,
 U: ClassTag : TypeTag]
-(context: OpenCLContext, columnTypes: Array[String], rightPartition: GpuPartition[T2],
+(context: OpenCLContext, rightPartition: GpuPartition[T2],
  joinColIndexLeft: Int, joinColIndexRight: Int, capacity: Int)
-  extends GpuPartition[T](context, columnTypes, capacity) {
+  extends GpuPartition[T](context, capacity) {
 
   def buildHashTable() = {
 
