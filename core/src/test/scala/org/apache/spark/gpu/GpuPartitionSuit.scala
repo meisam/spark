@@ -66,11 +66,10 @@ class GpuPartitionSuit extends FunSuite with SharedSparkContext {
   }
 
   test("org.apache.spark.rdd.GpuPartition.toTypeAwareColumnIndex test") {
-    val testData = (0 to 10).map(x => (x, "STR_I_%d".format(x), 1.5f + x, 2.5d + x, "STR_II_%d".format(x), x - 1, "STR_III_%d".format(x)))
+    val testData: IndexedSeq[(Int, String, Float, Double, String, Int, String)] = (0 to 10).map(x => (x, "STR_I_%d".format(x), 1.5f + x, 2.5d + x, "STR_II_%d".format(x), x - 1, "STR_III_%d".format(x)))
 
-    val rdd = sc.parallelize(testData)
-    val rddChunk = new GpuPartition(openCLContext,
-      DEFAULT_CAPACITY)
+    val rddChunk = new GpuPartition[(Int, String, Float, Double, String, Int, String)](
+      openCLContext, DEFAULT_CAPACITY)
     assert(rddChunk.toTypeAwareColumnIndex(0) === 0)
     assert(rddChunk.toTypeAwareColumnIndex(1) === 0)
     assert(rddChunk.toTypeAwareColumnIndex(2) === 0)
