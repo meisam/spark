@@ -43,13 +43,13 @@ class GpuJoinPartitionSuit extends FunSuite with SharedSparkContext {
 
     val rightTableData = Array(9, 10, 12, 13, 15).zipWithIndex
 
-    val gpuPartition = new GpuPartition[(Int, Int)](openCLContext, Array("INT", "INT"),
+    val gpuPartition = new GpuPartition[(Int, Int)](openCLContext,
       DEFAULT_CAPACITY)
     gpuPartition.fill(rightTableData.toIterator)
 
 
     val gpuJoinPartition = new GpuJoinPartition[(Int, Int), (Int, Int), Int](openCLContext,
-      Array("INT", "INT"), gpuPartition, 0, 0, DEFAULT_CAPACITY)
+      gpuPartition, 0, 0, DEFAULT_CAPACITY)
 
     gpuJoinPartition.fill(testData.toIterator)
     val expectedData = Array((10, 0, 1), (10, 2, 1), (12, 4, 2))

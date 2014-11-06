@@ -41,8 +41,7 @@ class GpuPartitionSuit extends FunSuite with SharedSparkContext {
 
 
   test("org.apache.spark.rdd.GpuPartition.initArray test") {
-    val x = new GpuPartition[(Int, String, Float, Double, String)](openCLContext,
-      Array("INT", "STRING", "FLOAT", "DOUBLE", "STRING"), DEFAULT_CAPACITY)
+    val x = new GpuPartition[(Int, String, Float, Double, String)](openCLContext, DEFAULT_CAPACITY)
     assert(x.intData.length === 1)
     assert(x.longData.length === 0)
     assert(x.floatData.length === 1)
@@ -53,7 +52,7 @@ class GpuPartitionSuit extends FunSuite with SharedSparkContext {
   test("org.apache.spark.rdd.GpuPartition.fill test") {
     val testData = (0 to 10).reverse.zipWithIndex.toIterator
 
-    val chunk = new GpuPartition[(Int, Int)](openCLContext, Array("INT", "INT"), DEFAULT_CAPACITY)
+    val chunk = new GpuPartition[(Int, Int)](openCLContext, DEFAULT_CAPACITY)
     chunk.fill(testData)
     (0 until chunk.capacity).foreach(i =>
       if (i <= 10) {
@@ -71,7 +70,7 @@ class GpuPartitionSuit extends FunSuite with SharedSparkContext {
 
     val rdd = sc.parallelize(testData)
     val rddChunk = new GpuPartition(openCLContext,
-      Array("INT", "STRING", "FLOAT", "DOUBLE", "STRING", "INT", "STRING"), DEFAULT_CAPACITY)
+      DEFAULT_CAPACITY)
     assert(rddChunk.toTypeAwareColumnIndex(0) === 0)
     assert(rddChunk.toTypeAwareColumnIndex(1) === 0)
     assert(rddChunk.toTypeAwareColumnIndex(2) === 0)
@@ -85,8 +84,7 @@ class GpuPartitionSuit extends FunSuite with SharedSparkContext {
     val testData: IndexedSeq[(String, String)] = (0 to 10).reverse.zipWithIndex.map(
       x => ("STR_I_%d".format(x._1), "STR_II_%d".format(x._2)))
 
-    val chunk = new GpuPartition[(String, String)](openCLContext, Array("STRING", "STRING"),
-      DEFAULT_CAPACITY)
+    val chunk = new GpuPartition[(String, String)](openCLContext, DEFAULT_CAPACITY)
     chunk.fill(testData.toIterator)
     (0 until chunk.capacity).foreach(i =>
       if (i <= 10) {
