@@ -420,19 +420,20 @@ class GpuPartition[T <: Product : TypeTag]
     clReleaseMemObject(col)
   }
 
-  def getColumn[V: ClassTag](columnIndex: Int): Array[V] = {
+  def getColumn[V: TypeTag](columnIndex: Int): Array[V] = {
     val typeAwareColumnIndex = toTypeAwareColumnIndex(columnIndex)
 
-    implicitly[ClassTag[V]] match {
-      case ClassTag.Int => intData(typeAwareColumnIndex).asInstanceOf[Array[V]]
-      case ClassTag.Long => longData(typeAwareColumnIndex).asInstanceOf[Array[V]]
-      case ClassTag.Float => floatData(typeAwareColumnIndex).asInstanceOf[Array[V]]
-      case ClassTag.Double => doubleData(typeAwareColumnIndex).asInstanceOf[Array[V]]
-      case ClassTag.Boolean => booleanData(typeAwareColumnIndex).asInstanceOf[Array[V]]
-      case ClassTag.Char => charData(typeAwareColumnIndex).asInstanceOf[Array[V]]
-      // TODO fix  the String type
-      // case implicitly[ClassTag[String]] => intData(typeAwareColumnIndex).asInstanceOf[Array[V]]
-      case _ => throw new NotImplementedError("Unknown type ")
+    implicitly[TypeTag[V]] match {
+      case TypeTag.Byte => byteData(typeAwareColumnIndex).asInstanceOf[Array[V]]
+      case TypeTag.Short => shortData(typeAwareColumnIndex).asInstanceOf[Array[V]]
+      case TypeTag.Char => charData(typeAwareColumnIndex).asInstanceOf[Array[V]]
+      case TypeTag.Int => intData(typeAwareColumnIndex).asInstanceOf[Array[V]]
+      case TypeTag.Long => longData(typeAwareColumnIndex).asInstanceOf[Array[V]]
+      case TypeTag.Float => floatData(typeAwareColumnIndex).asInstanceOf[Array[V]]
+      case TypeTag.Double => doubleData(typeAwareColumnIndex).asInstanceOf[Array[V]]
+      case TypeTag.Boolean => booleanData(typeAwareColumnIndex).asInstanceOf[Array[V]]
+      case ColumnarTypes.StringTypeTag => stringData(typeAwareColumnIndex).asInstanceOf[Array[V]]
+      case _ => throw new NotImplementedError("Unknown type %s".format(implicitly[TypeTag[V]]))
     }
   }
 
