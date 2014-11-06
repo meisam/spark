@@ -98,20 +98,22 @@ class GpuPartition[T <: Product : TypeTag]
 
   def apply(rowIndex: Int): T = {
 
-    val values: Array[Any] = columnTypes.zipWithIndex.map({ case (colType, colIndex) =>
-      if (colType == "INT") {
+    val values = columnTypes.zipWithIndex.map({ case (colType, colIndex) =>
+      if (colType == TypeTag.Byte.tpe) {
+        byteData(toTypeAwareColumnIndex(colIndex))(rowIndex)
+      } else if (colType == TypeTag.Int.tpe) {
         intData(toTypeAwareColumnIndex(colIndex))(rowIndex)
-      } else if (columnTypes(colIndex) == "LONG") {
+      } else if (colType == TypeTag.Long.tpe) {
         longData(toTypeAwareColumnIndex(colIndex))(rowIndex)
-      } else if (columnTypes(colIndex) == "FLOAT") {
+      } else if (colType == TypeTag.Float.tpe) {
         floatData(toTypeAwareColumnIndex(colIndex))(rowIndex)
-      } else if (columnTypes(colIndex) == "Double") {
+      } else if (colType == TypeTag.Double.tpe) {
         doubleData(toTypeAwareColumnIndex(colIndex))(rowIndex)
-      } else if (columnTypes(colIndex) == "BOOLEAN") {
+      } else if (colType == TypeTag.Boolean.tpe) {
         booleanData(toTypeAwareColumnIndex(colIndex))(rowIndex)
-      } else if (columnTypes(colIndex) == "CHAR") {
+      } else if (colType == TypeTag.Char.tpe) {
         charData(toTypeAwareColumnIndex(colIndex))(rowIndex)
-      } else if (columnTypes(colIndex) == "STRING") {
+      } else if (colType == ColumnarTypes.StringTypeTag) {
         getStringData(toTypeAwareColumnIndex(colIndex), rowIndex)
       }
     })
