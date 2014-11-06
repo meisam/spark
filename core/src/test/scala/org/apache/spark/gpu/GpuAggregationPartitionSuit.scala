@@ -23,6 +23,7 @@ import org.apache.spark.scheduler.OpenCLContext
 import org.scalatest.FunSuite
 
 import scala.language.existentials
+import scala.reflect.ClassTag
 
 /**
  *
@@ -43,8 +44,7 @@ class GpuAggregationPartitionSuit extends FunSuite with SharedSparkContext {
 
 
     val gpuPartition = new GpuAggregationPartition[(Int, Int)](openCLContext
-      , Array("INT", "INT"), Array(0), Array(AggregationOperation.max)
-      , DEFAULT_CAPACITY)
+      , Array(0), Array(AggregationOperation.max), DEFAULT_CAPACITY)
 
     gpuPartition.fill(testData.toIterator)
     val expectedData = Array((11, 2), (12, 6))

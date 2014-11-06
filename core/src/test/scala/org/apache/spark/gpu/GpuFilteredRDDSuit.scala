@@ -148,7 +148,7 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
     // This crashes  the OpenCL device
     val testData: IndexedSeq[(Int, Int)] = (0 to 10).reverse.zipWithIndex
 
-    val chunk = new GpuPartition[(Int, Int)](openCLContext, Array("INT", "INT"), DEFAULT_CAPACITY)
+    val chunk = new GpuPartition[(Int, Int)](openCLContext, DEFAULT_CAPACITY)
     chunk.fill(testData.toIterator)
     chunk.filter(1, 1, ComparisonOperation.<)
 

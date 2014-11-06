@@ -35,8 +35,7 @@ class GpuLayout extends FunSuite with SharedSparkContext {
   test("org.apache.spark.rdd.GpuPartitionIterator test") {
     val testData = (0 to 10).reverse.zipWithIndex.toIterator
 
-    val colTypes = Array("INT", "INT")
-    val chunkItr = new GpuPartitionIterator(testData, colTypes, DEFAULT_CAPACITY)
+    val chunkItr = new GpuPartitionIterator(testData, DEFAULT_CAPACITY)
 
     chunkItr.zipWithIndex.foreach {
       case ((v1, v2), i) =>

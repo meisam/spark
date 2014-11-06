@@ -22,7 +22,6 @@ import org.apache.spark.rdd.{ComparisonOperation, GpuFilteredPartition}
 import org.apache.spark.scheduler.OpenCLContext
 import org.scalatest.FunSuite
 
-import scala.collection.immutable
 import scala.language.existentials
 
 /**
@@ -42,7 +41,7 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
   test("GpuFilteredPartition(Int, Int) == 1 match test") {
     val testData: IndexedSeq[(Int, Int)] = (1000 until 1000 + 10).zipWithIndex
 
-    val gpuPartition = new GpuFilteredPartition[(Int, Int), Int](openCLContext, Array("INT", "INT"),
+    val gpuPartition = new GpuFilteredPartition[(Int, Int), Int](openCLContext,
       0, ComparisonOperation.==, 1000 + 1, DEFAULT_CAPACITY)
     gpuPartition.fill(testData.toIterator)
     val expectedData = testData.filter(_._1 == 1000 + 1)
@@ -59,7 +58,7 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
   test("GpuFilteredPartition(Int, Int) == 0 match test") {
     val testData: IndexedSeq[(Int, Int)] = (1000 until 1000 + 10).zipWithIndex
 
-    val gpuPartition = new GpuFilteredPartition[(Int, Int), Int](openCLContext, Array("INT", "INT"),
+    val gpuPartition = new GpuFilteredPartition[(Int, Int), Int](openCLContext,
       0, ComparisonOperation.==, 20000, DEFAULT_CAPACITY)
     gpuPartition.fill(testData.toIterator)
     val expectedData = testData.filter(_._1 == 20000)
@@ -76,7 +75,7 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
   test("GpuFilteredPartition(Int, Int) == many matches test") {
     val testData: IndexedSeq[(Int, Int)] = (1000 until 1000 + 10).map(_ % 3).zipWithIndex
 
-    val gpuPartition = new GpuFilteredPartition[(Int, Int), Int](openCLContext, Array("INT", "INT"),
+    val gpuPartition = new GpuFilteredPartition[(Int, Int), Int](openCLContext,
       0, ComparisonOperation.==, 2, DEFAULT_CAPACITY)
     gpuPartition.fill(testData.toIterator)
     val expectedData = testData.filter(_._1 == 2)
@@ -93,7 +92,7 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
   test("GpuFilteredPartition(Int, Int) >= test") {
     val testData: IndexedSeq[(Int, Int)] = (0 until 10).zipWithIndex
 
-    val gpuPartition = new GpuFilteredPartition[(Int, Int), Int](openCLContext, Array("INT", "INT"),
+    val gpuPartition = new GpuFilteredPartition[(Int, Int), Int](openCLContext,
       0, ComparisonOperation.>=, 7, DEFAULT_CAPACITY)
     gpuPartition.fill(testData.toIterator)
 
@@ -111,7 +110,7 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
   test("GpuFilteredPartition(Int, Int) <= test") {
     val testData: IndexedSeq[(Int, Int)] = (0 until 10).zipWithIndex
 
-    val gpuPartition = new GpuFilteredPartition[(Int, Int), Int](openCLContext, Array("INT", "INT"),
+    val gpuPartition = new GpuFilteredPartition[(Int, Int), Int](openCLContext,
       0, ComparisonOperation.<=, 5, DEFAULT_CAPACITY)
     gpuPartition.fill(testData.toIterator)
 
@@ -132,7 +131,7 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
       (v.toLong, ((i % 3) == 0))
     }).toArray
 
-    val gpuPartition = new GpuFilteredPartition[(Long, Boolean), Long](openCLContext, Array("LONG", "BOOLEAN"),
+    val gpuPartition = new GpuFilteredPartition[(Long, Boolean), Long](openCLContext,
       0, ComparisonOperation.<=, START + 5L, DEFAULT_CAPACITY)
     gpuPartition.fill(testData.toIterator)
 
