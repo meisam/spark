@@ -20,19 +20,19 @@ package org.apache.spark.rdd
 import org.apache.spark.{Partition, TaskContext}
 
 import scala.reflect.ClassTag
+import scala.reflect.runtime.universe.TypeTag
 
 /**
  *
  */
-class GpuRDD[T <: Product : ClassTag](prev: RDD[T], val columnTypes: Array[String],
-                                      chunkCapacity: Int)
+class GpuRDD[T <: Product : TypeTag: ClassTag](prev: RDD[T], chunkCapacity: Int)
   extends RDD[T](prev) {
   /**
    * :: DeveloperApi ::
    * Implemented by subclasses to compute a given partition.
    */
   override def compute(split: Partition, context: TaskContext): Iterator[T] = {
-    new GpuPartitionIterator(firstParent[T].iterator(split, context), columnTypes, chunkCapacity)
+    new GpuPartitionIterator(firstParent[T].iterator(split, context), chunkCapacity)
   }
 
   /**
