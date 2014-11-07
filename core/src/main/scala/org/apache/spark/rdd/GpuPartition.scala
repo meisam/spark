@@ -367,9 +367,9 @@ class GpuPartition[T <: Product : TypeTag]
     deallocBlockSums
   }
 
-  def toArray[X:TypeTag](value: X): Array[X] = {
+  def toArray[X: TypeTag](value: X): Array[X] = {
     val mirror = ru.runtimeMirror(getClass.getClassLoader)
-    implicit val xClassTag = ClassTag[X]( mirror.runtimeClass(typeOf[X]) )
+    implicit val xClassTag = ClassTag[X](mirror.runtimeClass(typeOf[X]))
     Array[X](value)
   }
 
