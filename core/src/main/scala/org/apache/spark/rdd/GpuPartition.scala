@@ -559,13 +559,14 @@ class GpuPartition[T <: Product : TypeTag]
   val NUM_BANKS: Int = 16
   val LOG_NUM_BANKS: Int = 4
 
-  var g_scanBlockSums: Array[cl_mem] = null
   var g_numEltsAllocated: Int = 0
   var g_numLevelsAllocated: Int = 0
-  var gpuCol: cl_mem = null
-  var gpuFilter: cl_mem = null
-  var gpuCount: cl_mem = null
-  var gpuPsum: cl_mem = null
+  
+  @transient var g_scanBlockSums: Array[cl_mem] = null
+  @transient var gpuCol: cl_mem = null
+  @transient var gpuFilter: cl_mem = null
+  @transient var gpuCount: cl_mem = null
+  @transient var gpuPsum: cl_mem = null
 
   var globalSize = 0
 
