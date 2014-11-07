@@ -639,19 +639,13 @@ object ColumnarTypes extends IndexedSeq[ru.Type] {
   private val ALL_TYPES: IndexedSeq[ru.Type] = IndexedSeq(
     TypeTag.Byte.tpe,
     TypeTag.Short.tpe,
-    TypeTag.Char.tpe,
     TypeTag.Int.tpe,
     TypeTag.Long.tpe,
     TypeTag.Float.tpe,
     TypeTag.Double.tpe,
     TypeTag.Boolean.tpe,
-    TypeTag.Unit.tpe, // TODO Unit, Any, Object, and ... are not needed as a column type
-    TypeTag.Any.tpe,
-    TypeTag.Object.tpe,
-    TypeTag.AnyVal.tpe,
-    TypeTag.AnyRef.tpe,
-    TypeTag.Nothing.tpe,
-    TypeTag.Null.tpe
+    TypeTag.Char.tpe,
+    StringTypeTag.tpe
   )
 
   def getIndex(t: ClassTag[_]): Int = {
