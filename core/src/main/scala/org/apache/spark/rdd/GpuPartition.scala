@@ -454,7 +454,18 @@ class GpuPartition[T <: Product : TypeTag]
   }
 
   def baseSize[V: TypeTag]: Int = {
-    baseSize(extractType[V])
+    implicitly[TypeTag[V]] match {
+      case TypeTag.Byte => Sizeof.cl_char
+      case TypeTag.Short => Sizeof.cl_short
+      case TypeTag.Char => Sizeof.cl_char
+      case TypeTag.Int => Sizeof.cl_int
+      case TypeTag.Long => Sizeof.cl_long
+      case TypeTag.Float => Sizeof.cl_float
+      case TypeTag.Double => Sizeof.cl_double
+      case TypeTag.Boolean => Sizeof.cl_char
+      case ColumnarTypes.StringTypeTag => Sizeof.cl_char * MAX_STRING_SIZE
+      case _ => throw new NotImplementedError("Unknown type %s".format(implicitly[TypeTag[V]]))
+    }
   }
 
   def baseSize(ct: JavaType): Int = {
