@@ -506,53 +506,6 @@ class GpuPartition[T <: Product : TypeTag]
     DataPosition.HOST
   }
 
-  def filter[V: TypeTag](columnIndex: Int, value: V, operation: ComparisonOperation.Value):
-  Int = {
-
-    val tupleNum = this.size
-    gpuCol = createReadWriteBuffer[V](tupleNum)
-
-    val col = getColumn[V](columnIndex)
-    hostToDeviceCopy[V](pointer(col), gpuCol, tupleNum)
-
-    gpuFilter = createReadWriteBuffer[Int](tupleNum)
-    gpuPsum = createReadWriteBuffer[Int](globalSize)
-    gpuCount = createReadWriteBuffer[Int](globalSize)
-
-    val operationName = operation.toString
-
-    val typeName = typeNameString[V]()
-
-    val kernelName = "genScanFilter_init_%s_%s".format(typeName, operationName)
-
-    var kernel = clCreateKernel(context.getOpenCLProgram, kernelName, null)
-
-    clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(gpuCol))
-    clSetKernelArg(kernel, 1, Sizeof.cl_long, Pointer.to(Array[Long](tupleNum)))
-    clSetKernelArg(kernel, 2, baseSize[V], pointer(toArray(value)))
-    clSetKernelArg(kernel, 3, Sizeof.cl_mem, Pointer.to(gpuFilter))
-    val global_work_size = Array[Long](globalSize)
-    val local_work_size = Array[Long](localSize)
-    clEnqueueNDRangeKernel(context.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
-    kernel = clCreateKernel(context.getOpenCLProgram, "countScanNum", null)
-    clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(gpuFilter))
-    clSetKernelArg(kernel, 1, Sizeof.cl_long, Pointer.to(Array[Long](tupleNum)))
-    clSetKernelArg(kernel, 2, Sizeof.cl_mem, Pointer.to(gpuCount))
-    clEnqueueNDRangeKernel(context.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
-
-    scanImpl(gpuCount, globalSize, gpuPsum)
-
-    val tmp1 = Array[Int](0)
-    val tmp2 = Array[Int](0)
-
-    deviceToHostCopy[Int](gpuCount, pointer(tmp1), 1, globalSize - 1)
-
-    deviceToHostCopy[Int](gpuPsum, pointer(tmp2), 1, globalSize - 1)
-
-    resCount = tmp1(0) + tmp2(0)
-    resCount
-  }
-
   protected def createReadBuffer[V: TypeTag](elementCount: Int): cl_mem = {
     val size = elementCount * baseSize[V]
     clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_ONLY, size, null, null)
