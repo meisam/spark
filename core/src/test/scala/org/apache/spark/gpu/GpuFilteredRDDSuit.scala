@@ -18,7 +18,7 @@
 package org.apache.spark.gpu
 
 import org.apache.spark.SharedSparkContext
-import org.apache.spark.rdd.{ComparisonOperation, GpuFilteredPartition, GpuFilteredRDD, GpuPartition}
+import org.apache.spark.rdd.{ComparisonOperation, GpuFilteredPartition}
 import org.apache.spark.scheduler.OpenCLContext
 import org.jocl.CL._
 import org.jocl.{Pointer, Sizeof}
@@ -148,7 +148,8 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
     // This crashes  the OpenCL device
     val testData: IndexedSeq[(Int, Int)] = (0 to 10).reverse.zipWithIndex
 
-    val chunk = new GpuPartition[(Int, Int)](openCLContext, DEFAULT_CAPACITY)
+    val chunk = new GpuFilteredPartition[(Int, Int), Int](openCLContext, 1, ComparisonOperation.<,
+      1, DEFAULT_CAPACITY)
     chunk.fill(testData.toIterator)
     chunk.filter(1, 1, ComparisonOperation.<)
 
