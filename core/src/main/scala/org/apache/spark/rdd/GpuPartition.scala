@@ -66,10 +66,12 @@ class GpuPartition[T <: Product : TypeTag]
             booleanData(toTypeAwareColumnIndex(colIndex))(rowIndex) = p.asInstanceOf[Boolean]
           } else if (columnTypes(colIndex) == TypeTag.Char.tpe) {
             charData(toTypeAwareColumnIndex(colIndex))(rowIndex) = p.asInstanceOf[Char]
-          } else if (columnTypes(colIndex) == ColumnarTypes.StringTypeTag) {
+          } else if (columnTypes(colIndex) == ColumnarTypes.StringTypeTag.tpe) {
             val str = p.toString
             str.getChars(0, Math.min(MAX_STRING_SIZE, str.length),
               stringData(toTypeAwareColumnIndex(colIndex)), rowIndex * MAX_STRING_SIZE)
+          } else {
+            throw new NotImplementedError("Unknown type %s".format(columnTypes(colIndex)))
           }
         }
     }
@@ -101,6 +103,8 @@ class GpuPartition[T <: Product : TypeTag]
     val values = columnTypes.zipWithIndex.map({ case (colType, colIndex) =>
       if (colType == TypeTag.Byte.tpe) {
         byteData(toTypeAwareColumnIndex(colIndex))(rowIndex)
+      } else if (colType == TypeTag.Short.tpe) {
+        shortData(toTypeAwareColumnIndex(colIndex))(rowIndex)
       } else if (colType == TypeTag.Int.tpe) {
         intData(toTypeAwareColumnIndex(colIndex))(rowIndex)
       } else if (colType == TypeTag.Long.tpe) {
@@ -115,6 +119,8 @@ class GpuPartition[T <: Product : TypeTag]
         charData(toTypeAwareColumnIndex(colIndex))(rowIndex)
       } else if (colType == ColumnarTypes.StringTypeTag) {
         getStringData(toTypeAwareColumnIndex(colIndex), rowIndex)
+      } else {
+        throw new NotImplementedError("Unknown type %s".format(colType))
       }
     })
 
@@ -369,24 +375,27 @@ class GpuPartition[T <: Product : TypeTag]
 
   def pointer[T: TypeTag](values: Array[T]): Pointer = {
 
-    val mirror = ru.runtimeMirror(getClass.getClassLoader)
-    val classSym = mirror.classSymbol(values.getClass.getComponentType)
-    if (implicitly[TypeTag[T]].tpe =:= implicitly[TypeTag[Int]].tpe) {
+    if (typeOf[T] =:= typeOf[Byte]) {
+      Pointer.to(values.asInstanceOf[Array[Byte]])
+    } else if (typeOf[T] =:= typeOf[Short]) {
+      Pointer.to(values.asInstanceOf[Array[Short]])
+    } else if (typeOf[T] =:= typeOf[Int]) {
       Pointer.to(values.asInstanceOf[Array[Int]])
-    } else if (implicitly[TypeTag[T]].tpe =:= implicitly[TypeTag[Long]].tpe) {
+    } else if (typeOf[T] =:= typeOf[Long]) {
       Pointer.to(values.asInstanceOf[Array[Long]])
-    } else if (implicitly[TypeTag[T]].tpe =:= implicitly[TypeTag[Float]].tpe) {
+    } else if (typeOf[T] =:= typeOf[Float]) {
       Pointer.to(values.asInstanceOf[Array[Float]])
-    } else if (implicitly[TypeTag[T]].tpe =:= implicitly[TypeTag[Double]].tpe) {
+    } else if (typeOf[T] =:= typeOf[Double]) {
       Pointer.to(values.asInstanceOf[Array[Double]])
-    } else if (implicitly[TypeTag[T]].tpe =:= implicitly[TypeTag[Char]].tpe) {
+    } else if (typeOf[T] =:= typeOf[Char]) {
       Pointer.to(values.asInstanceOf[Array[Char]])
-    } else if (implicitly[TypeTag[T]].tpe =:= implicitly[TypeTag[Char]].tpe) {
-      //TODO fix Strings
+    } else if (typeOf[T] =:= typeOf[Char]) {
+      Pointer.to(values.asInstanceOf[Array[Char]])
+    } else if (typeOf[T] =:= ColumnarTypes.StringTypeTag.tpe) {
       Pointer.to(values.asInstanceOf[Array[Char]])
     } else {
       throw new NotImplementedError("Cannot create a pointer to an array of %s.".format(
-        implicitly[TypeTag[T]].tpe.toString))
+        typeOf[T].toString))
     }
   }
 
