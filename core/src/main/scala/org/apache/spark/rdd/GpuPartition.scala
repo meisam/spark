@@ -21,8 +21,6 @@ class GpuPartition[T <: Product : TypeTag]
     case _ => throw new NotImplementedError("Unknown type %s".format(typeOf[T]))
   }
 
-  println("ColumnTypes = %s".format(columnTypes.mkString(",")))
-
   def MAX_STRING_SIZE: Int = 1 << 7
 
   def HASH_SIZE = 131072
@@ -39,9 +37,6 @@ class GpuPartition[T <: Product : TypeTag]
   val charData = Array.ofDim[Char](columnTypes.count(_ == TypeTag.Char.tpe), capacity)
   val stringData = Array.ofDim[Char](columnTypes.count(_ == ColumnarTypes.StringTypeTag.tpe)
     , capacity * MAX_STRING_SIZE)
-
-
-  println("intData.length=%,12d".format(intData.length))
 
   def inferBestWorkGroupSize(): Unit = {
     this.localSize = if (size == 0) 1 else math.min(BLOCK_SIZE, size)
