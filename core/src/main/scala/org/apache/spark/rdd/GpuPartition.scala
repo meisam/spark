@@ -21,7 +21,10 @@ class GpuPartition[T <: Product : TypeTag]
     case _ => throw new NotImplementedError("Unknown type %s".format(typeOf[T]))
   }
 
+  println("ColumnTypes = %s".format(columnTypes.mkString(",")))
+
   def MAX_STRING_SIZE: Int = 1 << 7
+
   def HASH_SIZE = 131072
 
   var size = 0
@@ -37,6 +40,9 @@ class GpuPartition[T <: Product : TypeTag]
   val stringData = Array.ofDim[Char](columnTypes.count(_ == ColumnarTypes.StringTypeTag.tpe)
     , capacity * MAX_STRING_SIZE)
 
+
+  println("intData.length=%,12d".format(intData.length))
+
   def inferBestWorkGroupSize(): Unit = {
     this.localSize = if (size == 0) 1 else math.min(BLOCK_SIZE, size)
     this.globalSize = localSize * math.min(1 + (size - 1) / localSize, BLOCK_SIZE)
@@ -44,6 +50,7 @@ class GpuPartition[T <: Product : TypeTag]
 
 
   def fill(iter: Iterator[T]): Unit = {
+    println("Column types GpuPartition.fill =%s".format(columnTypes.mkString(",")))
     size = 0
     val values: Iterator[T] = iter.take(capacity)
     values.zipWithIndex.foreach {
@@ -494,11 +501,7 @@ class GpuPartition[T <: Product : TypeTag]
 
 
   def typeNameString[V: TypeTag](): String = {
-    typeNameString(extractType[V])
-  }
-
-  def typeNameString(ct: JavaType): String = {
-    ct.toString.toLowerCase()
+    typeOf[V].toString.toLowerCase
   }
 
   def dataPosition(columnIndex: Int) = {
