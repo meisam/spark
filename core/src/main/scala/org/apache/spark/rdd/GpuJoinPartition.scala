@@ -30,8 +30,6 @@ U: TypeTag]
 
     val hsize = (1 to 31).map(1 << _).filter(_ >= rightPartition.size).head
 
-    println("hash size = %d".format(hsize))
-
     // Number of primary keys for each hash value
     val gpu_hashNum = createReadWriteBuffer[Int](hsize)
 
@@ -42,10 +40,9 @@ U: TypeTag]
     val global_work_size = Array[Long](globalSize)
     val local_work_size = Array[Long](localSize)
 
-    printf("global size = %,d  local size =%,d\n", globalSize, localSize)
-
     clEnqueueNDRangeKernel(context.getOpenCLQueue, memSetIntKernel, 1, null, global_work_size, local_work_size, 0,
       null, null)
+
     val threadNum = globalSize
 
     // Per thread
@@ -73,8 +70,6 @@ U: TypeTag]
 
     }
     val rightColumn: Array[U] = rightPartition.getColumn[U](joinColIndexRight)
-
-    println("rightPartition = %s.".format(rightColumn.mkString(",")))
     //TODO why this should be blocking
     hostToDeviceCopy[U](pointer(rightColumn), gpu_dim, /*CL_TRUE,*/ rightPartition.size)
 
@@ -88,18 +83,7 @@ U: TypeTag]
       local_work_size, 0, null, null)
     scanImpl(gpu_hashNum, hsize, gpu_psum)
 
-    val hashResults: Array[Int] = Array.ofDim[Int](hsize)
-
-    deviceToHostCopy[Int](gpu_hashNum, pointer[Int](hashResults), hsize)
-    println("gpu_hashNum = %s".format(hashResults.mkString(",")))
-
-    deviceToHostCopy[Int](gpu_psum, pointer[Int](hashResults), hsize)
-    println("gpu_psum = %s".format(hashResults.mkString(",")))
-
     deviceToDeviceCopy[Int](gpu_psum, gpu_psum1, hsize)
-
-    deviceToHostCopy[Int](gpu_psum1, pointer[Int](hashResults), hsize)
-    println("gpu_psum1 = %s".format(hashResults.mkString(",")))
 
     val buildHashTableKernel = clCreateKernel(context.program, "build_hash_table", null)
     clSetKernelArg(buildHashTableKernel, 0, Sizeof.cl_mem, Pointer.to(gpu_dim))
@@ -109,11 +93,6 @@ U: TypeTag]
     clSetKernelArg(buildHashTableKernel, 4, Sizeof.cl_int, pointer(Array[Int](hsize)))
     clEnqueueNDRangeKernel(context.queue, buildHashTableKernel, 1, null, global_work_size,
       local_work_size, 0, null, null)
-
-
-    val gpuBucketResult = new Array[Int](2 * rightPartition.size)
-    deviceToHostCopy[Int](gpu_bucket, pointer[Int](gpuBucketResult), 2 * rightPartition.size)
-    println("gpu_bucket = %s".format(gpuBucketResult.mkString(",")))
 
     if (columnPosition == DataPosition.HOST)
       clReleaseMemObject(gpu_dim)
@@ -154,21 +133,14 @@ U: TypeTag]
     clSetKernelArg(countJoinKernel, 1, Sizeof.cl_mem, Pointer.to(gpu_psum))
     clSetKernelArg(countJoinKernel, 2, Sizeof.cl_mem, Pointer.to(gpu_bucket))
     clSetKernelArg(countJoinKernel, 3, Sizeof.cl_mem, Pointer.to(gpu_fact))
-    clSetKernelArg(countJoinKernel, 4, Sizeof.cl_long, pointer(Array[Long](leftPartition.size.toLong)))
+    clSetKernelArg(countJoinKernel, 4, Sizeof.cl_long, pointer(Array[Long](this.size.toLong)))
     clSetKernelArg(countJoinKernel, 5, Sizeof.cl_mem, Pointer.to(gpu_count))
     clSetKernelArg(countJoinKernel, 6, Sizeof.cl_mem, Pointer.to(gpuFactFilter))
     clSetKernelArg(countJoinKernel, 7, Sizeof.cl_int, pointer(Array[Int](hsize)))
     clEnqueueNDRangeKernel(context.queue, countJoinKernel, 1, null, global_work_size, local_work_size, 0, null, null)
 
-    val factFilterResults = new Array[Int](leftPartition.size)
-    deviceToHostCopy[Int](gpuFactFilter, pointer(factFilterResults), leftPartition.size)
-    println("fact filter = %s".format(factFilterResults.mkString(",")))
-
-    val factResults = new Array[Int](leftPartition.size)
-    deviceToHostCopy[Int](gpu_fact, pointer(factResults), leftPartition.size)
-    println("fact table = %s".format(factResults.mkString(",")))
-
     val gpuCountTotal = Array[Int](0)
+
     deviceToHostCopy[Int](gpu_count, pointer(gpuCountTotal), 1, threadNum - 1)
 
     scanImpl(gpu_count, threadNum, gpu_resPsum)
