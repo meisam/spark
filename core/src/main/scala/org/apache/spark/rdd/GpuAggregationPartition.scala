@@ -2,15 +2,14 @@ package org.apache.spark.rdd
 
 import org.apache.spark.scheduler.OpenCLContext
 import org.jocl.CL._
-import org.jocl.{Pointer, Sizeof}
+import org.jocl.{ Pointer, Sizeof }
 
 import scala.reflect.api.JavaUniverse
 import scala.reflect.runtime.universe.TypeTag
 
-class GpuAggregationPartition[T <: Product : TypeTag]
-(context: OpenCLContext, groupByColumnIndexes: Array[Int],
- aggregations: Array[AggregationOperation.Value], capacity: Int)
-  extends GpuPartition[T](context, capacity) {
+class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext,
+  groupByColumnIndexes: Array[Int], aggregations: Array[AggregationOperation.Value], capacity: Int)
+    extends GpuPartition[T](context, capacity) {
   //
   def aggregate(): Unit = {
 
@@ -19,9 +18,9 @@ class GpuAggregationPartition[T <: Product : TypeTag]
     }
 
     val cpuOffsets: Array[Int] = columnTypes.map(baseSize(_)).scanLeft(0)(
-    {
-      case (sum: Int, x: Int) => align(x) + sum
-    }).toArray[Int]
+      {
+        case (sum: Int, x: Int) => align(x) + sum
+      }).toArray[Int]
 
     val totalSize = cpuOffsets.last
 
@@ -31,7 +30,7 @@ class GpuAggregationPartition[T <: Product : TypeTag]
 
     val tupleCount = this.size // TODO this.size or parent.size?
     intData.foreach { column =>
-      hostToDeviceCopy[Byte](pointer(column), gpuContent, tupleCount /*, cpuOffsets(offsetIndex)*/)
+      hostToDeviceCopy[Byte](pointer(column), gpuContent, tupleCount /*, cpuOffsets(offsetIndex)*/ )
       offsetIndex += 1
     }
 
@@ -74,7 +73,7 @@ class GpuAggregationPartition[T <: Product : TypeTag]
 
     val gpuGbSize = createReadBuffer[Int](groupByColumnIndexes.length)
     val groupBySize: Array[Int] = groupByColumnIndexes.map(columnTypes(_)).map(baseSize(_))
-      .scanLeft(0: Int)({ case (sum, x) => sum + x}).toIterator.toArray // TODO or sum + align(x)
+      .scanLeft(0: Int)({ case (sum, x) => sum + x }).toIterator.toArray // TODO or sum + align(x)
 
     hostToDeviceCopy[Int](pointer(groupBySize), gpuGbSize, groupByColumnIndexes.length)
 
@@ -116,7 +115,6 @@ class GpuAggregationPartition[T <: Product : TypeTag]
     clReleaseMemObject(gpuGbSize)
     clReleaseMemObject(gpuGbIndex)
 
-
     val gpuGbCount = createReadWriteBuffer[Int](1)
     hostToDeviceCopy[Int](pointer(Array[Int](0)), gpuGbCount, 1)
 
@@ -138,7 +136,6 @@ class GpuAggregationPartition[T <: Product : TypeTag]
     clReleaseMemObject(gpuGbCount)
     clReleaseMemObject(gpu_hashNum)
   }
-
 
   override def fill(iter: Iterator[T]): Unit = {
     super.fill(iter)
