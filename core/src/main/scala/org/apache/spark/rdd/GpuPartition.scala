@@ -509,6 +509,11 @@ class GpuPartition[T <: Product : TypeTag]
     clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_ONLY, size, null, null)
   }
 
+  protected def createReadBuffer(elementCount: Int, columnType: JavaType): cl_mem = {
+    val size = elementCount * baseSize(columnType)
+    clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_ONLY, size, null, null)
+  }
+
   protected def createReadWriteBuffer[V: TypeTag](elementCount: Int): cl_mem = {
     val size = elementCount * baseSize[V]
     clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_WRITE, size, null, null)
