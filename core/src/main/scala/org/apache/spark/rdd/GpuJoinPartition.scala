@@ -52,7 +52,7 @@ class GpuJoinPartition[T <: Product: TypeTag, TL <: Product: TypeTag, TR <: Prod
     val gpu_psum = createReadWriteBuffer[Int](hsize)
 
     //twice as big as # of keys
-    val gpu_bucket = createReadWriteBuffer[Int](2 * rightPartition.size) //TODO change [Int[ to [U]
+    val gpu_bucket = createReadWriteBuffer[U](2 * rightPartition.size)
 
     val gpu_psum1 = createReadWriteBuffer[Int](hsize)
 
@@ -60,7 +60,7 @@ class GpuJoinPartition[T <: Product: TypeTag, TL <: Product: TypeTag, TR <: Prod
 
     val gpu_dim = columnPosition match {
       case DataPosition.HOST =>
-        createReadBuffer[Int](rightPartition.size) // TODO should this be [Int] or [U]
+        createReadBuffer[U](rightPartition.size)
       case DataPosition.DEVICE =>
         throw new NotImplementedError("DataPosition.DEVICE is not supported!")
       case _ =>
@@ -114,7 +114,7 @@ class GpuJoinPartition[T <: Product: TypeTag, TL <: Product: TypeTag, TR <: Prod
       case _ =>
         throw new NotImplementedError("Unknown DataPosition type!")
     }
-    hostToDeviceCopy[U](pointer(getColumn[U](joinColIndexLeft)), gpu_fact, this.size.toLong)
+    hostToDeviceCopy[U](pointer(leftPartition.getColumn[U](joinColIndexLeft)), gpu_fact, leftPartition.size)
 
     gpuFactFilter = createReadWriteBuffer[U](size)
 
