@@ -521,16 +521,14 @@ class GpuPartition[T <: Product : TypeTag]
   protected def hostToDeviceCopy[V: TypeTag](src: Pointer, dest: cl_mem, elementCount: Long,
                                              offset: Int = 0): Unit = {
     val length = elementCount * baseSize[V]
-    clEnqueueWriteBuffer(context.getOpenCLQueue, dest, CL_TRUE, offset, length, src,
-      0, null, null)
+    clEnqueueWriteBuffer(context.getOpenCLQueue, dest, CL_TRUE, offset, length, src, 0, null, null)
   }
 
   protected def hostToDeviceCopy(ct: JavaType)(src: Pointer, dest: cl_mem,
                                                elementCount: Long,
                                                offset: Int = 0): Unit = {
     val length = elementCount * baseSize(ct)
-    clEnqueueWriteBuffer(context.getOpenCLQueue, dest, CL_TRUE, offset, length, src,
-      0, null, null)
+    clEnqueueWriteBuffer(context.getOpenCLQueue, dest, CL_TRUE, offset, length, src, 0, null, null)
   }
 
   protected def deviceToHostCopy[V: TypeTag](src: cl_mem, dest: Pointer, elementCount: Long, offset: Long = 0): Unit = {
@@ -561,7 +559,7 @@ class GpuPartition[T <: Product : TypeTag]
 
   var g_numEltsAllocated: Int = 0
   var g_numLevelsAllocated: Int = 0
-  
+
   @transient var g_scanBlockSums: Array[cl_mem] = null
   @transient var gpuCol: cl_mem = null
   @transient var gpuFilter: cl_mem = null

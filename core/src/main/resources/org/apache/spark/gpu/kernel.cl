@@ -365,7 +365,7 @@ __kernel  void count_join_result(__global int* num, __global int* psum, __global
                 int fkey = fact[i];
                 int hkey = fkey &(hsize-1);
                 int keyNum = num[hkey];
-        int fvalue = 0;
+                int fvalue = 0;
 
                 for(int j=0;j<keyNum;j++){
                         int pSum = psum[hkey];
@@ -373,7 +373,7 @@ __kernel  void count_join_result(__global int* num, __global int* psum, __global
                         int dimId = bucket[2*j + 2*pSum + 1];
                         if( dimKey == fkey){
                                 lcount ++;
-                fvalue = dimId;
+                                fvalue = dimId;
                                 break;
                         }
                 }
