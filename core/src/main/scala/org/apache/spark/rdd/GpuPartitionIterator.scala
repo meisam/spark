@@ -23,7 +23,7 @@ class GpuPartitionIterator[T <: Product : TypeTag]
 
   protected var currentPosition: Int = -1
 
-  protected val context: OpenCLContext = new OpenCLContext
+  @transient protected val context: OpenCLContext = new OpenCLContext
 
   context.initOpenCL("/org/apache/spark/gpu/kernel.cl")
 
