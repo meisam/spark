@@ -97,7 +97,7 @@ U: ClassTag : TypeTag]
 
     val gpu_fact: cl_mem = dataPos match {
       case DataPosition.HOST =>
-        createReadBuffer[U](this.size)
+        createReadBuffer[U](leftPartition.size)
       case DataPosition.DEVICE =>
         throw new NotImplementedError("DataPosition.DEVICE is not supported!")
       case _ =>
