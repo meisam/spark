@@ -4,13 +4,10 @@ import org.apache.spark.scheduler.OpenCLContext
 import org.jocl.CL._
 import org.jocl._
 
-import scala.reflect.ClassTag
 import scala.reflect.runtime.universe.TypeTag
 
-class GpuJoinPartition[T <: Product : TypeTag, T2 <: Product : TypeTag,
-U: ClassTag : TypeTag]
-(context: OpenCLContext, rightPartition: GpuPartition[T2],
- joinColIndexLeft: Int, joinColIndexRight: Int, capacity: Int)
+class GpuJoinPartition[T <: Product: TypeTag, TL <: Product: TypeTag, TR <: Product: TypeTag, U: TypeTag](context: OpenCLContext, leftPartition: GpuPartition[TL], rightPartition: GpuPartition[TR],
+  joinColIndexLeft: Int, joinColIndexRight: Int, capacity: Int)
   extends GpuPartition[T](context, capacity) {
 
   def buildHashTable() = {
