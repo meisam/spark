@@ -10,6 +10,20 @@ class GpuJoinPartition[T <: Product: TypeTag, TL <: Product: TypeTag, TR <: Prod
   joinColIndexLeft: Int, joinColIndexRight: Int, capacity: Int)
   extends GpuPartition[T](context, capacity) {
 
+  def columnFromLeftPartition(columnIndex: Int): Boolean = {
+    columnIndex < leftPartition.columnTypes.length
+  }
+
+  def toRightTableIndex(columnIndex: Int) = {
+    if (columnFromLeftPartition(columnIndex))
+      throw new IllegalArgumentException("%d is from the left table!".format(columnIndex))
+
+    if (columnIndex > (leftPartition.columnTypes.length + rightPartition.columnTypes.length))
+      throw new IllegalArgumentException("%d is too big to be from the right table!".format(columnIndex))
+
+    columnIndex - leftPartition.columnTypes.length
+  }
+
   def buildHashTable() = {
 
     val hsize = (1 to 31).map(1 << _).filter(_ >= rightPartition.size).head
