@@ -157,3 +157,4 @@ object AggregationOperation extends Enumeration {
   def sum = Value("sum")
 
   def avg = Value("avg")
+}
