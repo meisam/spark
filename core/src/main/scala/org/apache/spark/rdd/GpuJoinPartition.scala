@@ -152,6 +152,8 @@ class GpuJoinPartition[T <: Product: TypeTag, TL <: Product: TypeTag, TR <: Prod
   }
 
   def join(): Int = {
+    this.globalSize = leftPartition.globalSize
+    this.localSize = leftPartition.localSize
     buildHashTable
 
     joinOnGpu
