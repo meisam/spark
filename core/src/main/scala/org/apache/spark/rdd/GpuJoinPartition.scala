@@ -166,10 +166,28 @@ U: TypeTag]
       } else if (columnIndex != joinColIndexRight) {
         rightPartition.columnTypes.zipWithIndex.map(_._2 + leftPartition.columnTypes.length)
         val rightColumnIndex = toRightTableIndex(columnIndex)
-        val column = getColumn(rightColumnIndex)(evidence$3)
-        val sizeInBytes = joinResultCount * baseSize(rightPartition.columnTypes(rightColumnIndex))
+        val column = getColumn(rightColumnIndex)(columnTypeTag)
+        val sizeInBytes = joinResultCount * baseSize(columnType)
         val gpu_fact = createReadWriteBuffer[Byte](sizeInBytes)
         val gpu_result = createReadBuffer(joinResultCount, columnType)
+
+        val joinFactKernel = if (baseSize(columnType) == Sizeof.cl_int) {
+          clCreateKernel(context.program, "joinFact_int", null)
+        } else {
+          clCreateKernel(context.program, "joinFact_other", null)
+        }
+        
+        clSetKernelArg(joinFactKernel,0,Sizeof.cl_mem, Pointer.to(gpu_resPsum))
+        clSetKernelArg(joinFactKernel,1,Sizeof.cl_mem, Pointer.to(gpu_fact))
+        clSetKernelArg(joinFactKernel,2,Sizeof.cl_int, pointer(toArray[Int](baseSize(columnType))))
+        clSetKernelArg(joinFactKernel,3,Sizeof.cl_long, pointer(toArray[Long](leftPartition.size)))
+        clSetKernelArg(joinFactKernel,4,Sizeof.cl_mem, Pointer.to(gpuFactFilter))
+        clSetKernelArg(joinFactKernel,5,Sizeof.cl_mem, Pointer.to(gpu_result))
+        clEnqueueNDRangeKernel(context.queue, joinFactKernel, 1, null,
+            global_work_size, local_work_size, 0, null, null)
+
+        getColumn(columnIndex)(columnTypeTag)
+        deviceToHostCopy(gpu_result, pointer(column)(columnTypeTag),joinResultCount)(columnTypeTag)
 
       }
       /*
