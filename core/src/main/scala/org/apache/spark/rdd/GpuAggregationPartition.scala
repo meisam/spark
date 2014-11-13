@@ -30,37 +30,37 @@ class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext,
 
     val tupleCount = this.size // TODO this.size or parent.size?
     intData.foreach { column =>
-      hostToDeviceCopy[Byte](pointer(column), gpuContent, tupleCount /*, cpuOffsets(offsetIndex)*/ )
+      hostToDeviceCopy[Byte](column, gpuContent, tupleCount , cpuOffsets(offsetIndex))
       offsetIndex += 1
     }
 
     longData.foreach { column =>
-      hostToDeviceCopy[Long](pointer(column), gpuContent, tupleCount, cpuOffsets(offsetIndex))
+      hostToDeviceCopy[Long](column, gpuContent, tupleCount, cpuOffsets(offsetIndex))
       offsetIndex += 1
     }
 
     floatData.foreach { column =>
-      hostToDeviceCopy[Float](pointer(column), gpuContent, tupleCount, cpuOffsets(offsetIndex))
+      hostToDeviceCopy[Float](column, gpuContent, tupleCount, cpuOffsets(offsetIndex))
       offsetIndex += 1
     }
 
     doubleData.foreach { column =>
-      hostToDeviceCopy[Double](pointer(column), gpuContent, tupleCount, cpuOffsets(offsetIndex))
+      hostToDeviceCopy[Double](column, gpuContent, tupleCount, cpuOffsets(offsetIndex))
       offsetIndex += 1
     }
 
     booleanData.foreach { column =>
-      hostToDeviceCopy[Boolean](pointer(column), gpuContent, tupleCount, cpuOffsets(offsetIndex))
+      hostToDeviceCopy[Boolean](column, gpuContent, tupleCount, cpuOffsets(offsetIndex))
       offsetIndex += 1
     }
 
     charData.foreach { column =>
-      hostToDeviceCopy[Char](pointer(column), gpuContent, tupleCount, cpuOffsets(offsetIndex))
+      hostToDeviceCopy[Char](column, gpuContent, tupleCount, cpuOffsets(offsetIndex))
       offsetIndex += 1
     }
 
     stringData.foreach { column =>
-      hostToDeviceCopy[Char](pointer(column), gpuContent, tupleCount * MAX_STRING_SIZE, cpuOffsets(offsetIndex))
+      hostToDeviceCopy[Char](column, gpuContent, tupleCount * MAX_STRING_SIZE, cpuOffsets(offsetIndex))
       offsetIndex += 1
     }
 

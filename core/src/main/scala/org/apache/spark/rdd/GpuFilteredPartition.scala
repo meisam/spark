@@ -18,7 +18,7 @@ class GpuFilteredPartition[T <: Product : TypeTag, U: TypeTag]
     gpuCol = createReadWriteBuffer[U](tupleNum)
 
     val col = getColumn[U](columnIndex)
-    hostToDeviceCopy[U](pointer(col), gpuCol, tupleNum)
+    hostToDeviceCopy[U](col, gpuCol, tupleNum, 0)
 
     gpuFilter = createReadWriteBuffer[Int](tupleNum)
     gpuPsum = createReadWriteBuffer[Int](globalSize)
