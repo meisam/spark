@@ -158,6 +158,7 @@ U: TypeTag]
     clReleaseMemObject(gpu_bucket)
 
     columnTypes.zipWithIndex.foreach { case (columnType, columnIndex) =>
+      implicit val columnTypeTag = javaTypeToTypeTag(columnType)
       val colSize = baseSize(columnType)
 
       if (columnFromLeftPartition(columnIndex)) {
