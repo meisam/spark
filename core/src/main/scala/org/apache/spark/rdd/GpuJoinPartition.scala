@@ -69,9 +69,9 @@ U: TypeTag]
         throw new NotImplementedError("Unknown DataPosition type!")
 
     }
-    val rightColumn: Array[U] = rightPartition.getColumn[U](joinColIndexRight)
+    val rightColumn = rightPartition.getColumn[U](joinColIndexRight)
     //TODO why this should be blocking
-    hostToDeviceCopy[U](pointer(rightColumn), gpu_dim, /*CL_TRUE,*/ rightPartition.size)
+    hostToDeviceCopy[U](rightColumn, gpu_dim, /*CL_TRUE,*/ rightPartition.size, 0)
 
     val countHashKernel = clCreateKernel(context.program, "count_hash_num", null)
     clSetKernelArg(countHashKernel, 0, Sizeof.cl_mem, Pointer.to(gpu_dim))
@@ -116,7 +116,7 @@ U: TypeTag]
       case _ =>
         throw new NotImplementedError("Unknown DataPosition type!")
     }
-    hostToDeviceCopy[U](pointer(leftPartition.getColumn[U](joinColIndexLeft)), gpu_fact, leftPartition.size)
+    hostToDeviceCopy[U](leftPartition.getColumn[U](joinColIndexLeft), gpu_fact, leftPartition.size, 0)
 
     val gpuFactFilter = createReadWriteBuffer[U](leftPartition.size)
 
@@ -187,8 +187,7 @@ U: TypeTag]
         clEnqueueNDRangeKernel(context.queue, joinFactKernel, 1, null,
             global_work_size, local_work_size, 0, null, null)
 
-        getColumn(columnIndex)(columnTypeTag)
-        deviceToHostCopy(gpu_result, pointer(column)(columnTypeTag),joinResultCount)(columnTypeTag)
+        deviceToHostCopy(gpu_result, column,joinResultCount, 0)(columnTypeTag)
 
       }
       /*
