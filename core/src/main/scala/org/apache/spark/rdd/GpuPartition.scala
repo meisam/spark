@@ -141,7 +141,7 @@ class GpuPartition[T <: Product : TypeTag]
       } else if (colType == TypeTag.Double.tpe) {
         doubleData(toTypeAwareColumnIndex(colIndex)).get(rowIndex)
       } else if (colType == TypeTag.Boolean.tpe) {
-        booleanData(toTypeAwareColumnIndex(colIndex)).get(rowIndex)
+        booleanData(toTypeAwareColumnIndex(colIndex)).get(rowIndex) != 0
       } else if (colType == TypeTag.Char.tpe) {
         charData(toTypeAwareColumnIndex(colIndex)).get(rowIndex)
       } else if (colType == ColumnarTypes.StringTypeTag) {
