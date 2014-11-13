@@ -52,8 +52,8 @@ class GpuAggregationPartitionSuit extends FunSuite with SharedSparkContext {
     assert(gpuPartition.size === expectedData.length)
 
     expectedData.zipWithIndex.foreach { case ((gbVal, aggValue), index) =>
-      assert(gpuPartition.intData(0)(index) === gbVal, "values do not match")
-      assert(gpuPartition.intData(1)(index) === aggValue, "values do not match")
+      assert(gpuPartition.intData(0).get(index) === gbVal, "values do not match")
+      assert(gpuPartition.intData(1).get(index) === aggValue, "values do not match")
     case _ => fail("We should not be here")
     }
   }
