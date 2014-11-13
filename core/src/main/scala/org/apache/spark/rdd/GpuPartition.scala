@@ -9,6 +9,14 @@ import scala.reflect.ClassTag
 import scala.reflect.api.JavaUniverse
 import scala.reflect.runtime.universe.{TypeTag, typeOf}
 import scala.reflect.runtime.{universe => ru}
+import java.nio.Buffer
+import java.nio.ByteBuffer
+import java.nio.ShortBuffer
+import java.nio.IntBuffer
+import java.nio.LongBuffer
+import java.nio.FloatBuffer
+import java.nio.DoubleBuffer
+import java.nio.CharBuffer
 
 class GpuPartition[T <: Product : TypeTag]
 (context: OpenCLContext, val capacity: Int)
@@ -27,16 +35,33 @@ class GpuPartition[T <: Product : TypeTag]
 
   var size = 0
 
-  val byteData = Array.ofDim[Byte](columnTypes.count(_ == TypeTag.Byte.tpe), capacity)
-  val shortData = Array.ofDim[Short](columnTypes.count(_ == TypeTag.Short.tpe), capacity)
-  val intData = Array.ofDim[Int](columnTypes.count(_ == TypeTag.Int.tpe), capacity)
-  val longData = Array.ofDim[Long](columnTypes.count(_ == TypeTag.Long.tpe), capacity)
-  val floatData = Array.ofDim[Float](columnTypes.count(_ == TypeTag.Float.tpe), capacity)
-  val doubleData = Array.ofDim[Double](columnTypes.count(_ == TypeTag.Double.tpe), capacity)
-  val booleanData = Array.ofDim[Boolean](columnTypes.count(_ == TypeTag.Boolean.tpe), capacity)
-  val charData = Array.ofDim[Char](columnTypes.count(_ == TypeTag.Char.tpe), capacity)
-  val stringData = Array.ofDim[Char](columnTypes.count(_ == ColumnarTypes.StringTypeTag.tpe)
-    , capacity * MAX_STRING_SIZE)
+  val byteData = Array.fill[ByteBuffer](columnTypes.count(_ == TypeTag.Byte.tpe)) {
+    ByteBuffer.wrap(Array.ofDim[Byte](capacity))
+  }
+  val shortData = Array.fill[ShortBuffer](columnTypes.count(_ == TypeTag.Short.tpe)) {
+    ShortBuffer.wrap(Array.ofDim[Short](capacity))
+  }
+  val intData = Array.fill[IntBuffer](columnTypes.count(_ == TypeTag.Int.tpe)) {
+    IntBuffer.wrap(Array.ofDim[Int](capacity))
+  }
+  val longData = Array.fill[LongBuffer](columnTypes.count(_ == TypeTag.Long.tpe)) {
+    LongBuffer.wrap(Array.ofDim[Long](capacity))
+  }
+  val floatData = Array.fill[FloatBuffer](columnTypes.count(_ == TypeTag.Float.tpe)) {
+    FloatBuffer.wrap(Array.ofDim[Float](capacity))
+  }
+  val doubleData = Array.fill[DoubleBuffer](columnTypes.count(_ == TypeTag.Double.tpe)) {
+    DoubleBuffer.wrap(Array.ofDim[Double](capacity))
+  }
+  val booleanData = Array.fill[ByteBuffer](columnTypes.count(_ == TypeTag.Boolean.tpe)) {
+    ByteBuffer.wrap(Array.ofDim[Byte](capacity))
+  }
+  val charData = Array.fill[CharBuffer](columnTypes.count(_ == TypeTag.Char.tpe)) {
+    CharBuffer.wrap(Array.ofDim[Char](capacity))
+  }
+  val stringData = Array.fill[CharBuffer](columnTypes.count(_ == ColumnarTypes.StringTypeTag.tpe)) {
+    CharBuffer.wrap(Array.ofDim[Char](capacity * MAX_STRING_SIZE))
+  }
 
   def inferBestWorkGroupSize(): Unit = {
     this.localSize = if (size == 0) 1 else math.min(BLOCK_SIZE, size)
@@ -53,25 +78,25 @@ class GpuPartition[T <: Product : TypeTag]
         size = rowIndex + 1
         v.productIterator.zipWithIndex.foreach { case (p, colIndex) =>
           if (columnTypes(colIndex) == TypeTag.Byte.tpe) {
-            byteData(toTypeAwareColumnIndex(colIndex))(rowIndex) = p.asInstanceOf[Byte]
+            byteData(toTypeAwareColumnIndex(colIndex)).put(rowIndex , p.asInstanceOf[Byte])
           } else if (columnTypes(colIndex) == TypeTag.Short.tpe) {
-            shortData(toTypeAwareColumnIndex(colIndex))(rowIndex) = p.asInstanceOf[Short]
+            shortData(toTypeAwareColumnIndex(colIndex)).put(rowIndex, p.asInstanceOf[Short])
           } else if (columnTypes(colIndex) == TypeTag.Int.tpe) {
-            intData(toTypeAwareColumnIndex(colIndex))(rowIndex) = p.asInstanceOf[Int]
+            intData(toTypeAwareColumnIndex(colIndex)).put(rowIndex, p.asInstanceOf[Int])
           } else if (columnTypes(colIndex) == TypeTag.Long.tpe) {
-            longData(toTypeAwareColumnIndex(colIndex))(rowIndex) = p.asInstanceOf[Long]
+            longData(toTypeAwareColumnIndex(colIndex)).put(rowIndex, p.asInstanceOf[Long])
           } else if (columnTypes(colIndex) == TypeTag.Float.tpe) {
-            floatData(toTypeAwareColumnIndex(colIndex))(rowIndex) = p.asInstanceOf[Float]
+            floatData(toTypeAwareColumnIndex(colIndex)).put(rowIndex, p.asInstanceOf[Float])
           } else if (columnTypes(colIndex) == TypeTag.Double.tpe) {
-            doubleData(toTypeAwareColumnIndex(colIndex))(rowIndex) = p.asInstanceOf[Double]
+            doubleData(toTypeAwareColumnIndex(colIndex)).put(rowIndex, p.asInstanceOf[Double])
           } else if (columnTypes(colIndex) == TypeTag.Boolean.tpe) {
-            booleanData(toTypeAwareColumnIndex(colIndex))(rowIndex) = p.asInstanceOf[Boolean]
+            booleanData(toTypeAwareColumnIndex(colIndex)).put(rowIndex, if (p.asInstanceOf[Boolean]) 1 else 0)
           } else if (columnTypes(colIndex) == TypeTag.Char.tpe) {
-            charData(toTypeAwareColumnIndex(colIndex))(rowIndex) = p.asInstanceOf[Char]
+            charData(toTypeAwareColumnIndex(colIndex)).put(rowIndex, p.asInstanceOf[Char])
           } else if (columnTypes(colIndex) == ColumnarTypes.StringTypeTag.tpe) {
             val str = p.toString
-            str.getChars(0, Math.min(MAX_STRING_SIZE, str.length),
-              stringData(toTypeAwareColumnIndex(colIndex)), rowIndex * MAX_STRING_SIZE)
+            str.getChars(0, Math.min(MAX_STRING_SIZE, str.length), 
+                stringData(toTypeAwareColumnIndex(colIndex)).array, rowIndex * MAX_STRING_SIZE)
           } else {
             throw new NotImplementedError("Unknown type %s".format(columnTypes(colIndex)))
           }
@@ -81,9 +106,9 @@ class GpuPartition[T <: Product : TypeTag]
   }
 
   def getStringData(typeAwareColumnIndex: Int, rowIndex: Int): String = {
-    val str = new String(stringData(typeAwareColumnIndex), rowIndex * MAX_STRING_SIZE, MAX_STRING_SIZE)
-    val actualLenght = str.indexOf(0)
-    str.substring(0, actualLenght)
+    val offset = rowIndex * MAX_STRING_SIZE
+    val str = new String(stringData(typeAwareColumnIndex).array() , offset, MAX_STRING_SIZE)
+    str.trim()
   }
 
   /**
@@ -104,21 +129,21 @@ class GpuPartition[T <: Product : TypeTag]
 
     val values = columnTypes.zipWithIndex.map({ case (colType, colIndex) =>
       if (colType == TypeTag.Byte.tpe) {
-        byteData(toTypeAwareColumnIndex(colIndex))(rowIndex)
+        byteData(toTypeAwareColumnIndex(colIndex)).get(rowIndex)
       } else if (colType == TypeTag.Short.tpe) {
-        shortData(toTypeAwareColumnIndex(colIndex))(rowIndex)
+        shortData(toTypeAwareColumnIndex(colIndex)).get(rowIndex)
       } else if (colType == TypeTag.Int.tpe) {
-        intData(toTypeAwareColumnIndex(colIndex))(rowIndex)
+        intData(toTypeAwareColumnIndex(colIndex)).get(rowIndex)
       } else if (colType == TypeTag.Long.tpe) {
-        longData(toTypeAwareColumnIndex(colIndex))(rowIndex)
+        longData(toTypeAwareColumnIndex(colIndex)).get(rowIndex)
       } else if (colType == TypeTag.Float.tpe) {
-        floatData(toTypeAwareColumnIndex(colIndex))(rowIndex)
+        floatData(toTypeAwareColumnIndex(colIndex)).get(rowIndex)
       } else if (colType == TypeTag.Double.tpe) {
-        doubleData(toTypeAwareColumnIndex(colIndex))(rowIndex)
+        doubleData(toTypeAwareColumnIndex(colIndex)).get(rowIndex)
       } else if (colType == TypeTag.Boolean.tpe) {
-        booleanData(toTypeAwareColumnIndex(colIndex))(rowIndex)
+        booleanData(toTypeAwareColumnIndex(colIndex)).get(rowIndex)
       } else if (colType == TypeTag.Char.tpe) {
-        charData(toTypeAwareColumnIndex(colIndex))(rowIndex)
+        charData(toTypeAwareColumnIndex(colIndex)).get(rowIndex)
       } else if (colType == ColumnarTypes.StringTypeTag) {
         getStringData(toTypeAwareColumnIndex(colIndex), rowIndex)
       } else {
@@ -404,12 +429,12 @@ class GpuPartition[T <: Product : TypeTag]
   def project[V: ClassTag : TypeTag](columnIndex: Int, outSize: Int) {
     if (outSize == 0)
       return
-    val colData: Array[V] = getColumn(columnIndex)
+    val colData = getColumn[V](columnIndex)
     val global_work_size = Array[Long](globalSize)
     val local_work_size = Array[Long](localSize)
     val scanCol: cl_mem = createReadWriteBuffer[V](size)
 
-    hostToDeviceCopy[V](pointer(colData), scanCol, size)
+    hostToDeviceCopy[V](colData, scanCol, size, 0)
 
     val result: cl_mem = createReadWriteBuffer[V](outSize)
 
@@ -424,7 +449,7 @@ class GpuPartition[T <: Product : TypeTag]
     clSetKernelArg(kernel, 5, Sizeof.cl_mem, Pointer.to(gpuFilter))
     clSetKernelArg(kernel, 6, Sizeof.cl_mem, Pointer.to(result))
     clEnqueueNDRangeKernel(context.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
-    deviceToHostCopy[V](result, pointer(colData), outSize)
+    deviceToHostCopy[V](result, colData, outSize, 0)
   }
 
   def releaseCol(col: cl_mem) {
@@ -441,19 +466,19 @@ class GpuPartition[T <: Product : TypeTag]
     })
   }
 
-  def getColumn[V: TypeTag](columnIndex: Int): Array[V] = {
+  def getColumn[V: TypeTag](columnIndex: Int): Buffer = {
     val typeAwareColumnIndex = toTypeAwareColumnIndex(columnIndex)
 
     implicitly[TypeTag[V]] match {
-      case TypeTag.Byte => byteData(typeAwareColumnIndex).asInstanceOf[Array[V]]
-      case TypeTag.Short => shortData(typeAwareColumnIndex).asInstanceOf[Array[V]]
-      case TypeTag.Char => charData(typeAwareColumnIndex).asInstanceOf[Array[V]]
-      case TypeTag.Int => intData(typeAwareColumnIndex).asInstanceOf[Array[V]]
-      case TypeTag.Long => longData(typeAwareColumnIndex).asInstanceOf[Array[V]]
-      case TypeTag.Float => floatData(typeAwareColumnIndex).asInstanceOf[Array[V]]
-      case TypeTag.Double => doubleData(typeAwareColumnIndex).asInstanceOf[Array[V]]
-      case TypeTag.Boolean => booleanData(typeAwareColumnIndex).asInstanceOf[Array[V]]
-      case ColumnarTypes.StringTypeTag => stringData(typeAwareColumnIndex).asInstanceOf[Array[V]]
+      case TypeTag.Byte => byteData(typeAwareColumnIndex).asInstanceOf[Buffer]
+      case TypeTag.Short => shortData(typeAwareColumnIndex).asInstanceOf[Buffer]
+      case TypeTag.Char => charData(typeAwareColumnIndex).asInstanceOf[Buffer]
+      case TypeTag.Int => intData(typeAwareColumnIndex).asInstanceOf[Buffer]
+      case TypeTag.Long => longData(typeAwareColumnIndex).asInstanceOf[Buffer]
+      case TypeTag.Float => floatData(typeAwareColumnIndex).asInstanceOf[Buffer]
+      case TypeTag.Double => doubleData(typeAwareColumnIndex).asInstanceOf[Buffer]
+      case TypeTag.Boolean => booleanData(typeAwareColumnIndex).asInstanceOf[Buffer]
+      case ColumnarTypes.StringTypeTag => stringData(typeAwareColumnIndex).asInstanceOf[Buffer]
       case _ => throw new NotImplementedError("Unknown type %s".format(implicitly[TypeTag[V]]))
     }
   }
@@ -539,6 +564,13 @@ class GpuPartition[T <: Product : TypeTag]
     clEnqueueWriteBuffer(context.getOpenCLQueue, dest, CL_TRUE, offset, length, src, 0, null, null)
   }
 
+  protected def hostToDeviceCopy[V: TypeTag](src: Buffer, dest: cl_mem, elementCount: Long,
+                                             offset: Int): Unit = {
+    val length = elementCount * baseSize[V]
+    val scrBuffer = Pointer.to(src)
+    clEnqueueWriteBuffer(context.getOpenCLQueue, dest, CL_TRUE, offset, length, scrBuffer, 0, null, null)
+  }
+
   protected def hostToDeviceCopy(ct: JavaType)(src: Pointer, dest: cl_mem,
                                                elementCount: Long,
                                                offset: Int = 0): Unit = {
@@ -551,6 +583,14 @@ class GpuPartition[T <: Product : TypeTag]
     val offsetInBytes = offset * baseSize[V]
     clEnqueueReadBuffer(context.getOpenCLQueue, src, CL_TRUE, offsetInBytes, length, dest, 0, null,
       null)
+  }
+
+  protected def deviceToHostCopy[V: TypeTag](src: cl_mem, dest: Buffer, elementCount: Long, offset: Long): Unit = {
+    val length = elementCount * baseSize[V]
+    val offsetInBytes = offset * baseSize[V]
+    val destPointer = Pointer.to(dest)
+    clEnqueueReadBuffer(context.getOpenCLQueue, src, CL_TRUE, offsetInBytes, length, destPointer, 0,
+      null, null)
   }
 
   protected def deviceToDeviceCopy[V: TypeTag](src: cl_mem, dest: cl_mem, elementCount: Long,
