@@ -114,4 +114,29 @@ class GpuJoinPartitionSuit extends FunSuite with SharedSparkContext {
     }
   }
 
+  test("GpuJoinPartition(Long, Log) basic test") {
+    val leftTableData= Array(10, 11, 12).zipWithIndex.map({case (v, i) => (v.toLong, i.toLong)})
+    val leftPartition = new GpuPartition[(Long, Long)](openCLContext, DEFAULT_CAPACITY)
+    leftPartition.fill(leftTableData.toIterator)
+
+    val rightTableData = Array(10, 11, 12).zipWithIndex.map({case (v, i) => (v.toLong, i.toLong)})
+    val rightPartition = new GpuPartition[(Long, Long)](openCLContext, DEFAULT_CAPACITY)
+    rightPartition.fill(rightTableData.toIterator)
+
+    val gpuJoinPartition = new GpuJoinPartition[(Long, Long, Long), (Long, Long), (Long, Long), Long](
+      openCLContext, leftPartition, rightPartition, 0, 0, DEFAULT_CAPACITY)
+    gpuJoinPartition.join
+
+    val expectedData = Array((10L, 0, 1), (10L, 2, 1), (12L, 4, 2))
+
+    assert(rightPartition.size === expectedData.length)
+
+    expectedData.zipWithIndex.foreach { case ((keyValue, leftValue, rightValue), index) =>
+      assert(gpuJoinPartition.longData(0)(index) === keyValue, "values do not match")
+      assert(gpuJoinPartition.longData(1)(index) === leftValue, "values do not match")
+      assert(gpuJoinPartition.longData(2)(index) === rightValue, "values do not match")
+    case _ => fail("We should not be here")
+    }
+  }
+
 }
