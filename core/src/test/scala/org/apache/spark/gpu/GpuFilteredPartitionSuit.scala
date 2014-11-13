@@ -141,7 +141,7 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
 
     expectedData.zipWithIndex.foreach { case ((longValue, booleanValue), index) =>
       assert(gpuPartition.longData(0).get(index) === longValue, "values do not match")
-      assert(gpuPartition.booleanData(0).get(index) === booleanValue, "values do not match")
+      assert((gpuPartition.booleanData(0).get(index) != 0) === booleanValue, "values do not match")
     }
   }
 }
