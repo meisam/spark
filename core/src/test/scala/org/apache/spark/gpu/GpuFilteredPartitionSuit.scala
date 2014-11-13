@@ -49,8 +49,8 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
     assert(gpuPartition.size === expectedData.length)
 
     expectedData.foreach { case (value, index) =>
-      assert(gpuPartition.intData(0)(index) === value, "values do not match")
-      assert(gpuPartition.intData(1)(index) === index, "values do not match")
+      assert(gpuPartition.intData(0).get(index) === value, "values do not match")
+      assert(gpuPartition.intData(1).get(index) === index, "values do not match")
     case _ => fail("We should not be here")
     }
   }
@@ -66,8 +66,8 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
     assert(gpuPartition.size === expectedData.length)
 
     expectedData.foreach { case (value, index) =>
-      assert(gpuPartition.intData(0)(index) === value, "values do not match")
-      assert(gpuPartition.intData(1)(index) === index, "values do not match")
+      assert(gpuPartition.intData(0).get(index) === value, "values do not match")
+      assert(gpuPartition.intData(1).get(index) === index, "values do not match")
     case _ => fail("We should not be here")
     }
   }
@@ -83,8 +83,8 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
     assert(gpuPartition.size === expectedData.length)
 
     expectedData.foreach { case (value, index) =>
-      assert(gpuPartition.intData(0)(index) === value, "values do not match")
-      assert(gpuPartition.intData(1)(index) === index, "values do not match")
+      assert(gpuPartition.intData(0).get(index) === value, "values do not match")
+      assert(gpuPartition.intData(1).get(index) === index, "values do not match")
     case _ => fail("We should not be here")
     }
   }
@@ -101,8 +101,8 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
     assert(gpuPartition.size === expectedData.length)
 
     expectedData.foreach { case (value, index) =>
-      assert(gpuPartition.intData(0)(index) === value, "values do not match")
-      assert(gpuPartition.intData(1)(index) === index, "values do not match")
+      assert(gpuPartition.intData(0).get(index) === value, "values do not match")
+      assert(gpuPartition.intData(1).get(index) === index, "values do not match")
     case _ => fail("We should not be here")
     }
   }
@@ -119,8 +119,8 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
     assert(gpuPartition.size === expectedData.length)
 
     expectedData.foreach { case (value, index) =>
-      assert(gpuPartition.intData(0)(index) === value, "values do not match")
-      assert(gpuPartition.intData(1)(index) === index, "values do not match")
+      assert(gpuPartition.intData(0).get(index) === value, "values do not match")
+      assert(gpuPartition.intData(1).get(index) === index, "values do not match")
     }
   }
 
@@ -140,8 +140,8 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
     assert(gpuPartition.size === expectedData.length)
 
     expectedData.zipWithIndex.foreach { case ((longValue, booleanValue), index) =>
-      assert(gpuPartition.longData(0)(index) === longValue, "values do not match")
-      assert(gpuPartition.booleanData(0)(index) === booleanValue, "values do not match")
+      assert(gpuPartition.longData(0).get(index) === longValue, "values do not match")
+      assert(gpuPartition.booleanData(0).get(index) === booleanValue, "values do not match")
     }
   }
 }

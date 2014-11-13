@@ -155,11 +155,11 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
 
     (0 until chunk.capacity).foreach(i =>
       if (i <= 10) {
-        assert(chunk.intData(0)(i) === (10 - i), "values do not match")
-        assert(chunk.intData(1)(i) === i, "indexes  do not match")
+        assert(chunk.intData(0).get(i) === (10 - i), "values do not match")
+        assert(chunk.intData(1).get(i) === i, "indexes  do not match")
       } else {
-        assert(chunk.intData(0)(i) === 0, "values do not match")
-        assert(chunk.intData(1)(i) === 0, "values do not match")
+        assert(chunk.intData(0).get(i) === 0, "values do not match")
+        assert(chunk.intData(1).get(i) === 0, "values do not match")
       }
     )
   }
