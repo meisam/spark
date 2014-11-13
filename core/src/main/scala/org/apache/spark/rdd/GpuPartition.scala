@@ -431,6 +431,16 @@ class GpuPartition[T <: Product : TypeTag]
     clReleaseMemObject(col)
   }
 
+  def javaTypeToTypeTag(tpe: JavaType): TypeTag[_] = {
+     val mirror = ru.runtimeMirror(getClass.getClassLoader)
+    TypeTag(mirror, new reflect.api.TypeCreator {
+      def apply[U <: reflect.api.Universe with Singleton](m: reflect.api.Mirror[U]) = {
+        assert(m eq mirror, s"TypeTag[$tpe] defined in $mirror cannot be migrated to $m.")
+        tpe.asInstanceOf[U#Type]
+      }
+    })
+  }
+
   def getColumn[V: TypeTag](columnIndex: Int): Array[V] = {
     val typeAwareColumnIndex = toTypeAwareColumnIndex(columnIndex)
 
