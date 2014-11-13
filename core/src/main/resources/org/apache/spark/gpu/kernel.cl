@@ -527,3 +527,28 @@ __kernel void count_group_num(__global int *num, int tupleNum, __global int *tot
 
     atomic_add(totalCount,localCount);
 }
+
+#define declare_join_dim_kernel(column_type)                                                    \
+__kernel void join_dim_##column_type                                                            \
+(__global int *resPsum, __global column_type * dim                                              \
+        , int attrSize, long num, __global int * filter, __global column_type * result) {       \
+    size_t startIndex = get_global_id(0);                                                       \
+    size_t stride = get_global_size(0);                                                         \
+    long localCount = resPsum[startIndex];                                                      \
+                                                                                                \
+    for(size_t i = startIndex; i < num;i += stride) {                                           \
+        int dimId = filter[i];                                                                  \
+        if( dimId != 0){                                                                        \
+            result[localCount] = dim[dimId - 1];                                                \
+            localCount++;                                                                       \
+        }                                                                                       \
+    }                                                                                           \
+}                                                                                               \
+
+declare_join_dim_kernel(int)
+declare_join_dim_kernel(long)
+declare_join_dim_kernel(float)
+declare_join_dim_kernel(double)
+declare_join_dim_kernel(boolean)
+declare_join_dim_kernel(char)
+
