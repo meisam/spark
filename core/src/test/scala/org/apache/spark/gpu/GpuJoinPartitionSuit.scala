@@ -52,7 +52,7 @@ class GpuJoinPartitionSuit extends FunSuite with SharedSparkContext {
       openCLContext, leftPartition, rightPartition, 0, 0, DEFAULT_CAPACITY)
     gpuJoinPartition.join
 
-    val expectedData = Array((10, 0, 1), (10, 2, 1), (12, 4, 2))
+    val expectedData = Array((10, 0, 1), (10, 2, 1), (12, 4, 2), (13, 5, 3), (13, 5, 6))
 
     assert(rightPartition.size === expectedData.length)
 
