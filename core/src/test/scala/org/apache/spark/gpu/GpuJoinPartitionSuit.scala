@@ -57,9 +57,9 @@ class GpuJoinPartitionSuit extends FunSuite with SharedSparkContext {
     assert(rightPartition.size === expectedData.length)
 
     expectedData.zipWithIndex.foreach { case ((keyValue, leftValue, rightValue), index) =>
-      assert(gpuJoinPartition.intData(0).get(index) === keyValue, "values do not match")
-      assert(gpuJoinPartition.intData(1).get(index) === leftValue, "values do not match")
-      assert(gpuJoinPartition.intData(2).get(index) === rightValue, "values do not match")
+      assert(gpuJoinPartition.intData(0).get(index) === keyValue, f"values do not match at $index")
+      assert(gpuJoinPartition.intData(1).get(index) === leftValue, f"values do not match at $index")
+      assert(gpuJoinPartition.intData(2).get(index) === rightValue, f"values do not match at $index")
     case _ => fail("We should not be here")
     }
   }
@@ -82,9 +82,9 @@ class GpuJoinPartitionSuit extends FunSuite with SharedSparkContext {
     assert(rightPartition.size === expectedData.length)
 
     expectedData.zipWithIndex.foreach { case ((keyValue, leftValue, rightValue), index) =>
-      assert(gpuJoinPartition.intData(0).get(index) === keyValue, "values do not match")
-      assert(gpuJoinPartition.intData(1).get(index) === leftValue, "values do not match")
-      assert(gpuJoinPartition.intData(2).get(index) === rightValue, "values do not match")
+      assert(gpuJoinPartition.intData(0).get(index) === keyValue, f"values do not match at $index")
+      assert(gpuJoinPartition.intData(1).get(index) === leftValue, f"values do not match at $index")
+      assert(gpuJoinPartition.intData(2).get(index) === rightValue, f"values do not match at $index")
     case _ => fail("We should not be here")
     }
   }
@@ -107,9 +107,9 @@ class GpuJoinPartitionSuit extends FunSuite with SharedSparkContext {
     assert(rightPartition.size === expectedData.length)
 
     expectedData.zipWithIndex.foreach { case ((keyValue, leftValue, rightValue), index) =>
-      assert(gpuJoinPartition.intData(0).get(index) === keyValue, "values do not match")
-      assert(gpuJoinPartition.intData(1).get(index) === leftValue, "values do not match")
-      assert(gpuJoinPartition.intData(2).get(index) === rightValue, "values do not match")
+      assert(gpuJoinPartition.intData(0).get(index) === keyValue, f"values do not match at $index")
+      assert(gpuJoinPartition.intData(1).get(index) === leftValue, f"values do not match at $index")
+      assert(gpuJoinPartition.intData(2).get(index) === rightValue, f"values do not match at $index")
     case _ => fail("We should not be here")
     }
   }
@@ -132,9 +132,9 @@ class GpuJoinPartitionSuit extends FunSuite with SharedSparkContext {
     assert(rightPartition.size === expectedData.length)
 
     expectedData.zipWithIndex.foreach { case ((keyValue, leftValue, rightValue), index) =>
-      assert(gpuJoinPartition.longData(0).get(index) === keyValue, "values do not match")
-      assert(gpuJoinPartition.longData(1).get(index) === leftValue, "values do not match")
-      assert(gpuJoinPartition.longData(2).get(index) === rightValue, "values do not match")
+      assert(gpuJoinPartition.longData(0).get(index) === keyValue, f"values do not match at $index")
+      assert(gpuJoinPartition.longData(1).get(index) === leftValue, f"values do not match at $index")
+      assert(gpuJoinPartition.longData(2).get(index) === rightValue, f"values do not match at $index")
     case _ => fail("We should not be here")
     }
   }
