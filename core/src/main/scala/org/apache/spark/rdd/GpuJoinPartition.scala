@@ -150,45 +150,46 @@ U: TypeTag]
 
     val joinResultCount = gpuCountTotal.head + gpuResSumTotal.head
     this.size = joinResultCount
-
     printf("[INFO]joinNum %,d =  gpuCountTotal.head + gpuResSumTotal.head = %,d +  %,d\n",
       joinResultCount, gpuCountTotal.head, gpuResSumTotal.head)
     clReleaseMemObject(gpu_fact)
 
     clReleaseMemObject(gpu_bucket)
 
-    columnTypes.zipWithIndex.foreach { case (columnType, columnIndex) =>
-      implicit val columnTypeTag = javaTypeToTypeTag(columnType)
-      val colSize = baseSize(columnType)
+    if (joinResultCount > 0) {
+      columnTypes.zipWithIndex.foreach {
+        case (columnType, columnIndex) =>
+          implicit val columnTypeTag = javaTypeToTypeTag(columnType)
+          val colSize = baseSize(columnType)
 
-      if (columnFromLeftPartition(columnIndex)) {
-//        hostToDeviceCopy(columnType)(pointer())
+          if (columnFromLeftPartition(columnIndex)) {
+            //        hostToDeviceCopy(columnType)(pointer())
 
-      } else if (columnIndex != joinColIndexRight) {
-        rightPartition.columnTypes.zipWithIndex.map(_._2 + leftPartition.columnTypes.length)
-        val rightColumnIndex = toRightTableIndex(columnIndex)
-        val column = getColumn(rightColumnIndex)(columnTypeTag)
-        val sizeInBytes = joinResultCount * baseSize(columnType)
-        val gpu_fact = createReadWriteBuffer[Byte](sizeInBytes)
-        val gpu_result = createReadBuffer(joinResultCount, columnType)
+          } else if (columnIndex != joinColIndexRight) {
+            rightPartition.columnTypes.zipWithIndex.map(_._2 + leftPartition.columnTypes.length)
+            val rightColumnIndex = toRightTableIndex(columnIndex)
+            val column = getColumn(rightColumnIndex)(columnTypeTag)
+            val sizeInBytes = joinResultCount * baseSize(columnType)
 
-        val javaTypeName = typeNameString()(columnTypeTag)
-        val joinKernelName = f"join_dim_$javaTypeName"
-        println(f" join kernel name is $joinKernelName")
-        val joinDimKernel = clCreateKernel(context.program, joinKernelName, null)
-        clSetKernelArg(joinDimKernel,0,Sizeof.cl_mem, Pointer.to(gpu_resPsum))
-        clSetKernelArg(joinDimKernel,1,Sizeof.cl_mem, Pointer.to(gpu_fact))
-        clSetKernelArg(joinDimKernel,2,Sizeof.cl_int, pointer(toArray[Int](baseSize(columnType))))
-        clSetKernelArg(joinDimKernel,3,Sizeof.cl_long, pointer(toArray[Long](leftPartition.size)))
-        clSetKernelArg(joinDimKernel,4,Sizeof.cl_mem, Pointer.to(gpuFactFilter))
-        clSetKernelArg(joinDimKernel,5,Sizeof.cl_mem, Pointer.to(gpu_result))
-        clEnqueueNDRangeKernel(context.queue, joinDimKernel, 1, null,
-            global_work_size, local_work_size, 0, null, null)
+            val gpu_fact = createReadWriteBuffer(sizeInBytes)(columnTypeTag)
+            val gpu_result = createReadBuffer(joinResultCount, columnType)
 
-        deviceToHostCopy(gpu_result, column,joinResultCount, 0)(columnTypeTag)
+            val javaTypeName = typeNameString()(columnTypeTag)
+            val joinKernelName = f"join_dim_$javaTypeName"
+            val joinDimKernel = clCreateKernel(context.program, joinKernelName, null)
+            clSetKernelArg(joinDimKernel, 0, Sizeof.cl_mem, Pointer.to(gpu_resPsum))
+            clSetKernelArg(joinDimKernel, 1, Sizeof.cl_mem, Pointer.to(gpu_fact))
+            clSetKernelArg(joinDimKernel, 2, Sizeof.cl_int, pointer(toArray[Int](baseSize(columnType))))
+            clSetKernelArg(joinDimKernel, 3, Sizeof.cl_long, pointer(toArray[Long](leftPartition.size)))
+            clSetKernelArg(joinDimKernel, 4, Sizeof.cl_mem, Pointer.to(gpuFactFilter))
+            clSetKernelArg(joinDimKernel, 5, Sizeof.cl_mem, Pointer.to(gpu_result))
+            clEnqueueNDRangeKernel(context.queue, joinDimKernel, 1, null,
+              global_work_size, local_work_size, 0, null, null)
 
-      }
-      /*
+            deviceToHostCopy(gpu_result, column, joinResultCount, 0)(columnTypeTag)
+
+          }
+        /*
               gpu_result = clCreateBuffer(context->context,CL_MEM_READ_WRITE,resSize,NULL,&error);
 
               if(leftRight == 0){
@@ -267,6 +268,7 @@ U: TypeTag]
 
 
              */
+      }
     }
     -1
   }
