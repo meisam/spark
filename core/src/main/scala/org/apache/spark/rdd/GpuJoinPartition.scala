@@ -143,6 +143,8 @@ U: TypeTag]
     clSetKernelArg(countJoinKernel, 7, Sizeof.cl_int, pointer(Array[Int](hsize)))
     clEnqueueNDRangeKernel(context.queue, countJoinKernel, 1, null, global_work_size, local_work_size, 0, null, null)
 
+    clReleaseMemObject(gpu_hashNum)
+
     val gpuCountTotal = Array[Int](0)
 
     deviceToHostCopy[Int](gpu_count, pointer(gpuCountTotal), 1, threadNum - 1)
