@@ -552,3 +552,27 @@ declare_join_dim_kernel(double)
 declare_join_dim_kernel(boolean)
 declare_join_dim_kernel(char)
 
+#define declare_join_fact_kernel(column_type)                                                   \
+__kernel void join_fact_##column_type                                                           \
+(__global int *resPsum, __global column_type * fact                                             \
+        , int attrSize, long  num, __global int * filter, __global column_type * result) {      \
+                                                                                                \
+    size_t startIndex = get_global_id(0);                                                       \
+    size_t stride = get_global_size(0);                                                         \
+        long localCount = resPsum[startIndex];                                                  \
+                                                                                                \
+        for(size_t i=startIndex;i<num;i+=stride){                                               \
+                if(filter[i] != 0){                                                             \
+                        result[localCount] = fact[i];                                           \
+                        localCount ++;                                                          \
+                }                                                                               \
+        }                                                                                       \
+}                                                                                               \
+
+declare_join_fact_kernel(int)
+declare_join_fact_kernel(long)
+declare_join_fact_kernel(float)
+declare_join_fact_kernel(double)
+declare_join_fact_kernel(boolean)
+declare_join_fact_kernel(char)
+
