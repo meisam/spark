@@ -20,10 +20,14 @@ U: TypeTag]
     if (columnFromLeftPartition(columnIndex))
       throw new IllegalArgumentException("%d is from the left table!".format(columnIndex))
 
-    if (columnIndex > (leftPartition.columnTypes.length + rightPartition.columnTypes.length))
+    if (columnIndex >= columnTypes.length)
       throw new IllegalArgumentException("%d is too big to be from the right table!".format(columnIndex))
-
-    columnIndex - leftPartition.columnTypes.length
+    
+    if (columnIndex < joinColIndexRight + leftPartition.columnTypes.length )
+      columnIndex - leftPartition.columnTypes.length
+    else
+      columnIndex - leftPartition.columnTypes.length + 1 // add 1 to skip counting join column twice
+    
   }
 
   def buildHashTable() = {
