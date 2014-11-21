@@ -231,7 +231,6 @@ U: TypeTag]
     this.localSize = leftPartition.localSize
     buildHashTable
 
-    //    joinOnGpu
   }
 
   override def fill(iter: Iterator[T]): Unit = {
