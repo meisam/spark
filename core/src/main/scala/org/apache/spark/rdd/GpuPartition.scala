@@ -70,7 +70,6 @@ class GpuPartition[T <: Product : TypeTag]
 
 
   def fill(iter: Iterator[T]): Unit = {
-    println("Column types GpuPartition.fill =%s".format(columnTypes.mkString(",")))
     size = 0
     val values: Iterator[T] = iter.take(capacity)
     values.zipWithIndex.foreach {
