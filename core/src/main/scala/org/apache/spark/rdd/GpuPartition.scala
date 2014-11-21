@@ -449,6 +449,8 @@ class GpuPartition[T <: Product : TypeTag]
     clSetKernelArg(kernel, 6, Sizeof.cl_mem, Pointer.to(result))
     clEnqueueNDRangeKernel(context.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
     deviceToHostCopy[V](result, colData, outSize, 0)
+    releaseCol(result)
+    releaseCol(scanCol)
   }
 
   def releaseCol(col: cl_mem) {
