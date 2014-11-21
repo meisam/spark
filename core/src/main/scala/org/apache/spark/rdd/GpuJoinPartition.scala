@@ -137,7 +137,7 @@ U: TypeTag]
     clSetKernelArg(countJoinKernel, 1, Sizeof.cl_mem, Pointer.to(gpu_psum))
     clSetKernelArg(countJoinKernel, 2, Sizeof.cl_mem, Pointer.to(gpu_bucket))
     clSetKernelArg(countJoinKernel, 3, Sizeof.cl_mem, Pointer.to(gpu_fact))
-    clSetKernelArg(countJoinKernel, 4, Sizeof.cl_long, pointer(Array[Long](rightPartition.size.toLong)))
+    clSetKernelArg(countJoinKernel, 4, Sizeof.cl_long, pointer(Array[Long](leftPartition.size.toLong)))
     clSetKernelArg(countJoinKernel, 5, Sizeof.cl_mem, Pointer.to(gpu_count))
     clSetKernelArg(countJoinKernel, 6, Sizeof.cl_mem, Pointer.to(gpuFactFilter))
     clSetKernelArg(countJoinKernel, 7, Sizeof.cl_int, pointer(Array[Int](hsize)))
