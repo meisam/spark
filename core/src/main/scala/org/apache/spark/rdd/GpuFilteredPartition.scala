@@ -112,6 +112,7 @@ class GpuFilteredPartition[T <: Product : TypeTag, U: TypeTag]
         }
       }
     })
+    release
     size = resultSize
   }
 
