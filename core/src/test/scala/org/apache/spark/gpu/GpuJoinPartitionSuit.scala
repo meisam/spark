@@ -17,12 +17,14 @@
 
 package org.apache.spark.gpu
 
+import scala.language.existentials
+import scala.reflect.runtime.universe
+
 import org.apache.spark.SharedSparkContext
-import org.apache.spark.rdd.{GpuJoinPartition, GpuPartition}
+import org.apache.spark.rdd.GpuJoinPartition
+import org.apache.spark.rdd.GpuPartition
 import org.apache.spark.scheduler.OpenCLContext
 import org.scalatest.FunSuite
-
-import scala.language.existentials
 
 /**
  *
@@ -47,25 +49,25 @@ class GpuJoinPartitionSuit extends FunSuite with SharedSparkContext {
     val rightPartition = new GpuPartition[(Int, Int)](openCLContext, DEFAULT_CAPACITY)
     rightPartition.fill(rightTableData.toIterator)
 
-
     val gpuJoinPartition = new GpuJoinPartition[(Int, Int, Int), (Int, Int), (Int, Int), Int](
       openCLContext, leftPartition, rightPartition, 0, 0, DEFAULT_CAPACITY)
     gpuJoinPartition.join
 
-    val expectedData = Array((10, 0, 1), (10, 2, 1), (12, 4, 2), (13, 5, 3), (13, 5, 6))
+    val expectedData = Array((10, 0, 1), (10, 2, 1), (12, 4, 2), (13, 5, 3), (13, 6, 3))
 
     assert(rightPartition.size === expectedData.length)
 
-    expectedData.zipWithIndex.foreach { case ((keyValue, leftValue, rightValue), index) =>
-      assert(gpuJoinPartition.intData(0).get(index) === keyValue, f"values do not match at $index")
-      assert(gpuJoinPartition.intData(1).get(index) === leftValue, f"values do not match at $index")
-      assert(gpuJoinPartition.intData(2).get(index) === rightValue, f"values do not match at $index")
-    case _ => fail("We should not be here")
+    expectedData.zipWithIndex.foreach {
+      case ((keyValue, leftValue, rightValue), index) =>
+        assert(gpuJoinPartition.intData(0).get(index) === keyValue, f"values do not match at $index")
+        assert(gpuJoinPartition.intData(1).get(index) === leftValue, f"values do not match at $index")
+        assert(gpuJoinPartition.intData(2).get(index) === rightValue, f"values do not match at $index")
+      case _ => fail("We should not be here")
     }
   }
 
   test("GpuJoinPartition(Int, Int) basic test") {
-    val leftTableData = Array(12, 12, 13, 13, 14, 14, 15, 15, 16, 18, 18).zipWithIndex
+    val leftTableData = Array(15, 16, 17).zipWithIndex
     val leftPartition = new GpuPartition[(Int, Int)](openCLContext, DEFAULT_CAPACITY)
     leftPartition.fill(leftTableData.toIterator)
 
@@ -77,15 +79,16 @@ class GpuJoinPartitionSuit extends FunSuite with SharedSparkContext {
       openCLContext, leftPartition, rightPartition, 0, 0, DEFAULT_CAPACITY)
     gpuJoinPartition.join
 
-    val expectedData = Array((10, 0, 1), (10, 2, 1), (12, 4, 2))
+    val expectedData = Array((15, 0, 0), (16, 1, 1), (17, 2, 2))
 
-    assert(rightPartition.size === expectedData.length)
+    assert(gpuJoinPartition.size === expectedData.length)
 
-    expectedData.zipWithIndex.foreach { case ((keyValue, leftValue, rightValue), index) =>
-      assert(gpuJoinPartition.intData(0).get(index) === keyValue, f"values do not match at $index")
-      assert(gpuJoinPartition.intData(1).get(index) === leftValue, f"values do not match at $index")
-      assert(gpuJoinPartition.intData(2).get(index) === rightValue, f"values do not match at $index")
-    case _ => fail("We should not be here")
+    expectedData.zipWithIndex.foreach {
+      case ((keyValue, leftValue, rightValue), index) =>
+        assert(gpuJoinPartition.intData(0).get(index) === keyValue, f"values do not match at $index")
+        assert(gpuJoinPartition.intData(1).get(index) === leftValue, f"values do not match at $index")
+        assert(gpuJoinPartition.intData(2).get(index) === rightValue, f"values do not match at $index")
+      case _ => fail("We should not be here")
     }
   }
 
@@ -102,24 +105,25 @@ class GpuJoinPartitionSuit extends FunSuite with SharedSparkContext {
       openCLContext, leftPartition, rightPartition, 0, 0, DEFAULT_CAPACITY)
     gpuJoinPartition.join
 
-    val expectedData = Array((10L, 0, 1), (10L, 2, 1), (12L, 4, 2))
+    val expectedData = Array((10L, 0, 0), (11L, 1, 1), (12L, 2, 2))
 
-    assert(rightPartition.size === expectedData.length)
+    assert(gpuJoinPartition.size === expectedData.length)
 
-    expectedData.zipWithIndex.foreach { case ((keyValue, leftValue, rightValue), index) =>
-      assert(gpuJoinPartition.intData(0).get(index) === keyValue, f"values do not match at $index")
-      assert(gpuJoinPartition.intData(1).get(index) === leftValue, f"values do not match at $index")
-      assert(gpuJoinPartition.intData(2).get(index) === rightValue, f"values do not match at $index")
-    case _ => fail("We should not be here")
+    expectedData.zipWithIndex.foreach {
+      case ((keyValue, leftValue, rightValue), index) =>
+        assert(gpuJoinPartition.longData(0).get(index) === keyValue, f"values do not match at $index")
+        assert(gpuJoinPartition.intData(0).get(index) === leftValue, f"values do not match at $index")
+        assert(gpuJoinPartition.intData(1).get(index) === rightValue, f"values do not match at $index")
+      case _ => fail("We should not be here")
     }
   }
 
   test("GpuJoinPartition(Long, Log) basic test") {
-    val leftTableData= Array(10, 11, 12).zipWithIndex.map({case (v, i) => (v.toLong, i.toLong)})
+    val leftTableData = Array(10, 11, 12).zipWithIndex.map({ case (v, i) => (v.toLong, i.toLong) })
     val leftPartition = new GpuPartition[(Long, Long)](openCLContext, DEFAULT_CAPACITY)
     leftPartition.fill(leftTableData.toIterator)
 
-    val rightTableData = Array(10, 11, 12).zipWithIndex.map({case (v, i) => (v.toLong, i.toLong)})
+    val rightTableData = Array(10, 11, 12).zipWithIndex.map({ case (v, i) => (v.toLong, i.toLong) })
     val rightPartition = new GpuPartition[(Long, Long)](openCLContext, DEFAULT_CAPACITY)
     rightPartition.fill(rightTableData.toIterator)
 
@@ -127,15 +131,16 @@ class GpuJoinPartitionSuit extends FunSuite with SharedSparkContext {
       openCLContext, leftPartition, rightPartition, 0, 0, DEFAULT_CAPACITY)
     gpuJoinPartition.join
 
-    val expectedData = Array((10L, 0, 1), (10L, 2, 1), (12L, 4, 2))
+    val expectedData = Array((10L, 0L, 0L), (11L, 1L, 1L), (12L, 2L, 2L))
 
-    assert(rightPartition.size === expectedData.length)
+    assert(gpuJoinPartition.size === expectedData.length)
 
-    expectedData.zipWithIndex.foreach { case ((keyValue, leftValue, rightValue), index) =>
-      assert(gpuJoinPartition.longData(0).get(index) === keyValue, f"values do not match at $index")
-      assert(gpuJoinPartition.longData(1).get(index) === leftValue, f"values do not match at $index")
-      assert(gpuJoinPartition.longData(2).get(index) === rightValue, f"values do not match at $index")
-    case _ => fail("We should not be here")
+    expectedData.zipWithIndex.foreach {
+      case ((keyValue, leftValue, rightValue), index) =>
+        assert(gpuJoinPartition.longData(0).get(index) === keyValue, f"values do not match at $index")
+        assert(gpuJoinPartition.longData(1).get(index) === leftValue, f"values do not match at $index")
+        assert(gpuJoinPartition.longData(2).get(index) === rightValue, f"values do not match at $index")
+      case _ => fail("We should not be here")
     }
   }
 
