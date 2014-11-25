@@ -21,9 +21,9 @@ import org.apache.spark.SharedSparkContext
 import org.apache.spark.rdd.{AggregationOperation, GpuAggregationPartition}
 import org.apache.spark.scheduler.OpenCLContext
 import org.scalatest.FunSuite
-
 import scala.language.existentials
 import scala.reflect.ClassTag
+import org.apache.spark.rdd.GpuPartition
 
 /**
  *
@@ -39,21 +39,24 @@ class GpuAggregationPartitionSuit extends FunSuite with SharedSparkContext {
     openCLContext.initOpenCL("/org/apache/spark/gpu/kernel.cl")
   }
 
-  test("GpuJoinPartition(Int, Int) == 1 match test") {
+  test("Aggregation simpl(Int, Int)  match test") {
     val testData: IndexedSeq[(Int, Int)] = Array((11, 0), (11, 1), (11, 2), (12, 6), (12, 5))
 
-
-    val gpuPartition = new GpuAggregationPartition[(Int, Int)](openCLContext
+    val partition = new GpuPartition[(Int, Int)](openCLContext, DEFAULT_CAPACITY)
+    
+    partition.fill(testData.toIterator)
+    
+    val aggregationPartition = new GpuAggregationPartition[(Int, Int)](openCLContext, partition
       , Array(0), Array(AggregationOperation.max), DEFAULT_CAPACITY)
 
-    gpuPartition.fill(testData.toIterator)
+    aggregationPartition.fill(testData.toIterator)
     val expectedData = Array((11, 2), (12, 6))
 
-    assert(gpuPartition.size === expectedData.length)
+    assert(aggregationPartition.size === expectedData.length)
 
     expectedData.zipWithIndex.foreach { case ((gbVal, aggValue), index) =>
-      assert(gpuPartition.intData(0).get(index) === gbVal, "values do not match")
-      assert(gpuPartition.intData(1).get(index) === aggValue, "values do not match")
+      assert(aggregationPartition.intData(0).get(index) === gbVal, "values do not match")
+      assert(aggregationPartition.intData(1).get(index) === aggValue, "values do not match")
     case _ => fail("We should not be here")
     }
   }
