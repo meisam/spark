@@ -56,7 +56,7 @@ class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, par
 
     val gpuGbSize = createReadBuffer[Int](groupByColumnIndexes.length)
     val groupBySize: Array[Int] = groupByColumnIndexes.map(columnTypes(_)).map(baseSize(_))
-      .scanLeft(0: Int)({ case (sum, x) => sum + x }).toIterator.toArray // TODO or sum + align(x)
+      .scanLeft(0: Int)({ case (sum, x) => sum + align(x) }).splitAt(1)._2.toArray
 
     hostToDeviceCopy[Int](pointer(groupBySize), gpuGbSize, groupByColumnIndexes.length)
 
