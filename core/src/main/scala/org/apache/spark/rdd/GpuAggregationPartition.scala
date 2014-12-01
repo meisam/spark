@@ -42,7 +42,8 @@ class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, par
       offsetIndex += 1
     }
     
-    val gpuContentResults = new Array[Int](totalSize)
+    
+    val gpuContentResults = new Array[Byte](totalSize)
     deviceToHostCopy[Byte](gpuContent, Pointer.to(gpuContentResults), totalSize, 0)
     printf("gpuContentResults = %s\n", gpuContentResults.mkString(","))
     
