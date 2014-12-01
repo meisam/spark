@@ -665,7 +665,7 @@ object ColumnarTypes extends IndexedSeq[ru.Type] {
     StringTypeTag.tpe
   )
 
-  def getIndex(t: ClassTag[_]): Int = {
+  def getIndex(t: ru.Type): Int = {
     ALL_TYPES.indexOf(t)
   }
 
