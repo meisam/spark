@@ -87,7 +87,7 @@ class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, par
     clSetKernelArg(buildGroupByKeyKernel, 4, Sizeof.cl_mem, Pointer.to(gpuGbType))
     clSetKernelArg(buildGroupByKeyKernel, 5, Sizeof.cl_mem, Pointer.to(gpuGbSize))
     clSetKernelArg(buildGroupByKeyKernel, 6, Sizeof.cl_long,
-      pointer(Array[Int](columnTypes.length)))
+      pointer(Array[Int](parentPartition.size)))
     clSetKernelArg(buildGroupByKeyKernel, 7, Sizeof.cl_mem, Pointer.to(gpuGbKey))
     clSetKernelArg(buildGroupByKeyKernel, 8, Sizeof.cl_mem, Pointer.to(gpu_hashNum))
 
