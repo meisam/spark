@@ -3,9 +3,13 @@ package org.apache.spark.rdd
 import org.apache.spark.scheduler.OpenCLContext
 import org.jocl.CL._
 import org.jocl.{ Pointer, Sizeof }
-
 import scala.reflect.api.JavaUniverse
 import scala.reflect.runtime.universe.TypeTag
+import java.io.IOException
+import java.io.ObjectInputStream
+import java.io.ObjectOutputStream
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, parentPartition: GpuPartition[T],
   groupByColumnIndexes: Array[Int], aggregations: Array[AggregationOperation.Value], capacity: Int)
@@ -149,4 +153,22 @@ object AggregationOperation extends Enumeration {
   def sum = Value("sum")
 
   def avg = Value("avg")
+}
+
+class MathExp(var op: Int, var opNum: Int, var exp: Long, var opType: Int, var opValue: Int) {
+
+  def this() = {
+    this(-11, -12, -13L, -14, -15)
+  }
+
+  def writeTo(out: ByteBuffer): Unit = {
+    out.order(ByteOrder.LITTLE_ENDIAN)
+    out.putInt(op)
+    out.putInt(opNum)
+    out.putLong(exp)
+    out.putInt(opType)
+    out.putInt(opValue)
+  }
+
+  def size = 4 * (1 + 1 + 2 + 1 + 1) // 4 bytes per word *( Words in Int, Int, Long, Int, Int)
 }
