@@ -503,8 +503,8 @@ __kernel void build_groupby_key(__global char * content, __global long * colOffs
                 gpuStrncat(buf, tbuf, gbSize[j]);
 
             } else if (gbType[j] == INT){
-                int key = ((__global int *)(content+offset))[i];
-                gpuItoa(key, tbuf, 10);
+                int col_val = ((__global int *)(content+offset))[i];
+                gpuItoa(col_val, tbuf, 10);
                 gpuStrcat(buf, tbuf);
             }
         }
