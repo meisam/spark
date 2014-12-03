@@ -337,11 +337,7 @@ object AggregationOperation extends Enumeration {
   def avg = Value("avg")
 }
 
-class MathExp(var op: Int, var opNum: Int, var exp: Long, var opType: Int, var opValue: Int) {
-
-  def this() = {
-    this(-11, -12, -13L, -14, -15)
-  }
+class MathExp(op: Int, opNum: Int, exp: Long, opType: Int, opValue: Int) {
 
   def writeTo(out: ByteBuffer): Unit = {
     out.order(ByteOrder.LITTLE_ENDIAN)
