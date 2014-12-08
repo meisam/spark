@@ -608,3 +608,80 @@ declare_join_fact_kernel(double)
 declare_join_fact_kernel(boolean)
 declare_join_fact_kernel(char)
 
+float getExp(__global char *content, __global int * colOffset,struct mathExp exp,int pos) {
+    float res = 0;;
+    if(exp.op == NOOP) {
+        if (exp.opType == CONS)
+        res = exp.opValue;
+        else {
+            int index = exp.opValue;
+            res = ((__global int *)(content+colOffset[index]))[pos];
+        }
+    }
+    return res;
+}
+
+float calMathExp(__global char *content, __global int * colOffset,struct mathExp exp, __global struct mathExp *mexp, int pos) {
+    float res;
+
+    if(exp.op == NOOP) {
+        if (exp.opType == CONS)
+        res = exp.opValue;
+        else {
+            int index = exp.opValue;
+            res = ((__global int *)(content+colOffset[index]))[pos];
+        }
+
+    } else if(exp.op == PLUS ) {
+        res = getExp(content,colOffset,mexp[2*pos],pos) + getExp(content, colOffset,mexp[2*pos+1],pos);
+
+    } else if (exp.op == MINUS) {
+        res = getExp(content,colOffset,mexp[2*pos],pos) - getExp(content, colOffset,mexp[2*pos+1],pos);
+
+    } else if (exp.op == MULTIPLY) {
+        res = getExp(content,colOffset,mexp[2*pos],pos) * getExp(content, colOffset,mexp[2*pos+1], pos);
+
+    } else if (exp.op == DIVIDE) {
+        res = getExp(content,colOffset,mexp[2*pos],pos) / getExp(content, colOffset,mexp[2*pos+1],pos);
+    }
+
+    return res;
+}
+
+__kernel void agg_cal(__global char * content, __global int *colOffset, int colNum, __global struct mathExp* exp, __global struct mathExp *mexp, __global int * gbType, __global int * gbSize, long tupleNum, __global int * key, __global int *psum, __global char * result, __global long * resOffset, __global int *gbFunc) {
+
+    size_t stride = get_global_size(0);
+    size_t index = get_global_id(0);
+
+    for(int i=index; i < tupleNum; i += stride) {
+
+        int hKey = key[i];
+        int offset = psum[hKey];
+
+        for(int j=0; j <colNum; j++) {
+            int func = gbFunc[j];
+            if(func == NOOP) {
+                int type = exp[j].opType;
+                int attrSize = gbSize[j];
+
+                if(type == CONS) {
+                    int value = exp[j].opValue;
+                    char * buf = (char *) &value;
+                    for(int k=0; k < attrSize; k++) {
+                        result[resOffset[j] + offset*attrSize +k] = buf[k];
+                    }
+                } else {
+                    int index = exp[j].opValue;
+                    for(int k=0; k < attrSize; k++) {
+                        // FIXME there is something wrong here that makes opencl kernel crash 
+                        result[resOffset[j] + offset*attrSize +k] = content[colOffset[index] + i*attrSize + k];
+                    }
+                }
+            } else if (func == SUM) {
+                // FIXME there is something wrong here that makes opencl kernel crash 
+                float tmpRes = calMathExp(content, colOffset, exp[j], mexp, i);
+//                AtomicAdd(& ((__global float *)(result + resOffset[j]))[offset], tmpRes);
+            }
+        }
+    }
+}
