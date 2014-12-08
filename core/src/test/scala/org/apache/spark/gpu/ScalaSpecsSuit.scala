@@ -10,7 +10,7 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either Expess or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -21,40 +21,37 @@ import org.apache.spark.SharedSparkContext
 import org.scalatest.FunSuite
 import scala.language.existentials
 import scala.reflect.runtime.universe.TypeTag
-import scala.reflect.runtime.{universe => ru}
+import scala.reflect.runtime.{ universe => ru }
 import org.apache.spark.rdd.MathExp
 import java.io.ByteArrayOutputStream
 import java.io.ObjectOutputStream
 import java.nio.ByteBuffer
-
+import org.apache.spark.rdd.MathOp
 
 /**
  *
  */
 class ScalaSpecsSuit extends FunSuite with SharedSparkContext {
 
-
   override def afterAll(): Unit = {
     // maybe release resources
   }
-  
+
   test("String hash") {
     def stringHash(s: String): Int = {
 
-    var hash = 0
+      var hash = 0
 
-    s.foreach { c => 
+      s.foreach { c =>
         hash = ((hash << 5) + hash) ^ c;
+      }
+
+      hash
     }
 
-    hash
-   }
-
-    
     assert(stringHash("111") === 53841)
     assert(stringHash("112") === 1)
   }
-  
 
   test("scanLeft test") {
     val testData = Array(1, 5, -4, 0, 1)
@@ -66,9 +63,9 @@ class ScalaSpecsSuit extends FunSuite with SharedSparkContext {
     assert(expectedResults.length === actualResults.length)
     assert(expectedResults.length === testData.length + 1)
 
-
-    expectedResults.zip(expectedResults).foreach { case (expected, actual) =>
-      assert(expected === actual)
+    expectedResults.zip(expectedResults).foreach {
+      case (expected, actual) =>
+        assert(expected === actual)
     }
   }
 
@@ -88,9 +85,9 @@ class ScalaSpecsSuit extends FunSuite with SharedSparkContext {
     val exp1 = new MathExp(MathOp.DIVIDE, 2, null, null, MathOp.DIVIDE, 1)
     val byteBuffer = ByteBuffer.wrap(new Array[Byte](MathExp.size))
     exp1.writeTo(byteBuffer)
-    
+
     val bytes = byteBuffer.array()
-    
+
     println("bytes = %s".format(bytes.mkString(",")))
   }
 
