@@ -134,152 +134,90 @@ class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, par
 
     this.size = gbCount.head
 
-    // 
-    // @gpuGbExp is the mathExp in each groupBy expression
-    // @mathexp stores the math exp for for the group expression that has two operands
+    //  
+    // @gpuGbExp is the mathExp in each groupBy Expession
+    // @mathexp stores the math exp for for the group Expession that has two operands
     // The reason that we need two variables instead of one is that OpenCL doesn't support pointer to pointer
     //
 
+    var offset = 0
+
+    val gpuGbExpBuffer = ByteBuffer.wrap(new Array[Byte](MathExp.size * columnTypes.length))
+    val mathExpBuffer = ByteBuffer.wrap(new Array[Byte](2 * MathExp.size * columnTypes.length))
+    val cpuFuncs = aggregations.map(_.aggFunc.id)
+
+    println("all aggregations = %s", aggregations.mkString(","))
+
+    aggregations.foreach { gbExp =>
+      if (gbExp.mathExp == null) {
+        gpuGbExpBuffer.position(gpuGbExpBuffer.position + MathExp.size)
+        mathExpBuffer.position(mathExpBuffer.position + MathExp.size)
+        mathExpBuffer.position(mathExpBuffer.position + MathExp.size)
+        println("skipping gbExpr  write")
+
+      } else {
+        gbExp.mathExp.writeTo(gpuGbExpBuffer)
+        println("writing gb math exp%s".format(gbExp.mathExp))
+
+        if (gbExp.mathExp.leftExp == null) {
+          mathExpBuffer.position(mathExpBuffer.position + MathExp.size)
+          println("skipping left exp")
+
+        } else {
+          gbExp.mathExp.leftExp.writeTo(mathExpBuffer)
+          println("writing left math exp%s".format(gbExp.mathExp.leftExp))
+        }
+
+        if (gbExp.mathExp.rightExp == null) {
+          mathExpBuffer.position(mathExpBuffer.position + MathExp.size)
+          println("skipping right exp")
+        } else {
+          gbExp.mathExp.rightExp.writeTo(mathExpBuffer)
+          println("writing rightmath exp%s".format(gbExp.mathExp.rightExp))
+        }
+      }
+    }
+
+    val gpuGbExp = createReadBuffer[Byte](MathExp.size * columnTypes.length)
+    val gpuMathExp = createReadBuffer[Byte](2 * MathExp.size * columnTypes.length)
+    val gpuFunc = createReadBuffer[Int](columnTypes.length)
+
+    println("gpuGbExpBuffer = %s".format(gpuGbExpBuffer.array().mkString(",")))
+
+    println("mathExpBuffer = %s".format(mathExpBuffer.array().mkString(",")))
+
+    hostToDeviceCopy[Byte](Pointer.to(gpuGbExpBuffer), gpuGbExp, MathExp.size * columnTypes.length);
+    hostToDeviceCopy[Byte](Pointer.to(mathExpBuffer), gpuMathExp, 2 * MathExp.size * columnTypes.length)
+    hostToDeviceCopy[Int](Pointer.to(cpuFuncs), gpuFunc, columnTypes.length)
+
+    val gpuResult = createReadWriteBuffer[Byte](totalSize)
+    val resOffset = columnTypes.foldLeft(0L)({ case (sum, t) => sum + align(baseSize(t)) })
+    val gpuResOffset = createReadWriteBuffer[Long](columnTypes.length)
+    hostToDeviceCopy[Long](Pointer.to(gpuResOffset), gpuResOffset, columnTypes.length, 0)
+
+    val gpuGbColNum = columnTypes.length
+
+    val agggregationKernel = clCreateKernel(context.program, "agg_cal", null)
+    clSetKernelArg(agggregationKernel, 0, Sizeof.cl_mem, Pointer.to(gpuContent))
+    clSetKernelArg(agggregationKernel, 1, Sizeof.cl_mem, Pointer.to(gpuOffsets))
+    clSetKernelArg(agggregationKernel, 2, Sizeof.cl_int, pointer[Int](Array(gpuGbColNum)))
+    clSetKernelArg(agggregationKernel, 3, Sizeof.cl_mem, Pointer.to(gpuGbExp))
+    clSetKernelArg(agggregationKernel, 4, Sizeof.cl_mem, Pointer.to(gpuMathExp))
+    clSetKernelArg(agggregationKernel, 5, Sizeof.cl_mem, Pointer.to(gpuGbType))
+    clSetKernelArg(agggregationKernel, 6, Sizeof.cl_mem, Pointer.to(gpuGbSize))
+    clSetKernelArg(agggregationKernel, 7, Sizeof.cl_long, pointer[Long](Array(parentPartition.size.toLong)))
+    clSetKernelArg(agggregationKernel, 8, Sizeof.cl_mem, Pointer.to(gpuGbKey))
+    clSetKernelArg(agggregationKernel, 9, Sizeof.cl_mem, Pointer.to(gpu_psum))
+    clSetKernelArg(agggregationKernel, 10, Sizeof.cl_mem, Pointer.to(gpuResult))
+    clSetKernelArg(agggregationKernel, 11, Sizeof.cl_mem, Pointer.to(gpuResOffset))
+    clSetKernelArg(agggregationKernel, 12, Sizeof.cl_mem, Pointer.to(gpuFunc))
+
+    clEnqueueNDRangeKernel(context.queue, agggregationKernel, 1, null, global_work_size, local_work_size, 0, null, null)
+
+    clReleaseMemObject(gpuGbKey);
+    clReleaseMemObject(gpu_psum);
+
     /*
-
-    cl_mem gpuGbExp = clCreateBuffer(context->context, CL_MEM_READ_ONLY, sizeof(struct mathExp)*res->totalAttr, NULL, &error);
-    cl_mem mathexp = clCreateBuffer(context->context, CL_MEM_READ_ONLY, 2*sizeof(struct mathExp)*res->totalAttr, NULL, &error);
-
-    struct mathExp tmpExp[2];
-    int * cpuFunc = (int *) malloc(sizeof(int) * res->totalAttr);
-    CHECK_POINTER(cpuFunc);
-
-    offset = 0;
-    for(int i=0;i<res->totalAttr;i++){
-
-        error = clEnqueueWriteBuffer(context->queue, gpuGbExp, CL_TRUE, offset, sizeof(struct mathExp), &(gb->gbExp[i].exp),0,0,&ndrEvt);
-
-#ifdef OPENCL_PROFILE
-        clWaitForEvents(1, &ndrEvt);
-        clGetEventProfilingInfo(ndrEvt,CL_PROFILING_COMMAND_START,sizeof(cl_ulong),&startTime,0);
-        clGetEventProfilingInfo(ndrEvt,CL_PROFILING_COMMAND_END,sizeof(cl_ulong),&endTime,0);
-        pp->pcie += 1e-6 * (endTime - startTime);
-#endif
-
-        offset += sizeof(struct mathExp);
-
-        cpuFunc[i] = gb->gbExp[i].func;
-
-        if(gb->gbExp[i].exp.opNum == 2){
-            struct mathExp * tmpMath = (struct mathExp *) (gb->gbExp[i].exp.exp);
-            tmpExp[0].op = tmpMath[0].op;
-            tmpExp[0].opNum = tmpMath[0].opNum;
-            tmpExp[0].opType = tmpMath[0].opType;
-            tmpExp[0].opValue = tmpMath[0].opValue;
-
-            tmpExp[1].op = tmpMath[1].op;
-            tmpExp[1].opNum = tmpMath[1].opNum;
-            tmpExp[1].opType = tmpMath[1].opType;
-            tmpExp[1].opValue = tmpMath[1].opValue;
-            clEnqueueWriteBuffer(context->queue, mathexp, CL_TRUE, 2*i*sizeof(struct mathExp),2*sizeof(struct mathExp),tmpExp,0,0,&ndrEvt);
-
-#ifdef OPENCL_PROFILE
-            clWaitForEvents(1, &ndrEvt);
-            clGetEventProfilingInfo(ndrEvt,CL_PROFILING_COMMAND_START,sizeof(cl_ulong),&startTime,0);
-            clGetEventProfilingInfo(ndrEvt,CL_PROFILING_COMMAND_END,sizeof(cl_ulong),&endTime,0);
-            pp->pcie += 1e-6 * (endTime - startTime);
-#endif
-        }
-    }
-
-    cl_mem gpuFunc = clCreateBuffer(context->context, CL_MEM_READ_ONLY, sizeof(int)*res->totalAttr, NULL, &error);
-    clEnqueueWriteBuffer(context->queue,gpuFunc,CL_TRUE,0,sizeof(int)*res->totalAttr,cpuFunc,0,0,&ndrEvt);
-
-#ifdef OPENCL_PROFILE
-    clWaitForEvents(1, &ndrEvt);
-    clGetEventProfilingInfo(ndrEvt,CL_PROFILING_COMMAND_START,sizeof(cl_ulong),&startTime,0);
-    clGetEventProfilingInfo(ndrEvt,CL_PROFILING_COMMAND_END,sizeof(cl_ulong),&endTime,0);
-    pp->pcie += 1e-6 * (endTime - startTime);
-#endif
-
-    long *resOffset = (long *)malloc(sizeof(long)*res->totalAttr);
-    CHECK_POINTER(resOffset);
-    
-    offset = 0;
-    totalSize = 0;
-    for(int i=0;i<res->totalAttr;i++){
-        
-        /*
-         * align the output of each column on the boundary of 4
-         */
-
-        int size = res->attrSize[i] * res->tupleNum;
-        if(size %4 != 0){
-            size += 4- (size %4);
-        }
-
-        resOffset[i] = offset;
-        offset += size; 
-        totalSize += size;
-    }
-
-    cl_mem gpuResult = clCreateBuffer(context->context,CL_MEM_READ_WRITE, totalSize, NULL, &error);
-    cl_mem gpuResOffset = clCreateBuffer(context->context, CL_MEM_READ_ONLY,sizeof(long)*res->totalAttr, NULL,&error);
-    clEnqueueWriteBuffer(context->queue,gpuResOffset,CL_TRUE,0,sizeof(long)*res->totalAttr,resOffset,0,0,&ndrEvt);
-
-#ifdef OPENCL_PROFILE
-    clWaitForEvents(1, &ndrEvt);
-    clGetEventProfilingInfo(ndrEvt,CL_PROFILING_COMMAND_START,sizeof(cl_ulong),&startTime,0);
-    clGetEventProfilingInfo(ndrEvt,CL_PROFILING_COMMAND_END,sizeof(cl_ulong),&endTime,0);
-    pp->pcie += 1e-6 * (endTime - startTime);
-#endif
-
-    gpuGbColNum = res->totalAttr;
-
-    if(gbConstant !=1){
-        context->kernel = clCreateKernel(context->program,"agg_cal",0);
-        clSetKernelArg(context->kernel,0,sizeof(cl_mem), (void*)&gpuContent);
-        clSetKernelArg(context->kernel,1,sizeof(cl_mem), (void*)&gpuOffset);
-        clSetKernelArg(context->kernel,2,sizeof(int), (void*)&gpuGbColNum);
-        clSetKernelArg(context->kernel,3,sizeof(cl_mem), (void*)&gpuGbExp);
-        clSetKernelArg(context->kernel,4,sizeof(cl_mem), (void*)&mathexp);
-        clSetKernelArg(context->kernel,5,sizeof(cl_mem), (void*)&gpuGbType);
-        clSetKernelArg(context->kernel,6,sizeof(cl_mem), (void*)&gpuGbSize);
-        clSetKernelArg(context->kernel,7,sizeof(long), (void*)&gpuTupleNum);
-        clSetKernelArg(context->kernel,8,sizeof(cl_mem), (void*)&gpuGbKey);
-        clSetKernelArg(context->kernel,9,sizeof(cl_mem), (void*)&gpu_psum);
-        clSetKernelArg(context->kernel,10,sizeof(cl_mem), (void*)&gpuResult);
-        clSetKernelArg(context->kernel,11,sizeof(cl_mem), (void*)&gpuResOffset);
-        clSetKernelArg(context->kernel,12,sizeof(cl_mem), (void*)&gpuFunc);
-
-        error = clEnqueueNDRangeKernel(context->queue, context->kernel, 1, 0, &globalSize,&localSize,0,0,&ndrEvt);
-#ifdef OPENCL_PROFILE
-        clWaitForEvents(1, &ndrEvt);
-        clGetEventProfilingInfo(ndrEvt,CL_PROFILING_COMMAND_START,sizeof(cl_ulong),&startTime,0);
-        clGetEventProfilingInfo(ndrEvt,CL_PROFILING_COMMAND_END,sizeof(cl_ulong),&endTime,0);
-        pp->kernel += 1e-6 * (endTime - startTime);
-#endif
-        
-        clReleaseMemObject(gpuGbKey);
-        clReleaseMemObject(gpu_psum);
-    }else{
-        context->kernel = clCreateKernel(context->program,"agg_cal_cons",0);
-        clSetKernelArg(context->kernel,0,sizeof(cl_mem), (void*)&gpuContent);
-        clSetKernelArg(context->kernel,1,sizeof(cl_mem), (void*)&gpuOffset);
-        clSetKernelArg(context->kernel,2,sizeof(int), (void*)&gpuGbColNum);
-        clSetKernelArg(context->kernel,3,sizeof(cl_mem), (void*)&gpuGbExp);
-        clSetKernelArg(context->kernel,4,sizeof(cl_mem), (void*)&mathexp);
-        clSetKernelArg(context->kernel,5,sizeof(cl_mem), (void*)&gpuGbType);
-        clSetKernelArg(context->kernel,6,sizeof(cl_mem), (void*)&gpuGbSize);
-        clSetKernelArg(context->kernel,7,sizeof(long), (void*)&gpuTupleNum);
-        clSetKernelArg(context->kernel,8,sizeof(cl_mem), (void*)&gpuResult);
-        clSetKernelArg(context->kernel,9,sizeof(cl_mem), (void*)&gpuResOffset);
-        clSetKernelArg(context->kernel,10,sizeof(cl_mem), (void*)&gpuFunc);
-
-        globalSize = localSize * 4;
-        error = clEnqueueNDRangeKernel(context->queue, context->kernel, 1, 0, &globalSize,&localSize,0,0,&ndrEvt);
-#ifdef OPENCL_PROFILE
-        clWaitForEvents(1, &ndrEvt);
-        clGetEventProfilingInfo(ndrEvt,CL_PROFILING_COMMAND_START,sizeof(cl_ulong),&startTime,0);
-        clGetEventProfilingInfo(ndrEvt,CL_PROFILING_COMMAND_END,sizeof(cl_ulong),&endTime,0);
-        pp->kernel += 1e-6 * (endTime - startTime);
-#endif
-    }
 
     for(int i=0; i<res->totalAttr;i++){
         res->content[i] = (char *)clCreateBuffer(context->context,CL_MEM_READ_WRITE, res->attrSize[i]*res->tupleNum, NULL, &error); 
