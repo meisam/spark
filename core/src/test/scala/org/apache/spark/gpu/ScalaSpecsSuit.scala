@@ -95,5 +95,15 @@ class ScalaSpecsSuit extends FunSuite with SharedSparkContext {
     println("bytes = %s".format(bytes.mkString(",")))
   }
 
+  test("Enumerations") {
+    var count = 0;
+    def next = { count += 1; count }
+    val x, y = next
+    println(f"x=$x, y=$y")
+
+    val id = MathOp.DIVIDE.id
+    println(f"MathOp.DIVIDE.id= $id")
+  }
+
 }
 
