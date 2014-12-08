@@ -83,11 +83,10 @@ class ScalaSpecsSuit extends FunSuite with SharedSparkContext {
     val mirror = ru.runtimeMirror(classLoader)
     implicitly[TypeTag[T]].tpe
   }
-  
+
   test("raw MathExp serialize") {
-    val exp1 = new MathExp
-   val byteBuffer = ByteBuffer.wrap(new Array[Byte](exp1.size))
-//    out.writeObject(exp1)
+    val exp1 = new MathExp(MathOp.DIVIDE, 2, null, null, MathOp.DIVIDE, 1)
+    val byteBuffer = ByteBuffer.wrap(new Array[Byte](MathExp.size))
     exp1.writeTo(byteBuffer)
     
     val bytes = byteBuffer.array()
