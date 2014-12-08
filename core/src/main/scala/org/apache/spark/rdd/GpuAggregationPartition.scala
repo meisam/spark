@@ -44,7 +44,11 @@ class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, par
       case (columnType, columnIndex) =>
         implicit val columnTypeTag = javaTypeToTypeTag(columnType)
         val column = parentPartition.getColumn(columnIndex)(columnTypeTag)
+        println("cpuOffsets(offsetIndex) = %,d".format(cpuOffsets(offsetIndex)))
 
+        println(column.array.asInstanceOf[Array[_]].mkString(","))
+        println(f"tupleCount= $tupleCount")
+        println("tupleCount * baseSize(columnType)= %,d".format(tupleCount * baseSize(columnType)))
         hostToDeviceCopy[Byte](column, gpuContent, tupleCount * baseSize(columnType), cpuOffsets(offsetIndex))
         offsetIndex += 1
     }
