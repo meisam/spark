@@ -99,50 +99,48 @@ declare_cl_memset(float)
 declare_cl_memset(double)
 declare_cl_memset(boolean)
 declare_cl_memset(char)
-    
-__kernel void countScanNum(__global int *filter, long tupleNum, __global int * count){
+
+__kernel void countScanNum(__global int *filter, long tupleNum, __global int * count) {
     size_t stride = get_global_size(0);
     size_t tid = get_global_id(0);
-        int localCount = 0;
+    int localCount = 0;
 
-        for(size_t i = tid; i<tupleNum; i += stride){
-                localCount += filter[i];
-        }
+    for(size_t i = tid; i<tupleNum; i += stride) {
+        localCount += filter[i];
+    }
 
-        count[tid] = localCount;
+    count[tid] = localCount;
 
 }
 
-
-__kernel void scan_other(__global char *col, int colSize, long tupleNum, __global int *psum, long resultNum, __global int * filter, __global char * result){
+__kernel void scan_other(__global char *col, int colSize, long tupleNum, __global int *psum, long resultNum, __global int * filter, __global char * result) {
     size_t stride = get_global_size(0);
     size_t tid = get_global_id(0);
-        int pos = psum[tid]  * colSize;
+    int pos = psum[tid] * colSize;
 
-        for(size_t i = tid; i<tupleNum;i+=stride){
+    for(size_t i = tid; i<tupleNum;i+=stride) {
 
-                if(filter[i] == 1){
+        if(filter[i] == 1) {
             for(int k=0;k<colSize;k++)
-                (result+pos)[k] = (col+i*colSize)[k];
-                        pos += colSize;
-                }
+            (result+pos)[k] = (col+i*colSize)[k];
+            pos += colSize;
         }
+    }
 }
 
-__kernel void scan_int(__global int *col, int colSize, long tupleNum, __global int *psum, long resultNum, __global int * filter, __global int * result){
+__kernel void scan_int(__global int *col, int colSize, long tupleNum, __global int *psum, long resultNum, __global int * filter, __global int * result) {
     size_t stride = get_global_size(0);
     size_t tid = get_global_id(0);
-        int localCount = psum[tid] ;
+    int localCount = psum[tid];
 
-        for(size_t i = tid; i<tupleNum;i+=stride){
+    for(size_t i = tid; i<tupleNum;i+=stride) {
 
-                if(filter[i] == 1){
-                        result[localCount] = col[i];
-                        localCount ++;
-                }
+        if(filter[i] == 1) {
+            result[localCount] = col[i];
+            localCount ++;
         }
+    }
 }
-
 
 // for atomic add on float type data
 
@@ -150,70 +148,69 @@ inline void AtomicAdd(__global float *source, float operand) {
     union {
         unsigned int intVal;
         float floatVal;
-    } newVal;
+    }newVal;
     union {
         unsigned int intVal;
         float floatVal;
-    } prevVal;
+    }prevVal;
     do {
         prevVal.floatVal = *source;
         newVal.floatVal = prevVal.floatVal + operand;
-    } while (atomic_cmpxchg((volatile __global unsigned int *)source, prevVal.intVal, newVal.intVal) != prevVal.intVal);
+    }while (atomic_cmpxchg((volatile __global unsigned int *)source, prevVal.intVal, newVal.intVal) != prevVal.intVal);
 }
 
 // for prefixsum 
 #define NUM_BANKS 16
 #define LOG_NUM_BANKS 4
 
-inline int CONFLICT_FREE_OFFSET(int index)
-{
-        return ((index) >> LOG_NUM_BANKS);
+inline int CONFLICT_FREE_OFFSET(int index) {
+    return ((index) >> LOG_NUM_BANKS);
 }
 
 inline void loadSharedChunkFromMem(__local int *s_data,
-                                                                           __global int *g_idata,
-                                                                           int n, int baseIndex,
-                                                                           int* ai, int* bi,
-                                                                           int* mem_ai, int* mem_bi,
-                                                                           int* bankOffsetA, int* bankOffsetB, int isNP2)
+        __global int *g_idata,
+        int n, int baseIndex,
+        int* ai, int* bi,
+        int* mem_ai, int* mem_bi,
+        int* bankOffsetA, int* bankOffsetB, int isNP2)
 {
-        size_t thid = get_local_id(0);
-        *mem_ai = baseIndex + thid;
-        *mem_bi = *mem_ai + get_local_size(0);
+    size_t thid = get_local_id(0);
+    *mem_ai = baseIndex + thid;
+    *mem_bi = *mem_ai + get_local_size(0);
 
-        *ai = thid;
-        *bi = thid + get_local_size(0);
+    *ai = thid;
+    *bi = thid + get_local_size(0);
 
-        // compute spacing to avoid bank conflicts
-        *bankOffsetA = CONFLICT_FREE_OFFSET(*ai);
-        *bankOffsetB = CONFLICT_FREE_OFFSET(*bi);
+// compute spacing to avoid bank conflicts
+    *bankOffsetA = CONFLICT_FREE_OFFSET(*ai);
+    *bankOffsetB = CONFLICT_FREE_OFFSET(*bi);
 
-        s_data[*ai + *bankOffsetA] = g_idata[*mem_ai];
+    s_data[*ai + *bankOffsetA] = g_idata[*mem_ai];
 
-        if (isNP2)
-        {
-                s_data[*bi + *bankOffsetB] = (*bi < n) ? g_idata[*mem_bi] : 0;
-        }
-        else
-        {
-                s_data[*bi + *bankOffsetB] = g_idata[*mem_bi];
-        }
+    if (isNP2)
+    {
+        s_data[*bi + *bankOffsetB] = (*bi < n) ? g_idata[*mem_bi] : 0;
+    }
+    else
+    {
+        s_data[*bi + *bankOffsetB] = g_idata[*mem_bi];
+    }
 }
 
 inline void storeSharedChunkToMem(__global int* g_odata,
-                                      __local int* s_data,
-                                      int n,
-                                      int ai, int bi,
-                                      int mem_ai, int mem_bi,
-                                      int bankOffsetA, int bankOffsetB, int isNP2)
+        __local int* s_data,
+        int n,
+        int ai, int bi,
+        int mem_ai, int mem_bi,
+        int bankOffsetA, int bankOffsetB, int isNP2)
 {
-    barrier(CLK_LOCAL_MEM_FENCE); 
+    barrier(CLK_LOCAL_MEM_FENCE);
 
     g_odata[mem_ai] = s_data[ai + bankOffsetA];
     if (isNP2)
     {
         if (bi < n)
-            g_odata[mem_bi] = s_data[bi + bankOffsetB];
+        g_odata[mem_bi] = s_data[bi + bankOffsetB];
     }
     else
     {
@@ -222,15 +219,15 @@ inline void storeSharedChunkToMem(__global int* g_odata,
 }
 
 inline void clearLastElement(__local int* s_data,
-                                 __global int *g_blockSums,
-                                 int blockIndex, int storeSum)
+        __global int *g_blockSums,
+        int blockIndex, int storeSum)
 {
     if (get_local_id(0) == 0)
     {
         int index = (get_local_size(0) << 1) - 1;
         index += CONFLICT_FREE_OFFSET(index);
 
-        if (storeSum) 
+        if (storeSum)
         {
             g_blockSums[blockIndex] = s_data[index];
         }
@@ -246,11 +243,11 @@ inline int buildSum(__local int *s_data)
 
     for (size_t d = get_local_size(0); d > 0; d >>= 1)
     {
-    barrier(CLK_LOCAL_MEM_FENCE);
+        barrier(CLK_LOCAL_MEM_FENCE);
 
         if (thid < d)
         {
-            int i  = mul24(mul24(2, stride), thid);
+            int i = mul24(mul24(2, stride), thid);
             int ai = i + stride - 1;
             int bi = ai + stride;
 
@@ -274,18 +271,18 @@ void scanRootToLeaves(__local int *s_data, int stride)
     {
         stride >>= 1;
 
-    barrier(CLK_LOCAL_MEM_FENCE);
+        barrier(CLK_LOCAL_MEM_FENCE);
 
         if (thid < d)
         {
-            int i  = mul24(mul24(2, stride), thid);
+            int i = mul24(mul24(2, stride), thid);
             int ai = i + stride - 1;
             int bi = ai + stride;
 
             ai += CONFLICT_FREE_OFFSET(ai);
             bi += CONFLICT_FREE_OFFSET(bi);
 
-            int t  = s_data[ai];
+            int t = s_data[ai];
             s_data[ai] = s_data[bi];
             s_data[bi] += t;
         }
@@ -294,49 +291,47 @@ void scanRootToLeaves(__local int *s_data, int stride)
 
 void prescanBlock(__local int *data, int blockIndex, __global int *blockSums, int storeSum)
 {
-    int stride = buildSum(data);               // build the sum in place up the tree
+    int stride = buildSum(data);           // build the sum in place up the tree
     clearLastElement(data, blockSums,
-                               (blockIndex == 0) ? get_group_id(0) : blockIndex, storeSum);
-    scanRootToLeaves(data, stride);            // traverse down tree to build the scan 
+            (blockIndex == 0) ? get_group_id(0) : blockIndex, storeSum);
+    scanRootToLeaves(data, stride);// traverse down tree to build the scan 
 }
 
 __kernel void prescan(__global int *g_odata,
-                        __global int *g_idata,
-                        __global int *g_blockSums,
-                        int n,
-                        int blockIndex,
-                        int baseIndex, int storeSum, int isNP2, int same, __local int * s_data
-                                                )
+        __global int *g_idata,
+        __global int *g_blockSums,
+        int n,
+        int blockIndex,
+        int baseIndex, int storeSum, int isNP2, int same, __local int * s_data
+)
 {
     int ai, bi, mem_ai, mem_bi, bankOffsetA, bankOffsetB;
     int bid = get_group_id(0);
     int bsize = get_local_size(0);
 
     loadSharedChunkFromMem(s_data, (same == 0) ? g_idata:g_odata,
-                  n,
-                                  (baseIndex == 0) ?
-                                  mul24(bid, (bsize << 1)):baseIndex,
-                                  &ai, &bi, &mem_ai, &mem_bi,
-                                  &bankOffsetA, &bankOffsetB, isNP2);
+            n,
+            (baseIndex == 0) ?
+            mul24(bid, (bsize << 1)):baseIndex,
+            &ai, &bi, &mem_ai, &mem_bi,
+            &bankOffsetA, &bankOffsetB, isNP2);
 
     prescanBlock(s_data, blockIndex, g_blockSums,storeSum);
 
     storeSharedChunkToMem(g_odata, s_data, n,
-                                 ai, bi, mem_ai, mem_bi,
-                                 bankOffsetA, bankOffsetB, isNP2);
+            ai, bi, mem_ai, mem_bi,
+            bankOffsetA, bankOffsetB, isNP2);
 }
 
-
-
 __kernel void uniformAdd(__global int *g_data,
-                           __global int *uniforms,
-                           int n,
-                           int blockOffset,
-                           int baseIndex)
+        __global int *uniforms,
+        int n,
+        int blockOffset,
+        int baseIndex)
 {
     __local int uni;
     if (get_local_id(0) == 0)
-        uni = uniforms[get_group_id(0) + blockOffset];
+    uni = uniforms[get_group_id(0) + blockOffset];
 
     int bid = get_group_id(0);
     int bsize = get_local_size(0);
@@ -345,7 +340,7 @@ __kernel void uniformAdd(__global int *g_data,
 
     barrier(CLK_LOCAL_MEM_FENCE);
 
-    g_data[address]              += uni;
+    g_data[address] += uni;
     g_data[address + get_local_size(0)] += (get_local_id(0) + get_local_size(0) < n) * uni;
 }
 
@@ -355,64 +350,63 @@ __kernel void uniformAdd(__global int *g_data,
 
 /////////////////////////////////////////////////////////////////////
 
-
 // The following kernel is for traditional hash joins (Comment by Yuan)
 
-__kernel void count_hash_num(__global int *dim, long  inNum, __global int *num, int hsize){
+__kernel void count_hash_num(__global int *dim, long inNum, __global int *num, int hsize) {
     size_t stride = get_global_size(0);
     size_t offset = get_global_id(0);
 
-        for(size_t i=offset;i<inNum;i+=stride){
-                int joinKey = dim[i];
-                int hKey = joinKey & (hsize-1);
-                atomic_add(&(num[hKey]),1);
-        }
+    for(size_t i=offset;i<inNum;i+=stride) {
+        int joinKey = dim[i];
+        int hKey = joinKey & (hsize-1);
+        atomic_add(&(num[hKey]),1);
+    }
 }
 
 // The following kernel is for traditional hash joins (Comment by Yuan)
 
-__kernel void build_hash_table(__global int *dim, long inNum, __global int *psum, __global int * bucket, int hsize){
+__kernel void build_hash_table(__global int *dim, long inNum, __global int *psum, __global int * bucket, int hsize) {
 
     size_t stride = get_global_size(0);
     size_t offset = get_global_id(0);
 
-        for(size_t i=offset;i<inNum;i+=stride){
-                int joinKey = dim[i];
-                int hKey = joinKey & (hsize-1);
-                int pos = atomic_add(&psum[hKey],1) * 2;
-                bucket[pos] = joinKey;
-                pos += 1;
-                int dimId = i+1;
-                bucket[pos] = dimId;
-        }
+    for(size_t i=offset;i<inNum;i+=stride) {
+        int joinKey = dim[i];
+        int hKey = joinKey & (hsize-1);
+        int pos = atomic_add(&psum[hKey],1) * 2;
+        bucket[pos] = joinKey;
+        pos += 1;
+        int dimId = i+1;
+        bucket[pos] = dimId;
+    }
 
 }
 
-__kernel  void count_join_result(__global int* num, __global int* psum, __global int* bucket, __global int* fact, long inNum, __global int* count, __global int * factFilter,int hsize){
-        int lcount = 0;
+__kernel void count_join_result(__global int* num, __global int* psum, __global int* bucket, __global int* fact, long inNum, __global int* count, __global int * factFilter,int hsize) {
+    int lcount = 0;
     size_t stride = get_global_size(0);
     size_t offset = get_global_id(0);
 
-        for(size_t i=offset;i<inNum;i+=stride){
-                int fkey = fact[i];
-                int hkey = fkey &(hsize-1);
-                int keyNum = num[hkey];
-                int fvalue = 0;
+    for(size_t i=offset;i<inNum;i+=stride) {
+        int fkey = fact[i];
+        int hkey = fkey &(hsize-1);
+        int keyNum = num[hkey];
+        int fvalue = 0;
 
-                for(int j=0;j<keyNum;j++){
-                        int pSum = psum[hkey];
-                        int dimKey = bucket[2*j + 2*pSum];
-                        int dimId = bucket[2*j + 2*pSum + 1];
-                        if( dimKey == fkey){
-                                lcount ++;
-                                fvalue = dimId;
-                                break;
-                        }
-                }
-                factFilter[i] = fvalue;
+        for(int j=0;j<keyNum;j++) {
+            int pSum = psum[hkey];
+            int dimKey = bucket[2*j + 2*pSum];
+            int dimId = bucket[2*j + 2*pSum + 1];
+            if( dimKey == fkey) {
+                lcount ++;
+                fvalue = dimId;
+                break;
+            }
         }
+        factFilter[i] = fvalue;
+    }
 
-        count[offset] = lcount;
+    count[offset] = lcount;
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -421,7 +415,7 @@ __kernel  void count_join_result(__global int* num, __global int* psum, __global
 
 /////////////////////////////////////////////////////////////////////
 
-char * gpuItoa(int value, char* result, int base){
+char * gpuItoa(int value, char* result, int base) {
 
     if (base < 2 || base > 36) {
         *result = '\0';
@@ -434,62 +428,63 @@ char * gpuItoa(int value, char* result, int base){
     do {
         tmp_value = value;
         value /= base;
-        *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz" [35 + (tmp_value - value * base)];
-    } while ( value );
+        *ptr++ =
+                "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz"[35
+                        + (tmp_value - value * base)];
+    } while (value);
 
     if (tmp_value < 0)
         *ptr++ = '-';
 
     *ptr-- = '\0';
 
-    while(ptr1 < ptr) {
+    while (ptr1 < ptr) {
         tmp_char = *ptr;
-        *ptr--= *ptr1;
+        *ptr-- = *ptr1;
         *ptr1++ = tmp_char;
     }
     return result;
 
 }
 
-char * gpuStrcpy(char * dst, const char * src){
+char * gpuStrcpy(char * dst, const char * src) {
 
     char * orig = dst;
-    while(*src)
+    while (*src)
         *dst++ = *src++;
     *dst = '\0';
 
     return orig;
 }
 
-char* gpuStrncat(char *dest, const char *src, size_t n)
-{
+char* gpuStrncat(char *dest, const char *src, size_t n) {
     int dest_len = 0;
     int i;
 
     char * tmp = dest;
-    while(*tmp != '\0'){
+    while (*tmp != '\0') {
         tmp++;
-        dest_len ++;
+        dest_len++;
     }
 
-    for (i = 0 ; i < n && src[i] != '\0' ; i++)
+    for (i = 0; i < n && src[i] != '\0'; i++)
         dest[dest_len + i] = src[i];
 
     dest[dest_len + i] = '\0';
     return dest;
 }
 
-char * gpuStrcat(char * dest, const char * src){
-    char *tmp =dest;
+char * gpuStrcat(char * dest, const char * src) {
+    char *tmp = dest;
     int dest_len = 0;
     int i;
 
-    while (*tmp!= '\0'){
-        tmp++ ;
-        dest_len ++;
+    while (*tmp != '\0') {
+        tmp++;
+        dest_len++;
     }
 
-    for(i=0; src[i] !='\0'; i++){
+    for (i = 0; src[i] != '\0'; i++) {
         dest[dest_len + i] = src[i];
     }
 
@@ -498,13 +493,11 @@ char * gpuStrcat(char * dest, const char * src){
     return dest;
 }
 
-unsigned int StringHash(const char* s)
-{
+unsigned int StringHash(const char* s) {
     unsigned int hash = 0;
     int c;
 
-    while((c = *s++))
-    {
+    while ((c = *s++)) {
         hash = ((hash << 5) + hash) ^ c;
     }
 
