@@ -17,6 +17,38 @@ enum data_types {
     STRING = 8
 };
 
+enum aggregation_operations {
+    MIN = 0, //
+    MAX = 1, //
+    COUNT = 2, //
+    SUM = 3, //
+    AVG = 4
+};
+
+enum math_exp_operand_type {
+    COLUMN = 0, //
+    CONS = 1
+};
+
+enum math_operations {
+    NOOP = 0, //
+    PLUS = 1, //  
+    MINUS = 2, //
+    MULTIPLY = 3, //
+    DIVIDE = 4 //
+};
+
+struct mathExp {
+    int op; /* the math operation */
+    int opNum; /* the number of operands */
+
+    long exp; /* if the opNum is 2, this field stores pointer that points to the two operands whose type is mathExp */
+
+    /* when opNum is 1 */
+    int opType; /* whether it is a regular column or a constant */
+    int opValue; /* it is the index of the column or the value of the constant */
+};
+
 #define genScanFilter(assign_name,assign_operation,column_type, operation_name, operation)   \
 __kernel void genScanFilter_##assign_name##_##column_type##_##operation_name                 \
 (__global column_type *col, long tupleNum, column_type where, __global int * filter)         \
