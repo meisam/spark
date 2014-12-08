@@ -12,7 +12,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, parentPartition: GpuPartition[T],
-  groupByColumnIndexes: Array[Int], aggregations: Array[AggregationOperation.Value], capacity: Int)
+  groupByColumnIndexes: Array[Int], aggregations: Array[GroupByExp], capacity: Int)
   extends GpuPartition[T](context, capacity) {
 
   def aggregate(iterator: Iterator[T]): Unit = {
@@ -239,11 +239,6 @@ class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, par
     clReleaseMemObject(gpuGbExp);
     clReleaseMemObject(gpuFunc);
 
-    clock_gettime(CLOCK_REALTIME,&end);
-    double timeE = (end.tv_sec -  start.tv_sec)* BILLION + end.tv_nsec - start.tv_nsec;
-    printf("GroupBy Time: %lf\n", timeE/(1000*1000));
-
-    return res;
     */
 
     clReleaseMemObject(gpuGbType)
