@@ -36,7 +36,7 @@ class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, par
 
     println(f"totalSize=$totalSize")
 
-    val gpuContent = createReadBuffer[Byte](totalSize) // [Byte] because everything is in bytes
+    val gpuContent = createReadWriteBuffer[Byte](totalSize) // [Byte] because everything is in bytes
 
     var offsetIndex = 0
 
