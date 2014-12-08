@@ -263,28 +263,43 @@ class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, par
 }
 
 object AggregationOperation extends Enumeration {
-
-  def count = Value("count")
-
-  def min = Value("min")
-
-  def max = Value("max")
-
-  def sum = Value("sum")
-
-  def avg = Value("avg")
+  type AggregationOperation = Value
+  val min = Value("MIN")
+  val max = Value("MAX")
+  val count = Value("COUNT")
+  val sum = Value("SUM")
+  val avg = Value("AVG")
 }
 
-class MathExp(op: Int, opNum: Int, exp: Long, opType: Int, opValue: Int) {
+class GroupByExp(val aggFunc: AggregationOperation.Value, val mathExp: MathExp) {
+  override def toString() = {
+    f"function = $aggFunc, mathExp = $mathExp"
+  }
+}
+
+object MathOp extends Enumeration {
+  type MathOp = Value
+  val PLUS, MINU, MULTIPLY, DIVIDE, NOOP = Value
+}
+
+class MathExp(op: MathOp.Value, opNum: Int, val leftExp: MathExp, val rightExp: MathExp, opType: MathOp.Value, opValue: Int) {
 
   def writeTo(out: ByteBuffer): Unit = {
     out.order(ByteOrder.LITTLE_ENDIAN)
-    out.putInt(op)
+    out.putInt(op.id)
     out.putInt(opNum)
-    out.putLong(exp)
-    out.putInt(opType)
+    out.putInt(if (leftExp == null) 0 else MathExp.size)
+    out.putInt(if (rightExp == null) 0 else MathExp.size)
+    out.putInt(opType.id)
     out.putInt(opValue)
   }
 
+  override def toString() = {
+    "op= %s, operandCount=%d, leftExp = %s, rightExp = %s, opType = %s, opValue=%d".format(
+      op, /*________*/ opNum, /**/ leftExp, /**/ rightExp, /**/ opType, /**/ opValue)
+  }
+}
+
+object MathExp {
   def size = 4 * (1 + 1 + 2 + 1 + 1) // 4 bytes per word *( Words in Int, Int, Long, Int, Int)
 }
