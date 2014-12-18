@@ -211,30 +211,19 @@ class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, par
     clReleaseMemObject(gpuGbKey);
     clReleaseMemObject(gpu_psum);
 
-    /*
-
-    for(int i=0; i<res->totalAttr;i++){
-        res->content[i] = (char *)clCreateBuffer(context->context,CL_MEM_READ_WRITE, res->attrSize[i]*res->tupleNum, NULL, &error); 
-        res->dataPos[i] = GPU;
-        res->attrTotalSize[i] = res->tupleNum * res->attrSize[i];
-        clEnqueueCopyBuffer(context->queue, gpuResult, (cl_mem)res->content[i], resOffset[i],0, res->attrSize[i] * res->tupleNum, 0,0,0);
+    columnTypes.zipWithIndex.foreach {
+      case (columnType, columnIndex) =>
+        implicit val columTypeTag = javaTypeToTypeTag(columnType)
+        val column = getColumn(toTypeAwareColumnIndex(columnIndex))(columTypeTag)
+        deviceToHostCopy[Byte](gpuResult, column, gpuGbColNum * baseSize(columnType), resOffset(columnIndex))
     }
 
-    free(resOffset);
-    free(cpuOffset);
-
-    clFinish(context->queue);
+    clFinish(context.queue)
     clReleaseMemObject(gpuContent);
-    clReleaseMemObject(gpuGbType);
-    clReleaseMemObject(gpuGbSize);
     clReleaseMemObject(gpuResult);
-    clReleaseMemObject(gpuOffset);
     clReleaseMemObject(gpuResOffset);
     clReleaseMemObject(gpuGbExp);
     clReleaseMemObject(gpuFunc);
-
-    */
-
     clReleaseMemObject(gpuGbType)
     clReleaseMemObject(gpuGbSize)
     clReleaseMemObject(gpuGbIndex)
