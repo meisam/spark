@@ -657,23 +657,25 @@ __kernel void agg_cal(__global char * content, __global int *colOffset, int colN
                 int type = exp[j].opType;
                 int attrSize = gbSize[j];
 
-                if(type == CONS) {
+                if (type == CONS) {
                     int value = exp[j].opValue;
                     char * buf = (char *) &value;
                     for(int k=0; k < attrSize; k++) {
                         result[resOffset[j] + offset*attrSize +k] = buf[k];
                     }
-                } else {
+                } else if (type == COLUMN) {
                     int index = exp[j].opValue;
                     for(int k=0; k < attrSize; k++) {
                         // FIXME there is something wrong here that makes opencl kernel crash 
-                        result[resOffset[j] + offset*attrSize +k] = content[colOffset[index] + i*attrSize + k];
+                        // result[resOffset[j] + offset*attrSize +k] = content[colOffset[index] + i*attrSize + k];
                     }
+                } else {
+                    // FIXME rais an exception here or stop execution or set an error code.
                 }
             } else if (func == SUM) {
                 // FIXME there is something wrong here that makes opencl kernel crash 
-                float tmpRes = calMathExp(content, colOffset, exp[j], mexp, i);
-//                AtomicAdd(& ((__global float *)(result + resOffset[j]))[offset], tmpRes);
+                // float tmpRes = calMathExp(content, colOffset, exp[j], mexp, i);
+                // AtomicAdd(& ((__global float *)(result + resOffset[j]))[offset], tmpRes);
             }
         }
     }
