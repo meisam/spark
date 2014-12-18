@@ -185,9 +185,9 @@ class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, par
     hostToDeviceCopy[Int](Pointer.to(cpuFuncs), gpuFunc, columnTypes.length)
 
     val gpuResult = createReadWriteBuffer[Byte](totalSize)
-    val resOffset = columnTypes.foldLeft(0L)({ case (sum, t) => sum + align(baseSize(t)) })
+    val resOffset: Array[Long] = columnTypes.map(x => align(baseSize(x)).toLong).scan(0L)(_ + _).toArray
     val gpuResOffset = createReadWriteBuffer[Long](columnTypes.length)
-    hostToDeviceCopy[Long](Pointer.to(gpuResOffset), gpuResOffset, columnTypes.length, 0)
+    hostToDeviceCopy[Long](Pointer.to(resOffset), gpuResOffset, columnTypes.length, 0)
 
     val gpuGbColNum = columnTypes.length
 
