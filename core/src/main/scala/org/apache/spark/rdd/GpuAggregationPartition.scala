@@ -242,6 +242,7 @@ class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, par
 
 object AggregationOperation extends Enumeration {
   type AggregationOperation = Value
+  val noop = Value("NOOP")
   val min = Value("MIN")
   val max = Value("MAX")
   val count = Value("COUNT")
@@ -249,6 +250,11 @@ object AggregationOperation extends Enumeration {
   val avg = Value("AVG")
 }
 
+object MathOperationType extends Enumeration {
+  type MathOperationType = Value
+  val column = Value("COLUMN")
+  val const = Value("CONST")
+}
 class GroupByExp(val aggFunc: AggregationOperation.Value, val mathExp: MathExp) {
   override def toString() = {
     f"function = $aggFunc, mathExp = $mathExp"
@@ -260,7 +266,7 @@ object MathOp extends Enumeration {
   val PLUS, MINU, MULTIPLY, DIVIDE, NOOP = Value
 }
 
-class MathExp(op: MathOp.Value, opNum: Int, val leftExp: MathExp, val rightExp: MathExp, opType: MathOp.Value, opValue: Int) {
+class MathExp(op: MathOp.Value, opNum: Int, val leftExp: MathExp, val rightExp: MathExp, opType: MathOperationType.Value, opValue: Int) {
 
   def writeTo(out: ByteBuffer): Unit = {
     out.order(ByteOrder.LITTLE_ENDIAN)
