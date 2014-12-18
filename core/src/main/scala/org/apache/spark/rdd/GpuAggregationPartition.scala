@@ -32,10 +32,6 @@ class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, par
 
     val totalSize = cpuOffsets.last
 
-    println("cpuOffsets = %s".format(cpuOffsets.mkString(",")))
-
-    println(f"totalSize=$totalSize")
-
     val gpuContent = createReadWriteBuffer[Byte](totalSize) // [Byte] because everything is in bytes
 
     var offsetIndex = 0
@@ -44,18 +40,12 @@ class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, par
       case (columnType, columnIndex) =>
         implicit val columnTypeTag = javaTypeToTypeTag(columnType)
         val column = parentPartition.getColumn(columnIndex)(columnTypeTag)
-        println("cpuOffsets(offsetIndex) = %,d".format(cpuOffsets(offsetIndex)))
-
-        println(column.array.asInstanceOf[Array[_]].mkString(","))
-        println(f"tupleCount= $tupleCount")
-        println("tupleCount * baseSize(columnType)= %,d".format(tupleCount * baseSize(columnType)))
         hostToDeviceCopy[Byte](column, gpuContent, tupleCount * baseSize(columnType), cpuOffsets(offsetIndex))
         offsetIndex += 1
     }
 
     val gpuContentResults = new Array[Byte](totalSize)
     deviceToHostCopy[Byte](gpuContent, Pointer.to(gpuContentResults), totalSize, 0)
-    printf("gpuContentResults = %s\n", gpuContentResults.mkString(","))
 
     val gpuOffsets = createReadBuffer[Int](cpuOffsets.length)
     hostToDeviceCopy[Int](pointer(cpuOffsets), gpuOffsets, cpuOffsets.length)
@@ -150,7 +140,7 @@ class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, par
     val mathExpBuffer = ByteBuffer.wrap(new Array[Byte](2 * MathExp.size * columnTypes.length))
     val cpuFuncs = aggregations.map(_.aggFunc.id)
 
-    println("all aggregations = %s", aggregations.mkString(","))
+    println("all aggregations = %s".format(aggregations.mkString(",")))
 
     aggregations.foreach { gbExp =>
       if (gbExp.mathExp == null) {
