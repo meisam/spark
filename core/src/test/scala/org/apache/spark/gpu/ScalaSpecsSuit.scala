@@ -27,6 +27,7 @@ import java.io.ByteArrayOutputStream
 import java.io.ObjectOutputStream
 import java.nio.ByteBuffer
 import org.apache.spark.rdd.MathOp
+import org.apache.spark.rdd.MathOperationType
 
 /**
  *
@@ -82,7 +83,7 @@ class ScalaSpecsSuit extends FunSuite with SharedSparkContext {
   }
 
   test("raw MathExp serialize") {
-    val exp1 = new MathExp(MathOp.DIVIDE, 2, null, null, MathOp.DIVIDE, 1)
+    val exp1 = new MathExp(MathOp.DIVIDE, 2, null, null, MathOperationType.column, 1)
     val byteBuffer = ByteBuffer.wrap(new Array[Byte](MathExp.size))
     exp1.writeTo(byteBuffer)
 
