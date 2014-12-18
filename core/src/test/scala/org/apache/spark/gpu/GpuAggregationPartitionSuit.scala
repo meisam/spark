@@ -125,4 +125,27 @@ class GpuAggregationPartitionSuit extends FunSuite with SharedSparkContext {
     }
   }
 
+  test("Aggregation cont(Int, Int)  match test") {
+    val testData: IndexedSeq[(Int, Int)] = Array((11, 3), (11, 1), (11, 4), (12, 6), (12, 5))
+
+    val partition = new GpuPartition[(Int, Int)](openCLContext, DEFAULT_CAPACITY)
+
+    partition.fill(testData.toIterator)
+
+    val aggregationPartition = new GpuAggregationPartition[(Int, Int)](openCLContext, partition,
+      Array(0), Array(new GroupByExp(AggregationOperation.noop, times2MathExo)), DEFAULT_CAPACITY)
+
+    aggregationPartition.fill(testData.toIterator)
+    val expectedData = Array((11, 4L), (12, 6L))
+
+    assert(aggregationPartition.size === expectedData.length)
+
+    expectedData.zipWithIndex.foreach {
+      case ((gbVal, aggValue), index) =>
+        assert(aggregationPartition.intData(0).get(index) === gbVal, "values do not match")
+        assert(aggregationPartition.intData(1).get(index) === aggValue, "values do not match")
+      case _ => fail("We should not be here")
+    }
+  }
+
 }
