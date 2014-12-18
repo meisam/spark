@@ -28,6 +28,7 @@ import java.io.ObjectInputStream
 import org.apache.spark.rdd.GroupByExp
 import org.apache.spark.rdd.MathExp
 import org.apache.spark.rdd.MathOp
+import org.apache.spark.rdd.MathOperationType
 
 /**
  *
@@ -36,10 +37,9 @@ class GpuAggregationPartitionSuit extends FunSuite with SharedSparkContext {
 
   val DEFAULT_CAPACITY = (1 << 10)
   val openCLContext = new OpenCLContext
-  
-  val times2MathExo = new MathExp(MathOp.MULTIPLY, 2, null, null, MathOp.MULTIPLY, 3)
-  val countMathExp = new MathExp(MathOp.PLUS, 1, null, null, MathOp.MULTIPLY, 3)
-  
+
+  val times2MathExo = new MathExp(MathOp.MULTIPLY, 2, null, null, MathOperationType.const, 11)
+  val countMathExp = new MathExp(MathOp.PLUS, 1, times2MathExo, null, MathOperationType.const, 15)
 
   override def beforeAll() {
     super.beforeAll()
@@ -54,8 +54,8 @@ class GpuAggregationPartitionSuit extends FunSuite with SharedSparkContext {
 
     partition.fill(testData.toIterator)
 
-    val aggregationPartition = new GpuAggregationPartition[(Int, Int)](openCLContext, partition, 
-        Array(0), Array(new GroupByExp(AggregationOperation.sum, countMathExp)), DEFAULT_CAPACITY)
+    val aggregationPartition = new GpuAggregationPartition[(Int, Int)](openCLContext, partition,
+      Array(0), Array(new GroupByExp(AggregationOperation.sum, times2MathExo)), DEFAULT_CAPACITY)
 
     aggregationPartition.fill(testData.toIterator)
     val expectedData = Array((11, 2), (12, 6))
@@ -71,8 +71,7 @@ class GpuAggregationPartitionSuit extends FunSuite with SharedSparkContext {
     partition.fill(testData.toIterator)
 
     val aggregationPartition = new GpuAggregationPartition[(Int, Int)](openCLContext, partition,
-        Array(0), Array(new GroupByExp(AggregationOperation.sum, countMathExp)), DEFAULT_CAPACITY)
-
+      Array(0), Array(new GroupByExp(AggregationOperation.sum, times2MathExo)), DEFAULT_CAPACITY)
 
     aggregationPartition.fill(testData.toIterator)
     val expectedData = Array((11, 2), (12, 6))
@@ -95,7 +94,7 @@ class GpuAggregationPartitionSuit extends FunSuite with SharedSparkContext {
     partition.fill(testData.toIterator)
 
     val aggregationPartition = new GpuAggregationPartition[(Int, Long)](openCLContext, partition,
-        Array(0), Array(new GroupByExp(AggregationOperation.sum, countMathExp)), DEFAULT_CAPACITY)
+      Array(0), Array(new GroupByExp(AggregationOperation.sum, times2MathExo)), DEFAULT_CAPACITY)
 
     aggregationPartition.fill(testData.toIterator)
     val expectedData = Array((11, 4L), (12, 6L))
@@ -110,8 +109,8 @@ class GpuAggregationPartitionSuit extends FunSuite with SharedSparkContext {
 
     partition.fill(testData.toIterator)
 
-    val aggregationPartition = new GpuAggregationPartition[(Int, Long)](openCLContext, partition, 
-                Array(0), Array(new GroupByExp(AggregationOperation.sum, countMathExp)), DEFAULT_CAPACITY)
+    val aggregationPartition = new GpuAggregationPartition[(Int, Long)](openCLContext, partition,
+      Array(0), Array(new GroupByExp(AggregationOperation.sum, times2MathExo)), DEFAULT_CAPACITY)
 
     aggregationPartition.fill(testData.toIterator)
     val expectedData = Array((11, 4L), (12, 6L))
