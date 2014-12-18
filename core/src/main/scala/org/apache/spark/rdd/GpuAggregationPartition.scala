@@ -257,7 +257,7 @@ object MathOperationType extends Enumeration {
 }
 class GroupByExp(val aggFunc: AggregationOperation.Value, val mathExp: MathExp) {
   override def toString() = {
-    f"function = $aggFunc, mathExp = $mathExp"
+    f"function = $aggFunc, mathExp = [$mathExp]"
   }
 }
 
