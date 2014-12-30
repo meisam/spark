@@ -156,8 +156,49 @@ inline void AtomicAdd(__global float *source, float operand) {
     do {
         prevVal.floatVal = *source;
         newVal.floatVal = prevVal.floatVal + operand;
-    }while (atomic_cmpxchg((volatile __global unsigned int *)source, prevVal.intVal, newVal.intVal) != prevVal.intVal);
+    } while (atomic_cmpxchg((volatile __global unsigned int *)source, prevVal.intVal, newVal.intVal) != prevVal.intVal);
 }
+
+// for atomic max on float type data
+inline void AtomicMin(__global float *source, float operand) {
+    union {
+        unsigned int intVal;
+        float floatVal;
+    } newVal;
+    union {
+        unsigned int intVal;
+        float floatVal;
+    } prevVal;
+    do {
+        prevVal.floatVal = *source;
+        if (operand < *source) {
+            return;
+        }
+        newVal.floatVal = operand;
+    } while (atomic_cmpxchg((volatile __global unsigned int *)source, prevVal.intVal, newVal.intVal) != prevVal.intVal);
+}
+
+// for atomic min on float type data
+inline void AtomicMax(__global float *source, float operand) {
+    union {
+        unsigned int intVal;
+        float floatVal;
+    } newVal;
+    union {
+        unsigned int intVal;
+        float floatVal;
+    } prevVal;
+    do {
+        prevVal.floatVal = *source;
+        if (operand > *source) {
+            return;
+        }
+        newVal.floatVal = operand;
+    } while (atomic_cmpxchg((volatile __global unsigned int *)source, prevVal.intVal, newVal.intVal) != prevVal.intVal);
+}
+
+// My GPU does not support atomic operations for long and double data. How to implement them?
+
 
 // for prefixsum 
 #define NUM_BANKS 16
@@ -602,14 +643,18 @@ declare_join_fact_kernel(boolean)
 declare_join_fact_kernel(char)
 
 float getExp(__global char *content, __global int * colOffset,struct mathExp exp,int pos) {
-    float res = 0;;
+    float res = 0;
     if(exp.op == NOOP) {
         if (exp.opType == CONS)
         res = exp.opValue;
-        else {
+        else if (exp.opType == COLUMN){
             int index = exp.opValue;
             res = ((__global int *)(content+colOffset[index]))[pos];
+        } else {
+            // raise an exception or set an error code.
         }
+    } else {
+        // raise an exception or set an erro code
     }
     return res;
 }
@@ -636,6 +681,8 @@ float calMathExp(__global char *content, __global int * colOffset,struct mathExp
 
     } else if (exp.op == DIVIDE) {
         res = getExp(content,colOffset,mexp[2*pos],pos) / getExp(content, colOffset,mexp[2*pos+1],pos);
+    } else {
+        // raise an exception or set a error code or terminate execution
     }
 
     return res;
@@ -667,16 +714,40 @@ __kernel void agg_cal(__global char * content, __global int *colOffset, int colN
                     int index = exp[j].opValue;
                     for(int k=0; k < attrSize; k++) {
                         // FIXME there is something wrong here that makes opencl kernel crash 
-                        // result[resOffset[j] + offset*attrSize +k] = content[colOffset[index] + i*attrSize + k];
+                         result[resOffset[j] + offset*attrSize +k] = content[colOffset[index] + i*attrSize + k];
                     }
                 } else {
-                    // FIXME rais an exception here or stop execution or set an error code.
+                    // FIXME raise an exception here or stop execution or set an error code.
                 }
             } else if (func == SUM) {
                 // FIXME there is something wrong here that makes opencl kernel crash 
-                // float tmpRes = calMathExp(content, colOffset, exp[j], mexp, i);
-                // AtomicAdd(& ((__global float *)(result + resOffset[j]))[offset], tmpRes);
+                 float tmpRes = calMathExp(content, colOffset, exp[j], mexp, i);
+                 AtomicAdd(& ((__global float *)(result + resOffset[j]))[offset], tmpRes);
+                 result[resOffset[j] + offset] = 0xDEADBEEF;
+            } else if (func == MIN) {
+                // FIXME there is something wrong here that makes opencl kernel crash 
+                 float tmpRes = calMathExp(content, colOffset, exp[j], mexp, i);
+                 AtomicAdd(& ((__global float *)(result + resOffset[j]))[offset], tmpRes);
+                 result[resOffset[j] + offset] = 0xDEADBEEF;
+            } else if (func == MAX) {
+                // FIXME there is something wrong here that makes opencl kernel crash 
+                 float tmpRes = calMathExp(content, colOffset, exp[j], mexp, i);
+                 AtomicAdd(& ((__global float *)(result + resOffset[j]))[offset], tmpRes);
+                 result[resOffset[j] + offset] = 0xDEADBEEF;
+            } else if (func == COUNT) {
+                // FIXME there is something wrong here that makes opencl kernel crash 
+                 float tmpRes = calMathExp(content, colOffset, exp[j], mexp, i);
+                 AtomicAdd(& ((__global float *)(result + resOffset[j]))[offset], tmpRes);
+                 result[resOffset[j] + offset] = 0xDEADBEEF;
+            } else if (func == AVG) {
+                // FIXME there is something wrong here that makes opencl kernel crash 
+                 float tmpRes = calMathExp(content, colOffset, exp[j], mexp, i);
+                 AtomicAdd(& ((__global float *)(result + resOffset[j]))[offset], tmpRes);
+                 result[resOffset[j] + offset] = 0xDEADBEEF;
+            } else {
+                // FIXME raise an exception here or stop execution or set an error code.
             }
         }
     }
 }
+
