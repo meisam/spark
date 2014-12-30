@@ -38,7 +38,7 @@ class GpuAggregationPartitionSuit extends FunSuite with SharedSparkContext {
   val DEFAULT_CAPACITY = (1 << 10)
   val openCLContext = new OpenCLContext
 
-  val times2MathExo = new MathExp(MathOp.MULTIPLY, 2, null, null, MathOperationType.const, 11)
+  val times2MathExo = new MathExp(MathOp.NOOP, 1, null, null, MathOperationType.column, 1)
   val countMathExp = new MathExp(MathOp.PLUS, 1, times2MathExo, null, MathOperationType.const, 15)
 
   override def beforeAll() {
@@ -133,17 +133,20 @@ class GpuAggregationPartitionSuit extends FunSuite with SharedSparkContext {
     partition.fill(testData.toIterator)
 
     val aggregationPartition = new GpuAggregationPartition[(Int, Int)](openCLContext, partition,
-      Array(0), Array(new GroupByExp(AggregationOperation.noop, times2MathExo)), DEFAULT_CAPACITY)
+      Array(0), Array(new GroupByExp(AggregationOperation.sum, times2MathExo)), DEFAULT_CAPACITY)
 
     aggregationPartition.fill(testData.toIterator)
-    val expectedData = Array((11, 4L), (12, 6L))
+    val expectedData = Array((11, 8), (12, 11))
 
     assert(aggregationPartition.size === expectedData.length)
 
+    
+    println("1st column %s".format(aggregationPartition.intData(0).array.zipWithIndex.filter(_._1 != 0).mkString(",")))
+    println("2nd column %s".format(aggregationPartition.intData(1).array.zipWithIndex.filter(_._1 != 0).mkString(",")))
     expectedData.zipWithIndex.foreach {
       case ((gbVal, aggValue), index) =>
+      assert(aggregationPartition.intData(1).get(index) === aggValue, "values do not match")
         assert(aggregationPartition.intData(0).get(index) === gbVal, "values do not match")
-        assert(aggregationPartition.intData(1).get(index) === aggValue, "values do not match")
       case _ => fail("We should not be here")
     }
   }
