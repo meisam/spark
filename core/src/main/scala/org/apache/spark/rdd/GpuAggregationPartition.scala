@@ -80,6 +80,14 @@ class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, par
     clEnqueueNDRangeKernel(context.queue, memSetKernel, 1, null, global_work_size,
       local_work_size, 0, null, null)
 
+    clSetKernelArg(memSetKernel, 0, Sizeof.cl_mem, Pointer.to(gpuGbKey))
+    clSetKernelArg(memSetKernel, 1, Sizeof.cl_int, pointer(Array[Int](parentPartition.size)))
+
+    clEnqueueNDRangeKernel(context.queue, memSetKernel, 1, null, global_work_size,
+      local_work_size, 0, null, null)
+
+    debugGpuBuffer[Int](gpuGbKey, parentPartition.size, "gpuGbKey before")
+
     val buildGroupByKeyKernel = clCreateKernel(context.program, "build_groupby_key", null)
     clSetKernelArg(buildGroupByKeyKernel, 0, Sizeof.cl_mem, Pointer.to(gpuContent))
     clSetKernelArg(buildGroupByKeyKernel, 1, Sizeof.cl_mem, Pointer.to(gpuOffsets))
