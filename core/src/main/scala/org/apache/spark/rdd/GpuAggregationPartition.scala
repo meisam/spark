@@ -13,8 +13,9 @@ import java.nio.ByteOrder
 import org.jocl.cl_mem
 import scala.reflect.ClassTag
 
-class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, parentPartition: GpuPartition[T],
-  groupByColumnIndexes: Array[Int], aggregations: Array[AggregationExp], capacity: Int)
+class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
+  context: OpenCLContext, parentPartition: GpuPartition[TP],
+  aggregations: Array[AggregationExp], capacity: Int)
     extends GpuPartition[T](context, capacity) {
 
   def aggregate(iterator: Iterator[T]): Unit = {
