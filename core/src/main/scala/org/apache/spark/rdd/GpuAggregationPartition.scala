@@ -129,8 +129,8 @@ class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, par
     this.size = gbCount.head
 
     //  
-    // @gpuGbExp is the mathExp in each groupBy Expession
-    // @mathexp stores the math exp for for the group Expession that has two operands
+    // @gpuGbExp is the mathExp in each groupBy Expression
+    // @mathexp stores the math exp for for the group Expression that has two operands
     // The reason that we need two variables instead of one is that OpenCL doesn't support pointer to pointer
     //
 
