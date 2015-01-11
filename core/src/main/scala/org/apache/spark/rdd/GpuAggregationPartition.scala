@@ -101,6 +101,10 @@ class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, par
     clSetKernelArg(buildGroupByKeyKernel, 7, Sizeof.cl_mem, Pointer.to(gpuGbKey))
     clSetKernelArg(buildGroupByKeyKernel, 8, Sizeof.cl_mem, Pointer.to(gpu_hashNum))
 
+    println("global_work_size = %s".format(global_work_size.mkString(",")))
+    println("local_work_size = %s".format(local_work_size.mkString(",")))
+    println(f"total size = $totalSize")
+
     clEnqueueNDRangeKernel(context.queue, buildGroupByKeyKernel, 1, null, global_work_size,
       local_work_size, 0, null, null)
 
