@@ -10,10 +10,12 @@ import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import org.jocl.cl_mem
+import scala.reflect.ClassTag
 
 class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, parentPartition: GpuPartition[T],
   groupByColumnIndexes: Array[Int], aggregations: Array[GroupByExp], capacity: Int)
-  extends GpuPartition[T](context, capacity) {
+    extends GpuPartition[T](context, capacity) {
 
   def aggregate(iterator: Iterator[T]): Unit = {
 
@@ -44,7 +46,7 @@ class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, par
         offsetIndex += 1
     }
 
-     val gpuOffsets = createReadBuffer[Int](cpuOffsets.length)
+    val gpuOffsets = createReadBuffer[Int](cpuOffsets.length)
     hostToDeviceCopy[Int](pointer(cpuOffsets), gpuOffsets, cpuOffsets.length)
 
     val gbType: Array[Int] = groupByColumnIndexes.map(i => columnTypes(i)).map(t => ColumnarTypes.getIndex(t)).toIterator.toArray
@@ -69,15 +71,14 @@ class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, par
     val gpu_hashNum = createReadWriteBuffer[Int](HASH_SIZE)
 
     val memSetKernel = clCreateKernel(context.program, "cl_memset_int", null)
+    val global_work_size = Array[Long](globalSize)
+    val local_work_size = Array[Long](localSize)
 
     clSetKernelArg(memSetKernel, 0, Sizeof.cl_mem, Pointer.to(gpu_hashNum))
     clSetKernelArg(memSetKernel, 1, Sizeof.cl_int, pointer(Array[Int](HASH_SIZE)))
 
-    val global_work_size = Array[Long](globalSize)
-    val local_work_size = Array[Long](localSize)
     clEnqueueNDRangeKernel(context.queue, memSetKernel, 1, null, global_work_size,
       local_work_size, 0, null, null)
-    println("groupbyColNum = %d".format(groupByColumnIndexes.length))
 
     val buildGroupByKeyKernel = clCreateKernel(context.program, "build_groupby_key", null)
     clSetKernelArg(buildGroupByKeyKernel, 0, Sizeof.cl_mem, Pointer.to(gpuContent))
