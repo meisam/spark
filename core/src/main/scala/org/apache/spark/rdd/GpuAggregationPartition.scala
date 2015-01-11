@@ -136,7 +136,6 @@ class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, par
     val gpuGbCount = createReadWriteBuffer[Int](1)
     hostToDeviceCopy[Int](pointer(Array[Int](0)), gpuGbCount, 1)
 
-    println("Hash number results = %s".format(gpuHashNumResults.mkString(",")))
     val countGroupNumKernel = clCreateKernel(context.program, "count_group_num", null);
     clSetKernelArg(countGroupNumKernel, 0, Sizeof.cl_mem, Pointer.to(gpu_hashNum))
     clSetKernelArg(countGroupNumKernel, 1, Sizeof.cl_int, pointer(Array[Int](HASH_SIZE)))
@@ -214,12 +213,18 @@ class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, par
     hostToDeviceCopy[Byte](Pointer.to(mathExpBuffer), gpuMathExp, 2 * MathExp.size * columnTypes.length)
     hostToDeviceCopy[Int](Pointer.to(cpuFuncs), gpuFunc, columnTypes.length)
 
-    val gpuResult = createReadWriteBuffer[Byte](totalSize)
+    val gpuResult = createReadWriteBuffer[Byte](totalSize) // FIXME is the size correct?
+//    clSetKernelArg(memSetKernel, 0, Sizeof.cl_mem, Pointer.to(gpuResult))
+//    clSetKernelArg(memSetKernel, 1, Sizeof.cl_int, pointer(Array[Int](totalSize)))
+//
+//    clEnqueueNDRangeKernel(context.queue, memSetKernel, 1, null, global_work_size,
+//      local_work_size, 0, null, null)
+
     val resOffset: Array[Long] = columnTypes.map(x => align(baseSize(x)).toLong).scan(0L)(_ + _).toArray
     val gpuResOffset = createReadWriteBuffer[Long](columnTypes.length)
     hostToDeviceCopy[Long](Pointer.to(resOffset), gpuResOffset, columnTypes.length, 0)
 
-    val gpuGbColNum = columnTypes.length
+    val gpuGbColNum = columnTypes.length //FIXME is this correct?
 
     val agggregationKernel = clCreateKernel(context.program, "agg_cal", null)
     clSetKernelArg(agggregationKernel, 0, Sizeof.cl_mem, Pointer.to(gpuContent))
@@ -236,7 +241,27 @@ class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, par
     clSetKernelArg(agggregationKernel, 11, Sizeof.cl_mem, Pointer.to(gpuResOffset))
     clSetKernelArg(agggregationKernel, 12, Sizeof.cl_mem, Pointer.to(gpuFunc))
 
+    println("======================================")
+    println("before agg_cal kernel")
+    println("MathExp.size * columnTypes.length = %d".format( MathExp.size * columnTypes.length))
+    debugGpuBuffer[Byte](gpuContent, totalSize, "gpuContent")
+    debugGpuBuffer[Long](gpuOffsets, cpuOffsets.length, "gpuOffsets")
+    debugGpuBuffer[Byte](gpuGbExp, MathExp.size * columnTypes.length, "gpuGbExp")
+    debugGpuBuffer[Byte](gpuMathExp, 2 * MathExp.size * columnTypes.length, "gpuMathExp")
+    debugGpuBuffer[Int](gpuGbType, gbType.length, "gpuGbType")
+    debugGpuBuffer[Int](gpuGbSize, groupByColumnIndexes.length, "gpuGbSize")
+    debugGpuBuffer[Int](gpuGbKey, parentPartition.size, "gpuGbKey")
+    // next line prints too much if uncommented 
+//    debugGpuBuffer[Int](gpu_psum, HASH_SIZE, "gpu_psum")
+    debugGpuBuffer[Long](gpuResOffset, columnTypes.length, "gpuResOffset")
+    debugGpuBuffer[Int](gpuFunc, columnTypes.length, "gpuFunc")
+    
+    println("aggregations = %s".format(aggregations.mkString(" ...\n,... ")))
+    println("cpuFuncs = %s".format(cpuFuncs.mkString(",")))
     clEnqueueNDRangeKernel(context.queue, agggregationKernel, 1, null, global_work_size, local_work_size, 0, null, null)
+
+    debugGpuBuffer[Byte](gpuResult, totalSize, "gpuResult")
+    return  //FIXME this is not needed. Added for debugging 
 
     clReleaseMemObject(gpuGbKey);
     clReleaseMemObject(gpu_psum);
@@ -272,7 +297,7 @@ class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, par
   def debugGpuBuffer[V: TypeTag: ClassTag](buffer: cl_mem, size: Int, msg: String) {
     val tempBuffer = new Array[V](size)
     deviceToHostCopy[V](buffer, pointer[V](tempBuffer), size, 0)
-    println("%s = %s".format(msg, tempBuffer.mkString(",")))
+    println("%s = \n%s".format(msg, tempBuffer.mkString("vvvvvvvvvvvvvv\n", "\n", "\n^^^^^^^^^^")))
   }
 }
 
