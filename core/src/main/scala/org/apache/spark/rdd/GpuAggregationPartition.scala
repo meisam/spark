@@ -324,7 +324,7 @@ object MathOp extends Enumeration {
   val PLUS, MINU, MULTIPLY, DIVIDE, NOOP = Value
 }
 
-class MathExp(op: MathOp.Value, opNum: Int, val leftExp: MathExp, val rightExp: MathExp, opType: MathOperationType.Value, opValue: Int) {
+class MathExp(val op: MathOp.Value, opNum: Int, val leftExp: MathExp, val rightExp: MathExp, val opType: MathOperationType.Value, val opValue: Int) {
 
   def writeTo(out: ByteBuffer): Unit = {
     out.order(ByteOrder.LITTLE_ENDIAN)
