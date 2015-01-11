@@ -27,12 +27,12 @@ class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, par
 
     val tupleCount = parentPartition.size
 
-    val cpuOffsets: Array[Int] = columnTypes.map(baseSize(_) * tupleCount).scanLeft(0)(
+    val cpuOffsets: Array[Long] = columnTypes.map(baseSize(_) * tupleCount).scanLeft(0L)(
       {
-        case (sum: Int, x: Int) => align(x) + sum
-      }).toArray[Int]
+        case (sum: Long, x: Int) => align(x).toLong + sum
+      }).toArray[Long]
 
-    val totalSize = cpuOffsets.last
+    val totalSize = cpuOffsets.last.toInt
 
     val gpuContent = createReadWriteBuffer[Byte](totalSize) // [Byte] because everything is in bytes
 
@@ -42,12 +42,12 @@ class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, par
       case (columnType, columnIndex) =>
         implicit val columnTypeTag = javaTypeToTypeTag(columnType)
         val column = parentPartition.getColumn(columnIndex)(columnTypeTag)
-        hostToDeviceCopy[Byte](column, gpuContent, tupleCount * baseSize(columnType), cpuOffsets(offsetIndex))
+        hostToDeviceCopy[Byte](column, gpuContent, tupleCount * baseSize(columnType), cpuOffsets(offsetIndex).toInt)
         offsetIndex += 1
     }
 
-    val gpuOffsets = createReadBuffer[Int](cpuOffsets.length)
-    hostToDeviceCopy[Int](pointer(cpuOffsets), gpuOffsets, cpuOffsets.length)
+    val gpuOffsets = createReadBuffer[Long](cpuOffsets.length)
+    hostToDeviceCopy[Long](pointer(cpuOffsets), gpuOffsets, cpuOffsets.length)
 
     val gbType: Array[Int] = groupByColumnIndexes.map(i => columnTypes(i)).map(t => ColumnarTypes.getIndex(t)).toIterator.toArray
 
@@ -97,7 +97,7 @@ class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, par
     clSetKernelArg(buildGroupByKeyKernel, 4, Sizeof.cl_mem, Pointer.to(gpuGbType))
     clSetKernelArg(buildGroupByKeyKernel, 5, Sizeof.cl_mem, Pointer.to(gpuGbSize))
     clSetKernelArg(buildGroupByKeyKernel, 6, Sizeof.cl_long,
-      pointer(Array[Int](parentPartition.size)))
+      pointer(Array[Long](parentPartition.size)))
     clSetKernelArg(buildGroupByKeyKernel, 7, Sizeof.cl_mem, Pointer.to(gpuGbKey))
     clSetKernelArg(buildGroupByKeyKernel, 8, Sizeof.cl_mem, Pointer.to(gpu_hashNum))
 
