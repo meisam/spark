@@ -48,6 +48,7 @@ class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, par
 
     val gpuOffsets = createReadBuffer[Long](cpuOffsets.length)
     hostToDeviceCopy[Long](pointer(cpuOffsets), gpuOffsets, cpuOffsets.length)
+    debugGpuBuffer[Long](gpuOffsets, cpuOffsets.length, "gpuOffsets (before)")
 
     val gbType: Array[Int] = groupByColumnIndexes.map(i => columnTypes(i)).map(t => ColumnarTypes.getIndex(t)).toIterator.toArray
 
