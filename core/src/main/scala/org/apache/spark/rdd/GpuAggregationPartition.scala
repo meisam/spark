@@ -238,6 +238,12 @@ class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, par
     this.localSize = parentPartition.localSize
     this.aggregate(iter)
   }
+
+  def debugGpuBuffer[V: TypeTag: ClassTag](buffer: cl_mem, size: Int, msg: String) {
+    val tempBuffer = new Array[V](size)
+    deviceToHostCopy[V](buffer, pointer[V](tempBuffer), size, 0)
+    println("%s = %s".format(msg, tempBuffer.mkString(",")))
+  }
 }
 
 object AggregationOperation extends Enumeration {
