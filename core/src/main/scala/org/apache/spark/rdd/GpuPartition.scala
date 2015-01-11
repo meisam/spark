@@ -555,6 +555,11 @@ class GpuPartition[T <: Product : TypeTag]
     clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_WRITE, size, null, null)
   }
 
+  protected def createWriteBuffer[V: TypeTag](elementCount: Int): cl_mem = {
+    val size = elementCount * baseSize[V]
+    clCreateBuffer(context.getOpenCLContext, CL_MEM_WRITE_ONLY, size, null, null)
+  }
+
   protected def createWriteBuffer(size: Long): cl_mem = {
     clCreateBuffer(context.getOpenCLContext, CL_MEM_WRITE_ONLY, size, null, null)
   }
