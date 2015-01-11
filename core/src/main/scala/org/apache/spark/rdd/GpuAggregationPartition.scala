@@ -42,7 +42,7 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
 
     val tupleCount = parentPartition.size
 
-    val cpuOffsets: Array[Long] = columnTypes.map(baseSize(_) * tupleCount).scanLeft(0L)(
+    val cpuOffsets: Array[Long] = parentPartition.columnTypes.map(baseSize(_) * tupleCount).scanLeft(0L)(
       {
         case (sum: Long, x: Int) => align(x).toLong + sum
       }).toArray[Long]
