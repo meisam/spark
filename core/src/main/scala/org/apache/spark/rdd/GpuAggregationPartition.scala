@@ -36,14 +36,11 @@ class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, par
 
     val gpuContent = createReadWriteBuffer[Byte](totalSize) // [Byte] because everything is in bytes
 
-    var offsetIndex = 0
-
     parentPartition.columnTypes.zipWithIndex.foreach {
       case (columnType, columnIndex) =>
         implicit val columnTypeTag = javaTypeToTypeTag(columnType)
         val column = parentPartition.getColumn(columnIndex)(columnTypeTag)
-        hostToDeviceCopy[Byte](column, gpuContent, tupleCount * baseSize(columnType), cpuOffsets(offsetIndex).toInt)
-        offsetIndex += 1
+        hostToDeviceCopy[Byte](column, gpuContent, tupleCount * baseSize(columnType), cpuOffsets(columnIndex).toInt)
     }
 
     val gpuOffsets = createReadBuffer[Long](cpuOffsets.length)
