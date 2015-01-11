@@ -19,9 +19,20 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
     extends GpuPartition[T](context, capacity) {
 
   def aggregate(iterator: Iterator[TP]): Unit = {
-    parentPartition.inferBestWorkGroupSize
-    this.globalSize = parentPartition.globalSize
-    this.localSize = parentPartition.localSize
+    val groupByColumnIndexes: Array[Int] = aggregations.filter({
+      agg =>
+        {
+          agg.aggFunc == AggregationOperation.noop // a.k.a group by
+        }
+    }).map { agg =>
+      {
+        assert(agg != null, { "agg is null" })
+        assert(agg.mathExp != null, { "agg.mathExp is null" })
+        assert(agg.mathExp.op != MathOp.NOOP, { "agg.mathExp operation should be NOOP" })
+        assert(agg.mathExp.opType == MathOperationType.column, { "agg.mathExp.opType is not column" })
+        agg.mathExp.opValue
+      }
+    }
 
     println("groupBy column idnexes = %s".format(groupByColumnIndexes.mkString(",")))
 
