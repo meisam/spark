@@ -14,7 +14,7 @@ import org.jocl.cl_mem
 import scala.reflect.ClassTag
 
 class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, parentPartition: GpuPartition[T],
-  groupByColumnIndexes: Array[Int], aggregations: Array[GroupByExp], capacity: Int)
+  groupByColumnIndexes: Array[Int], aggregations: Array[AggregationExp], capacity: Int)
     extends GpuPartition[T](context, capacity) {
 
   def aggregate(iterator: Iterator[T]): Unit = {
@@ -313,7 +313,7 @@ object MathOperationType extends Enumeration {
   val column = Value("COLUMN")
   val const = Value("CONST")
 }
-class GroupByExp(val aggFunc: AggregationOperation.Value, val mathExp: MathExp) {
+class AggregationExp(val aggFunc: AggregationOperation.Value, val mathExp: MathExp) {
   override def toString() = {
     f"function = $aggFunc, mathExp = [$mathExp]"
   }
