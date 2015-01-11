@@ -651,7 +651,7 @@ float calMathExp(__global char *content, __global int * colOffset,struct mathExp
     return res;
 }
 
-__kernel void agg_cal(__global char * content, __global int *colOffset, int colNum, __global struct mathExp* exp, __global struct mathExp *mexp, __global int * gbType, __global int * gbSize, long tupleNum, __global int * key, __global int *psum, __global char * result, __global long * resOffset, __global int *gbFunc) {
+__kernel void agg_cal(__global char * content, __global long *colOffset, int colNum, __global struct mathExp* exp, __global struct mathExp *mexp, __global int * gbType, __global int * gbSize, long tupleNum, __global int * key, __global int *psum, __global char * result, __global long * resOffset, __global int *gbFunc) {
 
     size_t stride = get_global_size(0);
     size_t index = get_global_id(0);
