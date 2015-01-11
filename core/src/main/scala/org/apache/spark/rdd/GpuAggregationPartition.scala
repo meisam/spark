@@ -44,10 +44,7 @@ class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, par
         offsetIndex += 1
     }
 
-    val gpuContentResults = new Array[Byte](totalSize)
-    deviceToHostCopy[Byte](gpuContent, Pointer.to(gpuContentResults), totalSize, 0)
-
-    val gpuOffsets = createReadBuffer[Int](cpuOffsets.length)
+     val gpuOffsets = createReadBuffer[Int](cpuOffsets.length)
     hostToDeviceCopy[Int](pointer(cpuOffsets), gpuOffsets, cpuOffsets.length)
 
     val gbType: Array[Int] = groupByColumnIndexes.map(i => columnTypes(i)).map(t => ColumnarTypes.getIndex(t)).toIterator.toArray
@@ -98,9 +95,25 @@ class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, par
     clEnqueueNDRangeKernel(context.queue, buildGroupByKeyKernel, 1, null, global_work_size,
       local_work_size, 0, null, null)
 
+    println("parentPartition.size = %s".format(parentPartition.size))
+
+    debugGpuBuffer[Byte](gpuContent, totalSize, "gpuContent")
+
+    debugGpuBuffer[Long](gpuOffsets, cpuOffsets.length, "gpuOffsets (after)")
+
+    debugGpuBuffer[Int](gpuGbIndex, groupByColumnIndexes.length, "gpuGbIndex")
+
+    debugGpuBuffer[Int](gpuGbType, gbType.length, "gpuGbType")
+
+    debugGpuBuffer[Int](gpuGbSize, groupByColumnIndexes.length, "gpuGbSize")
+
+    debugGpuBuffer[Int](gpuGbKey, parentPartition.size, "gpuGbKey (after)")
+
+    // next line prints too many results
+    // debugGpuBuffer[Int](gpu_hashNum,HASH_SIZE, "gpu_hashNum")
+
     val gpuGbKeyResults = new Array[Int](parentPartition.size)
     deviceToHostCopy[Int](gpuGbKey, Pointer.to(gpuGbKeyResults), parentPartition.size, 0)
-    printf("gpuGbKeyResults = %s\n", gpuGbKeyResults.take(100).mkString(","))
 
     val gpuHashNumResults = new Array[Int](HASH_SIZE)
     deviceToHostCopy[Int](gpu_hashNum, Pointer.to(gpuHashNumResults), HASH_SIZE, 0)
@@ -109,15 +122,18 @@ class GpuAggregationPartition[T <: Product: TypeTag](context: OpenCLContext, par
     val gpuGbCount = createReadWriteBuffer[Int](1)
     hostToDeviceCopy[Int](pointer(Array[Int](0)), gpuGbCount, 1)
 
+    println("Hash number results = %s".format(gpuHashNumResults.mkString(",")))
     val countGroupNumKernel = clCreateKernel(context.program, "count_group_num", null);
     clSetKernelArg(countGroupNumKernel, 0, Sizeof.cl_mem, Pointer.to(gpu_hashNum))
     clSetKernelArg(countGroupNumKernel, 1, Sizeof.cl_int, pointer(Array[Int](HASH_SIZE)))
     clSetKernelArg(countGroupNumKernel, 2, Sizeof.cl_mem, Pointer.to(gpuGbCount))
+    println("count_group_num 1")
     clEnqueueNDRangeKernel(context.queue, countGroupNumKernel, 1, null, global_work_size,
       local_work_size, 0, null, null)
 
     val gbCount = Array[Int](1)
 
+    println("count_group_num 2")
     deviceToHostCopy[Int](gpuGbCount, pointer(gbCount), 1)
 
     println("Groupby count = %s".format(gbCount.mkString(",")))
