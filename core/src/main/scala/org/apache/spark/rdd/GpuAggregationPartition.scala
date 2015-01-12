@@ -16,7 +16,7 @@ import scala.reflect.ClassTag
 class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
   context: OpenCLContext, parentPartition: GpuPartition[TP],
   aggregations: Array[AggregationExp], capacity: Int)
-    extends GpuPartition[T](context, capacity) {
+  extends GpuPartition[T](context, capacity) {
 
   def aggregate(iterator: Iterator[TP]): Unit = {
     parentPartition.inferBestWorkGroupSize
@@ -27,12 +27,11 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
       offset + (if (offset % 4 == 0) 0 else 4 - (offset % 4))
     }
 
-    val gbColumnIndexes = aggregations.filter(agg =>agg.aggFunc == AggregationOperation.groupBy).map
-    { agg =>
+    val gbColumnIndexes = aggregations.filter(agg => agg.aggFunc == AggregationOperation.groupBy).map { agg =>
       {
         assert(agg != null, { "agg is null" })
         assert(agg.mathExp != null, { "agg.mathExp is null" })
-        assert(agg.mathExp.op == MathOp.NOOP, { "agg.mathExp operation should be NOOP"})
+        assert(agg.mathExp.op == MathOp.NOOP, { "agg.mathExp operation should be NOOP" })
         assert(agg.mathExp.opType == MathOperationType.column, { "agg.mathExp.opType is not column" })
         agg.mathExp.opValue
       }
@@ -225,13 +224,13 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
     hostToDeviceCopy[Byte](Pointer.to(mathExpBuffer), gpuMathExp, 2 * MathExp.size * columnTypes.length)
     hostToDeviceCopy[Int](Pointer.to(cpuFuncs), gpuFunc, columnTypes.length)
 
-   val resultOffsets: Array[Long] = columnTypes.map(baseSize(_) * this.size).scanLeft(0L)(
+    val resultOffsets: Array[Long] = columnTypes.map(baseSize(_) * this.size).scanLeft(0L)(
       {
         case (sum: Long, x: Int) => align(x).toLong + sum
       }).toArray[Long]
 
     val resultTotalSize = resultOffsets.last.toInt
-    
+
     println(f"resultTotalSize = $resultTotalSize")
 
     val gpuResult = createReadWriteBuffer[Byte](resultTotalSize)

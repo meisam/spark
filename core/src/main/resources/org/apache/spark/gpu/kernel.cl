@@ -157,7 +157,7 @@ inline void AtomicAdd(__global float *source, float operand) {
     do {
         prevVal.floatVal = *source;
         newVal.floatVal = prevVal.floatVal + operand;
-    } while (atomic_cmpxchg((volatile __global unsigned int *)source, prevVal.intVal, newVal.intVal) != prevVal.intVal);
+    }while (atomic_cmpxchg((volatile __global unsigned int *)source, prevVal.intVal, newVal.intVal) != prevVal.intVal);
 }
 
 // for atomic max on float type data
@@ -165,18 +165,18 @@ inline void AtomicMin(__global float *source, float operand) {
     union {
         unsigned int intVal;
         float floatVal;
-    } newVal;
+    }newVal;
     union {
         unsigned int intVal;
         float floatVal;
-    } prevVal;
+    }prevVal;
     do {
         prevVal.floatVal = *source;
         if (operand < *source) {
             return;
         }
         newVal.floatVal = operand;
-    } while (atomic_cmpxchg((volatile __global unsigned int *)source, prevVal.intVal, newVal.intVal) != prevVal.intVal);
+    }while (atomic_cmpxchg((volatile __global unsigned int *)source, prevVal.intVal, newVal.intVal) != prevVal.intVal);
 }
 
 // for atomic min on float type data
@@ -184,22 +184,21 @@ inline void AtomicMax(__global float *source, float operand) {
     union {
         unsigned int intVal;
         float floatVal;
-    } newVal;
+    }newVal;
     union {
         unsigned int intVal;
         float floatVal;
-    } prevVal;
+    }prevVal;
     do {
         prevVal.floatVal = *source;
         if (operand > *source) {
             return;
         }
         newVal.floatVal = operand;
-    } while (atomic_cmpxchg((volatile __global unsigned int *)source, prevVal.intVal, newVal.intVal) != prevVal.intVal);
+    }while (atomic_cmpxchg((volatile __global unsigned int *)source, prevVal.intVal, newVal.intVal) != prevVal.intVal);
 }
 
 // My GPU does not support atomic operations for long and double data. How to implement them?
-
 
 // for prefixsum 
 #define NUM_BANKS 16
@@ -611,7 +610,7 @@ float getExp(__global char *content, __global long * colOffset,struct mathExp ex
     if(exp.op == NOOP) {
         if (exp.opType == CONS)
         res = exp.opValue;
-        else if (exp.opType == COLUMN){
+        else if (exp.opType == COLUMN) {
             int index = exp.opValue;
             res = ((__global int *)(content+colOffset[index]))[pos];
         } else {
@@ -678,27 +677,27 @@ __kernel void agg_cal(__global char * content, __global long *colOffset, int col
                 } else if (type == COLUMN) {
                     int index = exp[j].opValue;
                     for(int k=0; k < attrSize; k++) {
-                         result[resOffset[j] + offset*attrSize +k] = content[colOffset[index] + i*attrSize + k];
+                        result[resOffset[j] + offset*attrSize +k] = content[colOffset[index] + i*attrSize + k];
                     }
                 } else {
                     // FIXME raise an exception here or stop execution or set an error code.
                 }
             } else if (func == SUM) {
-                 float tmpRes = calMathExp(content, colOffset, exp[j], mexp, i);
-                 AtomicAdd(& ((__global float *)(result + resOffset[j]))[offset], tmpRes);
+                float tmpRes = calMathExp(content, colOffset, exp[j], mexp, i);
+                AtomicAdd(& ((__global float *)(result + resOffset[j]))[offset], tmpRes);
             } else if (func == MIN) {
-                 float tmpRes = calMathExp(content, colOffset, exp[j], mexp, i);
-                 AtomicMin(& ((__global float *)(result + resOffset[j]))[offset], tmpRes);
+                float tmpRes = calMathExp(content, colOffset, exp[j], mexp, i);
+                AtomicMin(& ((__global float *)(result + resOffset[j]))[offset], tmpRes);
             } else if (func == MAX) {
-                 float tmpRes = calMathExp(content, colOffset, exp[j], mexp, i);
-                 AtomicMax(& ((__global float *)(result + resOffset[j]))[offset], tmpRes);
+                float tmpRes = calMathExp(content, colOffset, exp[j], mexp, i);
+                AtomicMax(& ((__global float *)(result + resOffset[j]))[offset], tmpRes);
             } else if (func == COUNT) {
-                 // float tmpRes = calMathExp(content, colOffset, exp[j], mexp, i);
-                 float tmpRes = 1.0;
-                 AtomicAdd(& ((__global float *)(result + resOffset[j]))[offset], tmpRes);
+                // float tmpRes = calMathExp(content, colOffset, exp[j], mexp, i);
+                float tmpRes = 1.0;
+                AtomicAdd(& ((__global float *)(result + resOffset[j]))[offset], tmpRes);
             } else if (func == AVG) {
-                 float tmpRes = calMathExp(content, colOffset, exp[j], mexp, i);
-                 AtomicAdd(& ((__global float *)(result + resOffset[j]))[offset], tmpRes);
+                float tmpRes = calMathExp(content, colOffset, exp[j], mexp, i);
+                AtomicAdd(& ((__global float *)(result + resOffset[j]))[offset], tmpRes);
             } else {
                 // FIXME raise an exception here or stop execution or set an error code.
             }
