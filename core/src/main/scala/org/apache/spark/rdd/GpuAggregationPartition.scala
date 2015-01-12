@@ -19,6 +19,10 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
     extends GpuPartition[T](context, capacity) {
 
   def aggregate(iterator: Iterator[TP]): Unit = {
+    parentPartition.inferBestWorkGroupSize
+    this.globalSize = parentPartition.globalSize
+    this.localSize = parentPartition.localSize
+
     val groupByColumnIndexes: Array[Int] = aggregations.filter({
       agg =>
         {
@@ -297,13 +301,6 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
 
     clReleaseMemObject(gpuGbCount)
     clReleaseMemObject(gpu_hashNum)
-  }
-
-  override def fill(iter: Iterator[T]): Unit = {
-    parentPartition.inferBestWorkGroupSize
-    this.globalSize = parentPartition.globalSize
-    this.localSize = parentPartition.localSize
-    this.aggregate(iter)
   }
 
   def debugGpuBuffer[V: TypeTag: ClassTag](buffer: cl_mem, size: Int, msg: String) {
