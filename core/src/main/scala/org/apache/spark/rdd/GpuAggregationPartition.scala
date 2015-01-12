@@ -234,11 +234,11 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
     println(f"resultTotalSize = $resultTotalSize")
 
     val gpuResult = createReadWriteBuffer[Byte](resultTotalSize)
-    //    clSetKernelArg(memSetKernel, 0, Sizeof.cl_mem, Pointer.to(gpuResult))
-    //    clSetKernelArg(memSetKernel, 1, Sizeof.cl_int, pointer(Array[Int](totalSize)))
-    //
-    //    clEnqueueNDRangeKernel(context.queue, memSetKernel, 1, null, global_work_size,
-    //      local_work_size, 0, null, null)
+    clSetKernelArg(memSetKernel, 0, Sizeof.cl_mem, Pointer.to(gpuResult))
+    clSetKernelArg(memSetKernel, 1, Sizeof.cl_int, pointer(Array[Int](resultTotalSize)))
+
+    clEnqueueNDRangeKernel(context.queue, memSetKernel, 1, null, global_work_size,
+      local_work_size, 0, null, null)
 
     val gpuResOffset = createReadWriteBuffer[Long](columnTypes.length)
     hostToDeviceCopy[Long](Pointer.to(resultOffsets), gpuResOffset, columnTypes.length, 0)
