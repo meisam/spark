@@ -27,12 +27,8 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
       offset + (if (offset % 4 == 0) 0 else 4 - (offset % 4))
     }
 
-    val groupByColumnIndexes: Array[Int] = aggregations.filter({
-      agg =>
-        {
-          agg.aggFunc == AggregationOperation.noop // a.k.a group by
-        }
-    }).map { agg =>
+    val gbColumnIndexes = aggregations.filter(agg =>agg.aggFunc == AggregationOperation.groupBy).map
+    { agg =>
       {
         assert(agg != null, { "agg is null" })
         assert(agg.mathExp != null, { "agg.mathExp is null" })
@@ -42,7 +38,7 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
       }
     }
 
-    println("groupBy column idnexes = %s".format(groupByColumnIndexes.mkString(",")))
+    println("groupBy column idnexes = %s".format(gbColumnIndexes.mkString(",")))
 
     val tupleCount = parentPartition.size
 
@@ -66,24 +62,24 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
     hostToDeviceCopy[Long](pointer(cpuOffsets), gpuOffsets, cpuOffsets.length)
     debugGpuBuffer[Long](gpuOffsets, cpuOffsets.length, "gpuOffsets (before)")
 
-    val gbType: Array[Int] = groupByColumnIndexes.map(i => columnTypes(i)).map(t => ColumnarTypes.getIndex(t)).toIterator.toArray
+    val gbType: Array[Int] = gbColumnIndexes.map(i => columnTypes(i)).map(t => ColumnarTypes.getIndex(t)).toIterator.toArray
 
     println("gb column types = %s".format(gbType.mkString(",")))
 
     val gpuGbType = createReadBuffer[Int](gbType.length)
     hostToDeviceCopy[Int](pointer(gbType), gpuGbType, gbType.length)
 
-    val gpuGbSize = createReadBuffer[Int](groupByColumnIndexes.length)
-    val groupBySize: Array[Int] = groupByColumnIndexes.map(columnTypes(_)).map(baseSize(_))
+    val gpuGbSize = createReadBuffer[Int](gbColumnIndexes.length)
+    val groupBySize: Array[Int] = gbColumnIndexes.map(columnTypes(_)).map(baseSize(_))
       .scanLeft(0: Int)({ case (sum, x) => sum + align(x) }).splitAt(1)._2.toArray
     println("groupBy sizes = %s".format(groupBySize.mkString(",")))
 
-    hostToDeviceCopy[Int](pointer(groupBySize), gpuGbSize, groupByColumnIndexes.length)
+    hostToDeviceCopy[Int](pointer(groupBySize), gpuGbSize, gbColumnIndexes.length)
 
     val gpuGbKey = createReadWriteBuffer[Int](parentPartition.size)
 
-    val gpuGbIndex = createReadBuffer[Int](groupByColumnIndexes.length)
-    hostToDeviceCopy[Int](pointer(groupByColumnIndexes), gpuGbIndex, groupByColumnIndexes.length)
+    val gpuGbIndex = createReadBuffer[Int](gbColumnIndexes.length)
+    hostToDeviceCopy[Int](pointer(gbColumnIndexes), gpuGbIndex, gbColumnIndexes.length)
 
     val gpu_hashNum = createReadWriteBuffer[Int](HASH_SIZE)
 
@@ -109,7 +105,7 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
     clSetKernelArg(buildGroupByKeyKernel, 0, Sizeof.cl_mem, Pointer.to(gpuContent))
     clSetKernelArg(buildGroupByKeyKernel, 1, Sizeof.cl_mem, Pointer.to(gpuOffsets))
     clSetKernelArg(buildGroupByKeyKernel, 2, Sizeof.cl_int,
-      pointer(Array[Int](groupByColumnIndexes.length)))
+      pointer(Array[Int](gbColumnIndexes.length)))
     clSetKernelArg(buildGroupByKeyKernel, 3, Sizeof.cl_mem, Pointer.to(gpuGbIndex))
     clSetKernelArg(buildGroupByKeyKernel, 4, Sizeof.cl_mem, Pointer.to(gpuGbType))
     clSetKernelArg(buildGroupByKeyKernel, 5, Sizeof.cl_mem, Pointer.to(gpuGbSize))
@@ -131,11 +127,11 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
 
     debugGpuBuffer[Long](gpuOffsets, cpuOffsets.length, "gpuOffsets (after)")
 
-    debugGpuBuffer[Int](gpuGbIndex, groupByColumnIndexes.length, "gpuGbIndex")
+    debugGpuBuffer[Int](gpuGbIndex, gbColumnIndexes.length, "gpuGbIndex")
 
     debugGpuBuffer[Int](gpuGbType, gbType.length, "gpuGbType")
 
-    debugGpuBuffer[Int](gpuGbSize, groupByColumnIndexes.length, "gpuGbSize")
+    debugGpuBuffer[Int](gpuGbSize, gbColumnIndexes.length, "gpuGbSize")
 
     debugGpuBuffer[Int](gpuGbKey, parentPartition.size, "gpuGbKey (after)")
 
@@ -229,16 +225,24 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
     hostToDeviceCopy[Byte](Pointer.to(mathExpBuffer), gpuMathExp, 2 * MathExp.size * columnTypes.length)
     hostToDeviceCopy[Int](Pointer.to(cpuFuncs), gpuFunc, columnTypes.length)
 
-    val gpuResult = createReadWriteBuffer[Byte](totalSize) // FIXME is the size correct?
-//    clSetKernelArg(memSetKernel, 0, Sizeof.cl_mem, Pointer.to(gpuResult))
-//    clSetKernelArg(memSetKernel, 1, Sizeof.cl_int, pointer(Array[Int](totalSize)))
-//
-//    clEnqueueNDRangeKernel(context.queue, memSetKernel, 1, null, global_work_size,
-//      local_work_size, 0, null, null)
+   val resultOffsets: Array[Long] = columnTypes.map(baseSize(_) * this.size).scanLeft(0L)(
+      {
+        case (sum: Long, x: Int) => align(x).toLong + sum
+      }).toArray[Long]
 
-    val resOffset: Array[Long] = columnTypes.map(x => align(baseSize(x)).toLong).scan(0L)(_ + _).toArray
+    val resultTotalSize = resultOffsets.last.toInt
+    
+    println(f"resultTotalSize = $resultTotalSize")
+
+    val gpuResult = createReadWriteBuffer[Byte](resultTotalSize)
+    //    clSetKernelArg(memSetKernel, 0, Sizeof.cl_mem, Pointer.to(gpuResult))
+    //    clSetKernelArg(memSetKernel, 1, Sizeof.cl_int, pointer(Array[Int](totalSize)))
+    //
+    //    clEnqueueNDRangeKernel(context.queue, memSetKernel, 1, null, global_work_size,
+    //      local_work_size, 0, null, null)
+
     val gpuResOffset = createReadWriteBuffer[Long](columnTypes.length)
-    hostToDeviceCopy[Long](Pointer.to(resOffset), gpuResOffset, columnTypes.length, 0)
+    hostToDeviceCopy[Long](Pointer.to(resultOffsets), gpuResOffset, columnTypes.length, 0)
 
     val gpuGbColNum = columnTypes.length //FIXME is this correct?
 
@@ -259,13 +263,13 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
 
     println("======================================")
     println("before agg_cal kernel")
-    println("MathExp.size * columnTypes.length = %d".format( MathExp.size * columnTypes.length))
+    println("MathExp.size * columnTypes.length = %d".format(MathExp.size * columnTypes.length))
     debugGpuBuffer[Byte](gpuContent, totalSize, "gpuContent")
     debugGpuBuffer[Long](gpuOffsets, cpuOffsets.length, "gpuOffsets")
     debugGpuBuffer[Byte](gpuGbExp, MathExp.size * columnTypes.length, "gpuGbExp")
     debugGpuBuffer[Byte](gpuMathExp, 2 * MathExp.size * columnTypes.length, "gpuMathExp")
     debugGpuBuffer[Int](gpuGbType, gbType.length, "gpuGbType")
-    debugGpuBuffer[Int](gpuGbSize, groupByColumnIndexes.length, "gpuGbSize")
+    debugGpuBuffer[Int](gpuGbSize, gbColumnIndexes.length, "gpuGbSize")
     debugGpuBuffer[Int](gpuGbKey, parentPartition.size, "gpuGbKey")
     // next line prints too much if uncommented 
     //    debugGpuBuffer[Int](gpu_psum, HASH_SIZE, "gpu_psum")
@@ -276,8 +280,7 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
     println("cpuFuncs = %s".format(cpuFuncs.mkString(",")))
     clEnqueueNDRangeKernel(context.queue, agggregationKernel, 1, null, global_work_size, local_work_size, 0, null, null)
 
-    debugGpuBuffer[Byte](gpuResult, totalSize, "gpuResult")
-    return  //FIXME this is not needed. Added for debugging 
+    debugGpuBuffer[Byte](gpuResult, resultTotalSize, "gpuResult")
 
     clReleaseMemObject(gpuGbKey);
     clReleaseMemObject(gpu_psum);
@@ -286,7 +289,7 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
       case (columnType, columnIndex) =>
         implicit val columTypeTag = javaTypeToTypeTag(columnType)
         val column = getColumn(toTypeAwareColumnIndex(columnIndex))(columTypeTag)
-        deviceToHostCopy[Byte](gpuResult, column, gpuGbColNum * baseSize(columnType), resOffset(columnIndex))
+        deviceToHostCopy[Byte](gpuResult, column, gpuGbColNum * baseSize(columnType), resultOffsets(columnIndex))
     }
 
     clFinish(context.queue)
