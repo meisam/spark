@@ -279,7 +279,9 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
     println("cpuFuncs = %s".format(cpuFuncs.mkString(",")))
     clEnqueueNDRangeKernel(context.queue, agggregationKernel, 1, null, global_work_size, local_work_size, 0, null, null)
 
-    debugGpuBuffer[Byte](gpuResult, resultTotalSize, "gpuResult")
+    debugGpuBuffer[Byte](gpuResult, resultTotalSize, "gpuResult (byte)")
+    debugGpuBuffer[Int](gpuResult, resultTotalSize / 4, "gpuResult (int)")
+    debugGpuBuffer[Float](gpuResult, resultTotalSize / 4, "gpuResult (float)")
 
     clReleaseMemObject(gpuGbKey);
     clReleaseMemObject(gpu_psum);
