@@ -23,6 +23,10 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
     this.globalSize = parentPartition.globalSize
     this.localSize = parentPartition.localSize
 
+    def align(offset: Int): Int = {
+      offset + (if (offset % 4 == 0) 0 else 4 - (offset % 4))
+    }
+
     val groupByColumnIndexes: Array[Int] = aggregations.filter({
       agg =>
         {
@@ -39,10 +43,6 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
     }
 
     println("groupBy column idnexes = %s".format(groupByColumnIndexes.mkString(",")))
-
-    def align(offset: Int): Int = {
-      offset + (if (offset % 4 == 0) 0 else 4 - (offset % 4))
-    }
 
     val tupleCount = parentPartition.size
 
@@ -268,10 +268,10 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
     debugGpuBuffer[Int](gpuGbSize, groupByColumnIndexes.length, "gpuGbSize")
     debugGpuBuffer[Int](gpuGbKey, parentPartition.size, "gpuGbKey")
     // next line prints too much if uncommented 
-//    debugGpuBuffer[Int](gpu_psum, HASH_SIZE, "gpu_psum")
+    //    debugGpuBuffer[Int](gpu_psum, HASH_SIZE, "gpu_psum")
     debugGpuBuffer[Long](gpuResOffset, columnTypes.length, "gpuResOffset")
     debugGpuBuffer[Int](gpuFunc, columnTypes.length, "gpuFunc")
-    
+
     println("aggregations = %s".format(aggregations.mkString(" ...\n,... ")))
     println("cpuFuncs = %s".format(cpuFuncs.mkString(",")))
     clEnqueueNDRangeKernel(context.queue, agggregationKernel, 1, null, global_work_size, local_work_size, 0, null, null)
@@ -312,7 +312,7 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
 
 object AggregationOperation extends Enumeration {
   type AggregationOperation = Value
-  val groupBy = Value("G.B.") // same as group by (maybe I should rename it to group by)
+  val groupBy = Value("G.B.")
   val min = Value("MIN")
   val max = Value("MAX")
   val count = Value("COUNT")
