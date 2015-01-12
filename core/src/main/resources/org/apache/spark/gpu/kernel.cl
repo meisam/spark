@@ -18,11 +18,12 @@ enum data_types {
 };
 
 enum aggregation_operations {
-    MIN = 0, //
-    MAX = 1, //
-    COUNT = 2, //
-    SUM = 3, //
-    AVG = 4
+    GROUPBY = 0, //
+    MIN = 1, //
+    MAX = 2, //
+    COUNT = 3, //
+    SUM = 4, //
+    AVG = 5
 };
 
 enum math_exp_operand_type {
@@ -663,7 +664,7 @@ __kernel void agg_cal(__global char * content, __global long *colOffset, int col
 
         for(int j=0; j <colNum; j++) {
             int func = gbFunc[j];
-            if(func == NOOP) {
+            if(func == GROUPBY) {
                 int type = exp[j].opType;
                 int attrSize = gbSize[j];
 

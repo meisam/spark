@@ -57,7 +57,7 @@ class GpuAggregationPartitionSuit extends FunSuite with SharedSparkContext {
     partition.fill(testData.toIterator)
 
     val aggregationPartition = new GpuAggregationPartition[(Int, Int), (Int, Int)](openCLContext, partition,
-      Array(new AggregationExp(AggregationOperation.noop, col0) // group by col 0
+      Array(new AggregationExp(AggregationOperation.groupBy, col0) // group by col 0
       , new AggregationExp(AggregationOperation.sum, col1) ) // sum col 1
       , DEFAULT_CAPACITY)
 
@@ -75,7 +75,7 @@ class GpuAggregationPartitionSuit extends FunSuite with SharedSparkContext {
     partition.fill(testData.toIterator)
 
     val aggregationPartition = new GpuAggregationPartition[(Int, Int), (Int, Int)](openCLContext, partition,
-      Array(new AggregationExp(AggregationOperation.noop, col0) // group by col 0
+      Array(new AggregationExp(AggregationOperation.groupBy, col0) // group by col 0
       , new AggregationExp(AggregationOperation.sum, col1) ) // sum col 1
       , DEFAULT_CAPACITY)
 
@@ -100,7 +100,7 @@ class GpuAggregationPartitionSuit extends FunSuite with SharedSparkContext {
     partition.fill(testData.toIterator)
 
     val aggregationPartition = new GpuAggregationPartition[(Int, Long), (Int, Long)](openCLContext, partition,
-      Array(new AggregationExp(AggregationOperation.noop, col0) // group by col 0
+      Array(new AggregationExp(AggregationOperation.groupBy, col0) // group by col 0
       , new AggregationExp(AggregationOperation.sum, col1) ) // sum col 1
       , DEFAULT_CAPACITY)
 
@@ -143,7 +143,7 @@ class GpuAggregationPartitionSuit extends FunSuite with SharedSparkContext {
     partition.fill(testData.toIterator)
 
     val aggregationPartition = new GpuAggregationPartition[(Int, Int), (Int, Int)](openCLContext, partition,
-      Array(new AggregationExp(AggregationOperation.noop, col0) // group by col 0
+      Array(new AggregationExp(AggregationOperation.groupBy, col0) // group by col 0
       , new AggregationExp(AggregationOperation.sum, col1) ) // sum col 1
       , DEFAULT_CAPACITY)
 
