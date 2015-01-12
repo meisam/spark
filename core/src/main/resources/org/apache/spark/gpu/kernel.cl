@@ -606,7 +606,7 @@ declare_join_fact_kernel(double)
 declare_join_fact_kernel(boolean)
 declare_join_fact_kernel(char)
 
-float getExp(__global char *content, __global int * colOffset,struct mathExp exp,int pos) {
+float getExp(__global char *content, __global long * colOffset,struct mathExp exp,int pos) {
     float res = 0;
     if(exp.op == NOOP) {
         if (exp.opType == CONS)
@@ -623,7 +623,7 @@ float getExp(__global char *content, __global int * colOffset,struct mathExp exp
     return res;
 }
 
-float calMathExp(__global char *content, __global int * colOffset,struct mathExp exp, __global struct mathExp *mexp, int pos) {
+float calMathExp(__global char *content, __global long * colOffset,struct mathExp exp, __global struct mathExp *mexp, int pos) {
     float res;
 
     if(exp.op == NOOP) {
@@ -653,6 +653,7 @@ float calMathExp(__global char *content, __global int * colOffset,struct mathExp
 }
 
 __kernel void agg_cal(__global char * content, __global long *colOffset, int colNum, __global struct mathExp* exp, __global struct mathExp *mexp, __global int * gbType, __global int * gbSize, long tupleNum, __global int * key, __global int *psum, __global char * result, __global long * resOffset, __global int *gbFunc) {
+//__kernel void agg_cal(__global char * content, __global long *colOffset, int colNum, __global char* expRaw, __global char *mexpRaw, __global int * gbType, __global int * gbSize, long tupleNum, __global int * key, __global int *psum, __global char * result, __global long * resOffset, __global int *gbFunc) {
 
     size_t stride = get_global_size(0);
     size_t index = get_global_id(0);
