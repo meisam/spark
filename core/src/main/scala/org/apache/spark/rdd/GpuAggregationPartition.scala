@@ -315,7 +315,7 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
 
 object AggregationOperation extends Enumeration {
   type AggregationOperation = Value
-  val noop = Value("NOOP")
+  val groupBy = Value("G.B.") // same as group by (maybe I should rename it to group by)
   val min = Value("MIN")
   val max = Value("MAX")
   val count = Value("COUNT")
