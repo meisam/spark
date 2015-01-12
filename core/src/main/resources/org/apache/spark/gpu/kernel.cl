@@ -677,37 +677,27 @@ __kernel void agg_cal(__global char * content, __global long *colOffset, int col
                 } else if (type == COLUMN) {
                     int index = exp[j].opValue;
                     for(int k=0; k < attrSize; k++) {
-                        // FIXME there is something wrong here that makes opencl kernel crash 
                          result[resOffset[j] + offset*attrSize +k] = content[colOffset[index] + i*attrSize + k];
                     }
                 } else {
                     // FIXME raise an exception here or stop execution or set an error code.
                 }
             } else if (func == SUM) {
-                // FIXME there is something wrong here that makes opencl kernel crash 
                  float tmpRes = calMathExp(content, colOffset, exp[j], mexp, i);
                  AtomicAdd(& ((__global float *)(result + resOffset[j]))[offset], tmpRes);
-                 result[resOffset[j] + offset] = 0xDEADBEEF;
             } else if (func == MIN) {
-                // FIXME there is something wrong here that makes opencl kernel crash 
                  float tmpRes = calMathExp(content, colOffset, exp[j], mexp, i);
-                 AtomicAdd(& ((__global float *)(result + resOffset[j]))[offset], tmpRes);
-                 result[resOffset[j] + offset] = 0xDEADBEEF;
+                 AtomicMin(& ((__global float *)(result + resOffset[j]))[offset], tmpRes);
             } else if (func == MAX) {
-                // FIXME there is something wrong here that makes opencl kernel crash 
                  float tmpRes = calMathExp(content, colOffset, exp[j], mexp, i);
-                 AtomicAdd(& ((__global float *)(result + resOffset[j]))[offset], tmpRes);
-                 result[resOffset[j] + offset] = 0xDEADBEEF;
+                 AtomicMax(& ((__global float *)(result + resOffset[j]))[offset], tmpRes);
             } else if (func == COUNT) {
-                // FIXME there is something wrong here that makes opencl kernel crash 
-                 float tmpRes = calMathExp(content, colOffset, exp[j], mexp, i);
+                 // float tmpRes = calMathExp(content, colOffset, exp[j], mexp, i);
+                 float tmpRes = 1.0;
                  AtomicAdd(& ((__global float *)(result + resOffset[j]))[offset], tmpRes);
-                 result[resOffset[j] + offset] = 0xDEADBEEF;
             } else if (func == AVG) {
-                // FIXME there is something wrong here that makes opencl kernel crash 
                  float tmpRes = calMathExp(content, colOffset, exp[j], mexp, i);
                  AtomicAdd(& ((__global float *)(result + resOffset[j]))[offset], tmpRes);
-                 result[resOffset[j] + offset] = 0xDEADBEEF;
             } else {
                 // FIXME raise an exception here or stop execution or set an error code.
             }
