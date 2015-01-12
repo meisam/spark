@@ -33,7 +33,7 @@ import scala.language.existentials
  * A set of test to measure the performance of GPU
  */
 class GpuPerformanceTestsSuit extends FunSuite with SharedSparkContext {
-
+/*
   val openCLContext = new OpenCLContext
   val POW_2_S: IndexedSeq[Long] = (0 to 100).map(_.toLong).map(1L << _)
   val SIZE_OF_INTEGER = 4
@@ -250,4 +250,5 @@ class GpuRunner(columnData: Array[Int]
     iter.nonBlockingSelection(columnData)
     countDown.countDown()
   }
+*/
 }
