@@ -61,7 +61,7 @@ class GpuAggregationPartitionSuit extends FunSuite with SharedSparkContext {
       , new AggregationExp(AggregationOperation.sum, col1) ) // sum col 1
       , DEFAULT_CAPACITY)
 
-    aggregationPartition.fill(testData.toIterator)
+    aggregationPartition.aggregate(testData.toIterator)
     val expectedData = Array((11, 2), (12, 6))
 
     assert(aggregationPartition.size === expectedData.length)
@@ -79,7 +79,7 @@ class GpuAggregationPartitionSuit extends FunSuite with SharedSparkContext {
       , new AggregationExp(AggregationOperation.sum, col1) ) // sum col 1
       , DEFAULT_CAPACITY)
 
-    aggregationPartition.fill(testData.toIterator)
+    aggregationPartition.aggregate(testData.toIterator)
     val expectedData = Array((11, 2), (12, 6))
 
     assert(aggregationPartition.size === expectedData.length)
@@ -104,7 +104,7 @@ class GpuAggregationPartitionSuit extends FunSuite with SharedSparkContext {
       , new AggregationExp(AggregationOperation.sum, col1) ) // sum col 1
       , DEFAULT_CAPACITY)
 
-    aggregationPartition.fill(testData.toIterator)
+    aggregationPartition.aggregate(testData.toIterator)
     val expectedData = Array((11, 4L), (12, 6L))
 
     assert(aggregationPartition.size === expectedData.length)
@@ -122,7 +122,7 @@ class GpuAggregationPartitionSuit extends FunSuite with SharedSparkContext {
       , new AggregationExp(AggregationOperation.sum, col1) ) // sum col 1
       , DEFAULT_CAPACITY)
 
-    aggregationPartition.fill(testData.toIterator)
+    aggregationPartition.aggregate(testData.toIterator)
     val expectedData = Array((11, 4L), (12, 6L))
 
     assert(aggregationPartition.size === expectedData.length)
@@ -147,7 +147,7 @@ class GpuAggregationPartitionSuit extends FunSuite with SharedSparkContext {
       , new AggregationExp(AggregationOperation.sum, col1) ) // sum col 1
       , DEFAULT_CAPACITY)
 
-    aggregationPartition.fill(testData.toIterator)
+    aggregationPartition.aggregate(testData.toIterator)
     val expectedData = Array((11, 8), (12, 11))
 
     assert(aggregationPartition.size === expectedData.length)
