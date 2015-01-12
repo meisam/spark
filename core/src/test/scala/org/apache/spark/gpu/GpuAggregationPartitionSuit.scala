@@ -118,7 +118,7 @@ class GpuAggregationPartitionSuit extends FunSuite with SharedSparkContext {
     partition.fill(testData.toIterator)
 
     val aggregationPartition = new GpuAggregationPartition[(Int, Long), (Int, Long)](openCLContext, partition,
-      Array(new AggregationExp(AggregationOperation.noop, col0) // group by col 0
+      Array(new AggregationExp(AggregationOperation.groupBy, col0) // group by col 0
       , new AggregationExp(AggregationOperation.sum, col1) ) // sum col 1
       , DEFAULT_CAPACITY)
 
@@ -152,7 +152,6 @@ class GpuAggregationPartitionSuit extends FunSuite with SharedSparkContext {
 
     assert(aggregationPartition.size === expectedData.length)
 
-    
     println("1st column %s".format(aggregationPartition.intData(0).array.zipWithIndex.filter(_._1 != 0).mkString(",")))
     println("2nd column %s".format(aggregationPartition.intData(1).array.zipWithIndex.filter(_._1 != 0).mkString(",")))
     expectedData.zipWithIndex.foreach {
