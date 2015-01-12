@@ -36,7 +36,7 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
       {
         assert(agg != null, { "agg is null" })
         assert(agg.mathExp != null, { "agg.mathExp is null" })
-        assert(agg.mathExp.op != MathOp.NOOP, { "agg.mathExp operation should be NOOP" })
+        assert(agg.mathExp.op == MathOp.NOOP, { "agg.mathExp operation should be NOOP"})
         assert(agg.mathExp.opType == MathOperationType.column, { "agg.mathExp.opType is not column" })
         agg.mathExp.opValue
       }
