@@ -240,17 +240,17 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
     aggregations.zip(resultOffsets).foreach {
       case (agg, offset) =>
         if ((agg.aggFunc == AggregationOperation.min) || (agg.aggFunc == AggregationOperation.max)) {
-          println(f"offset = $offset")
           clSetKernelArg(memsetFloatKernel, 1, Sizeof.cl_int, pointer(Array[Int](this.size)))
           clSetKernelArg(memsetFloatKernel, 2, Sizeof.cl_int, pointer(Array[Long](offset / 4)))
-          debugGpuBuffer[Float](gpuResult, resultTotalSize / 4, "gpuResult (float) (beefore)")
-          debugGpuBuffer[Int](gpuResult, resultTotalSize / 4, "gpuResult (int) (before)")
+          debugGpuBuffer[Float](gpuResult, resultTotalSize / 4, "gpuResult (float) (before NaN-ing)")
+          debugGpuBuffer[Int](gpuResult, resultTotalSize / 4, "gpuResult (int) (before NaN-ing)")
           clEnqueueNDRangeKernel(context.queue, memsetFloatKernel, 1, null, global_work_size,
             local_work_size, 0, null, null)
-          debugGpuBuffer[Float](gpuResult, resultTotalSize / 4, "gpuResult (float) (after)")
-          debugGpuBuffer[Int](gpuResult, resultTotalSize / 4, "gpuResult (int) (after)")
+          debugGpuBuffer[Float](gpuResult, resultTotalSize / 4, "gpuResult (float) (after NaN-ing)")
+          debugGpuBuffer[Int](gpuResult, resultTotalSize / 4, "gpuResult (int) (after NaN-ing)")
         } else {
-          println("skipping offset = %d with agg type %s".format(offset , agg.aggFunc.toString()))
+          println("Zero-ing offset = %d with agg type %s".format(offset, agg.aggFunc.toString()))
+          // we actually do not need zero them again because we already have done it.
         }
     }
 
@@ -274,28 +274,31 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
     clSetKernelArg(agggregationKernel, 11, Sizeof.cl_mem, Pointer.to(gpuResOffset))
     clSetKernelArg(agggregationKernel, 12, Sizeof.cl_mem, Pointer.to(gpuFunc))
 
-    println("======================================")
-    println("before agg_cal kernel")
     println("MathExp.size * columnTypes.length = %d".format(MathExp.size * columnTypes.length))
-    debugGpuBuffer[Byte](gpuContent, totalSize, "gpuContent")
-    debugGpuBuffer[Long](gpuOffsets, cpuOffsets.length, "gpuOffsets")
-    debugGpuBuffer[Byte](gpuGbExp, MathExp.size * columnTypes.length, "gpuGbExp")
-    debugGpuBuffer[Byte](gpuMathExp, 2 * MathExp.size * columnTypes.length, "gpuMathExp")
-    debugGpuBuffer[Int](gpuGbType, gbType.length, "gpuGbType")
-    debugGpuBuffer[Int](gpuGbSize, gbColumnIndexes.length, "gpuGbSize")
-    debugGpuBuffer[Int](gpuGbKey, parentPartition.size, "gpuGbKey")
+    debugGpuBuffer[Byte](gpuContent, totalSize, "gpuContent (before agg_cal)")
+    debugGpuBuffer[Long](gpuOffsets, cpuOffsets.length, "gpuOffsets (before agg_cal)")
+    debugGpuBuffer[Byte](gpuGbExp, MathExp.size * columnTypes.length, "gpuGbExp (before agg_cal)")
+    debugGpuBuffer[Byte](gpuMathExp, 2 * MathExp.size * columnTypes.length, "gpuMathExp (before agg_cal)")
+    debugGpuBuffer[Int](gpuGbType, gbType.length, "gpuGbType (before agg_cal)")
+    debugGpuBuffer[Int](gpuGbSize, gbColumnIndexes.length, "gpuGbSize (before agg_cal)")
+    debugGpuBuffer[Int](gpuGbKey, parentPartition.size, "gpuGbKey (before agg_cal)")
     // next line prints too much if uncommented 
     //    debugGpuBuffer[Int](gpu_psum, HASH_SIZE, "gpu_psum")
-    debugGpuBuffer[Long](gpuResOffset, columnTypes.length, "gpuResOffset")
-    debugGpuBuffer[Int](gpuFunc, columnTypes.length, "gpuFunc")
+    debugGpuBuffer[Long](gpuResOffset, columnTypes.length, "gpuResOffset (before agg_cal)")
+    debugGpuBuffer[Int](gpuFunc, columnTypes.length, "gpuFunc (before agg_cal)")
 
     println("aggregations = %s".format(aggregations.mkString(" ...\n,... ")))
     println("cpuFuncs = %s".format(cpuFuncs.mkString(",")))
+
+    debugGpuBuffer[Byte](gpuResult, resultTotalSize, "gpuResult (byte) (before agg_cal)")
+    debugGpuBuffer[Int](gpuResult, resultTotalSize / 4, "gpuResult (int) (before agg_cal)")
+    debugGpuBuffer[Float](gpuResult, resultTotalSize / 4, "gpuResult (float) (before agg_cal)")
+
     clEnqueueNDRangeKernel(context.queue, agggregationKernel, 1, null, global_work_size, local_work_size, 0, null, null)
 
-    debugGpuBuffer[Byte](gpuResult, resultTotalSize, "gpuResult (byte)")
-    debugGpuBuffer[Int](gpuResult, resultTotalSize / 4, "gpuResult (int)")
-    debugGpuBuffer[Float](gpuResult, resultTotalSize / 4, "gpuResult (float)")
+    debugGpuBuffer[Byte](gpuResult, resultTotalSize, "gpuResult (byte) (after agg_cal)")
+    debugGpuBuffer[Int](gpuResult, resultTotalSize / 4, "gpuResult (int) (after agg_cal)")
+    debugGpuBuffer[Float](gpuResult, resultTotalSize / 4, "gpuResult (float) (after agg_cal)")
 
     clReleaseMemObject(gpuGbKey);
     clReleaseMemObject(gpu_psum);
