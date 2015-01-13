@@ -242,7 +242,7 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
         if ((agg.aggFunc == AggregationOperation.min) || (agg.aggFunc == AggregationOperation.max)) {
           println(f"offset = $offset")
           clSetKernelArg(memsetFloatKernel, 1, Sizeof.cl_int, pointer(Array[Int](this.size)))
-          clSetKernelArg(memsetFloatKernel, 2, Sizeof.cl_int, pointer(Array[Long](offset)))
+          clSetKernelArg(memsetFloatKernel, 2, Sizeof.cl_int, pointer(Array[Long](offset / 4)))
           debugGpuBuffer[Float](gpuResult, resultTotalSize / 4, "gpuResult (float) (beefore)")
           debugGpuBuffer[Int](gpuResult, resultTotalSize / 4, "gpuResult (int) (before)")
           clEnqueueNDRangeKernel(context.queue, memsetFloatKernel, 1, null, global_work_size,
