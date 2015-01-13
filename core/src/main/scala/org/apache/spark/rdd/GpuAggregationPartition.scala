@@ -235,16 +235,16 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
 
     val gpuResult = createReadWriteBuffer[Byte](resultTotalSize)
 
-    val memsetFloatKernel = clCreateKernel(context.program, "cl_memset_nan", null)
-    clSetKernelArg(memsetFloatKernel, 0, Sizeof.cl_mem, Pointer.to(gpuResult))
+    val memSetFloatKernel = clCreateKernel(context.program, "cl_memset_nan", null)
+    clSetKernelArg(memSetFloatKernel, 0, Sizeof.cl_mem, Pointer.to(gpuResult))
     aggregations.zip(resultOffsets).foreach {
       case (agg, offset) =>
         if ((agg.aggFunc == AggregationOperation.min) || (agg.aggFunc == AggregationOperation.max)) {
-          clSetKernelArg(memsetFloatKernel, 1, Sizeof.cl_int, pointer(Array[Int](this.size)))
-          clSetKernelArg(memsetFloatKernel, 2, Sizeof.cl_int, pointer(Array[Long](offset / 4)))
+          clSetKernelArg(memSetFloatKernel, 1, Sizeof.cl_int, pointer(Array[Int](this.size)))
+          clSetKernelArg(memSetFloatKernel, 2, Sizeof.cl_int, pointer(Array[Long](offset / 4)))
           debugGpuBuffer[Float](gpuResult, resultTotalSize / 4, "gpuResult (float) (before NaN-ing)")
           debugGpuBuffer[Int](gpuResult, resultTotalSize / 4, "gpuResult (int) (before NaN-ing)")
-          clEnqueueNDRangeKernel(context.queue, memsetFloatKernel, 1, null, global_work_size,
+          clEnqueueNDRangeKernel(context.queue, memSetFloatKernel, 1, null, global_work_size,
             local_work_size, 0, null, null)
           debugGpuBuffer[Float](gpuResult, resultTotalSize / 4, "gpuResult (float) (after NaN-ing)")
           debugGpuBuffer[Int](gpuResult, resultTotalSize / 4, "gpuResult (int) (after NaN-ing)")
