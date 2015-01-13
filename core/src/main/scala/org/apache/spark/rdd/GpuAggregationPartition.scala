@@ -234,11 +234,25 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
     println(f"resultTotalSize = $resultTotalSize")
 
     val gpuResult = createReadWriteBuffer[Byte](resultTotalSize)
-    clSetKernelArg(memSetKernel, 0, Sizeof.cl_mem, Pointer.to(gpuResult))
-    clSetKernelArg(memSetKernel, 1, Sizeof.cl_int, pointer(Array[Int](resultTotalSize)))
 
-    clEnqueueNDRangeKernel(context.queue, memSetKernel, 1, null, global_work_size,
-      local_work_size, 0, null, null)
+    val memsetFloatKernel = clCreateKernel(context.program, "cl_memset_nan", null)
+    clSetKernelArg(memsetFloatKernel, 0, Sizeof.cl_mem, Pointer.to(gpuResult))
+    aggregations.zip(resultOffsets).foreach {
+      case (agg, offset) =>
+        if ((agg.aggFunc == AggregationOperation.min) || (agg.aggFunc == AggregationOperation.max)) {
+          println(f"offset = $offset")
+          clSetKernelArg(memsetFloatKernel, 1, Sizeof.cl_int, pointer(Array[Int](this.size)))
+          clSetKernelArg(memsetFloatKernel, 2, Sizeof.cl_int, pointer(Array[Long](offset)))
+          debugGpuBuffer[Float](gpuResult, resultTotalSize / 4, "gpuResult (float) (beefore)")
+          debugGpuBuffer[Int](gpuResult, resultTotalSize / 4, "gpuResult (int) (before)")
+          clEnqueueNDRangeKernel(context.queue, memsetFloatKernel, 1, null, global_work_size,
+            local_work_size, 0, null, null)
+          debugGpuBuffer[Float](gpuResult, resultTotalSize / 4, "gpuResult (float) (after)")
+          debugGpuBuffer[Int](gpuResult, resultTotalSize / 4, "gpuResult (int) (after)")
+        } else {
+          println("skipping offset = %d with agg type %s".format(offset , agg.aggFunc.toString()))
+        }
+    }
 
     val gpuResOffset = createReadWriteBuffer[Long](columnTypes.length)
     hostToDeviceCopy[Long](Pointer.to(resultOffsets), gpuResOffset, columnTypes.length, 0)
