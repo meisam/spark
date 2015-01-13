@@ -101,6 +101,14 @@ declare_cl_memset(double)
 declare_cl_memset(boolean)
 declare_cl_memset(char)
 
+__kernel void cl_memset_nan(__global int * ar, int num, int offset) {       \
+        size_t stride = get_global_size(0);                                 \
+        size_t start = get_global_id(0) + offset;                           \
+                                                                            \
+        for(size_t i=offset; i<num+offset; i+= stride)                      \
+                ar[i] = 0x7ffffffffffffff;                                  \
+}                                                                           \
+
 __kernel void countScanNum(__global int *filter, long tupleNum, __global int * count) {
     size_t stride = get_global_size(0);
     size_t tid = get_global_id(0);
