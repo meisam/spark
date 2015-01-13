@@ -182,15 +182,12 @@ inline void AtomicMin(__global float *source, float operand) {
     }prevVal;
     do {
         prevVal.floatVal = *source;
-        if ((operand < prevVal.floatVal) && (prevVal.intVal != 0)) {
-            return;
+        if (prevVal.intVal != IEEE_NAN) {
+            if (operand > prevVal.floatVal) {
+                return;
+            }
         }
-        if (prevVal.intVal != 0 && prevVal.floatVal != 19.0) {
-            newVal.floatVal = prevVal.floatVal  + 1;
-        } else {
-            newVal.floatVal = 19.0f;
-        }
-//        newVal.floatVal = operand;
+        newVal.floatVal = operand;
     }while (atomic_cmpxchg((volatile __global unsigned int *)source, prevVal.intVal, newVal.intVal) != prevVal.intVal);
 }
 
@@ -206,8 +203,10 @@ inline void AtomicMax(__global float *source, float operand) {
     }prevVal;
     do {
         prevVal.floatVal = *source;
-        if ((operand > prevVal.floatVal) &&  (prevVal.intVal != 0x7fffffff)) {
-            return;
+        if (prevVal.intVal != IEEE_NAN) {
+            if (operand < prevVal.floatVal) {
+                return;
+            }
         }
         newVal.floatVal = operand;
     }while (atomic_cmpxchg((volatile __global unsigned int *)source, prevVal.intVal, newVal.intVal) != prevVal.intVal);
