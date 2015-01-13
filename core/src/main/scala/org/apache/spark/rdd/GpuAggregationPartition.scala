@@ -351,7 +351,12 @@ class AggregationExp(val aggFunc: AggregationOperation.Value, val mathExp: MathE
 
 object MathOp extends Enumeration {
   type MathOp = Value
-  val PLUS, MINU, MULTIPLY, DIVIDE, NOOP = Value
+  // This order should exactly match the order in kernel.cl file otherwise nothing works
+  val NOOP = Value("NOOP")
+  val PLUS = Value("PLUS")
+  val MINU = Value("MINUS")
+  val MULTIPLY = Value("MULTIPLY")
+  val DIVIDE = Value("DIVIDE")
 }
 
 class MathExp(val op: MathOp.Value, opNum: Int, val leftExp: MathExp, val rightExp: MathExp, val opType: MathOperationType.Value, val opValue: Int) {
