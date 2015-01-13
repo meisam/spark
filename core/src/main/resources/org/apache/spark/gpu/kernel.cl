@@ -101,12 +101,14 @@ declare_cl_memset(double)
 declare_cl_memset(boolean)
 declare_cl_memset(char)
 
+#define IEEE_NAN (0x7fffffff)
+
 __kernel void cl_memset_nan(__global int * ar, int num, int offset) {       \
         size_t stride = get_global_size(0);                                 \
         size_t start = get_global_id(0) + offset;                           \
                                                                             \
-        for(size_t i=offset; i<num+offset; i+= stride)                      \
-                ar[i] = 0x7ffffffffffffff;                                  \
+        for(size_t i=start; i<num+offset; i+= stride)                       \
+                ar[i] = IEEE_NAN;                                           \
 }                                                                           \
 
 __kernel void countScanNum(__global int *filter, long tupleNum, __global int * count) {
