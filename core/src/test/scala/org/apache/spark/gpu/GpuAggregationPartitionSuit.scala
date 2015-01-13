@@ -49,7 +49,7 @@ class GpuAggregationPartitionSuit extends FunSuite with SharedSparkContext {
     openCLContext.initOpenCL("/org/apache/spark/gpu/kernel.cl")
   }
 
-  ignore("Aggregation simple(Int, Int) size test") {
+  test("Aggregation (Int, Int) result size test") {
     val testData: IndexedSeq[(Int, Int)] = Array((11, 3), (11, 1), (11, 4), (12, 6), (12, 5))
 
     val partition = new GpuPartition[(Int, Int)](openCLContext, DEFAULT_CAPACITY)
@@ -67,7 +67,7 @@ class GpuAggregationPartitionSuit extends FunSuite with SharedSparkContext {
     assert(aggregationPartition.size === expectedData.length)
   }
 
-  test("Aggregation sum(Int, Int)  2 test") {
+  test("Aggregation sum(Int, Int) test") {
     val testData: IndexedSeq[(Int, Int)] = Array((111, 3), (111, 1), (111, 4), (112, 6), (112, 5))
 
     val partition = new GpuPartition[(Int, Int)](openCLContext, DEFAULT_CAPACITY)
@@ -92,7 +92,7 @@ class GpuAggregationPartitionSuit extends FunSuite with SharedSparkContext {
     }
   }
 
-  ignore("Aggregation simple(Int, Long)  size test") {
+  ignore("Aggregation sum(Int, Long)  size test") {
     val testData: IndexedSeq[(Int, Long)] = Array((11, 3L), (11, 1L), (11, 4L), (12, 6L), (12, 5L))
 
     val partition = new GpuPartition[(Int, Long)](openCLContext, DEFAULT_CAPACITY)
@@ -110,32 +110,7 @@ class GpuAggregationPartitionSuit extends FunSuite with SharedSparkContext {
     assert(aggregationPartition.size === expectedData.length)
   }
 
-  ignore("Aggregation simple(Int, Long)  match test") {
-    val testData: IndexedSeq[(Int, Long)] = Array((11, 3L), (11, 1L), (11, 4L), (12, 6L), (12, 5L))
-
-    val partition = new GpuPartition[(Int, Long)](openCLContext, DEFAULT_CAPACITY)
-
-    partition.fill(testData.toIterator)
-
-    val aggregationPartition = new GpuAggregationPartition[(Int, Long), (Int, Long)](openCLContext, partition,
-      Array(new AggregationExp(AggregationOperation.groupBy, col0) // group by col 0
-      , new AggregationExp(AggregationOperation.sum, col1)) // sum col 1
-      , DEFAULT_CAPACITY)
-
-    aggregationPartition.aggregate(testData.toIterator)
-    val expectedData = Array((11, 4L), (12, 6L))
-
-    assert(aggregationPartition.size === expectedData.length)
-
-    expectedData.zipWithIndex.foreach {
-      case ((gbVal, aggValue), index) =>
-        assert(aggregationPartition.intData(0).get(index) === gbVal, "values do not match")
-        assert(aggregationPartition.longData(0).get(index) === aggValue, "values do not match")
-      case _ => fail("We should not be here")
-    }
-  }
-
-  ignore("Aggregation count(Int, Int)  match test") {
+  test("Aggregation count(Int, Int) test") {
     val testData: IndexedSeq[(Int, Int)] = Array((11, 3), (11, 1), (11, 4), (12, 6), (12, 5))
 
     val partition = new GpuPartition[(Int, Int)](openCLContext, DEFAULT_CAPACITY)
@@ -162,7 +137,7 @@ class GpuAggregationPartitionSuit extends FunSuite with SharedSparkContext {
     }
   }
 
-  ignore("Aggregation MIN(Int, Float)  match test") {
+  test("Aggregation MIN(Int, Float)  match test") {
     val testData: IndexedSeq[(Int, Int)] = Array((11, 3), (11, 1), (11, 4), (12, 6), (12, 5))
 
     val partition = new GpuPartition[(Int, Int)](openCLContext, DEFAULT_CAPACITY)
@@ -176,6 +151,31 @@ class GpuAggregationPartitionSuit extends FunSuite with SharedSparkContext {
 
     aggregationPartition.aggregate(testData.toIterator)
     val expectedData = Array((12, 5.0f), (11, 1.0f))
+
+    assert(aggregationPartition.size === expectedData.length)
+
+    expectedData.zipWithIndex.foreach {
+      case ((gbVal, aggValue), index) =>
+        assert(aggregationPartition.intData(0).get(index) === gbVal, "values do not match")
+        assert(aggregationPartition.floatData(0).get(index) === aggValue, "values do not match")
+      case _ => fail("We should not be here")
+    }
+  }
+
+  test("Aggregation MAX(Int, Float)  match test") {
+    val testData: IndexedSeq[(Int, Int)] = Array((11, 3), (11, 1), (11, 4), (12, 6), (12, 5))
+
+    val partition = new GpuPartition[(Int, Int)](openCLContext, DEFAULT_CAPACITY)
+
+    partition.fill(testData.toIterator)
+
+    val aggregationPartition = new GpuAggregationPartition[(Int, Float), (Int, Int)](openCLContext, partition,
+      Array(new AggregationExp(AggregationOperation.groupBy, col0) // group by col 0
+      , new AggregationExp(AggregationOperation.max, col1)) // MAX col 1
+      , DEFAULT_CAPACITY)
+
+    aggregationPartition.aggregate(testData.toIterator)
+    val expectedData = Array((12, 6.0f), (11, 4.0f))
 
     assert(aggregationPartition.size === expectedData.length)
 
