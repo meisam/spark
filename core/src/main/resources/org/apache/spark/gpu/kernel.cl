@@ -705,9 +705,8 @@ __kernel void agg_cal(__global char * content, __global long *colOffset, int col
                 float tmpRes = calMathExp(content, colOffset, exp[j], mexp, i);
                 AtomicMax(& ((__global float *)(result + resOffset[j]))[offset], tmpRes);
             } else if (func == COUNT) {
-                // float tmpRes = calMathExp(content, colOffset, exp[j], mexp, i);
-                float tmpRes = 1.0;
-                AtomicAdd(& ((__global float *)(result + resOffset[j]))[offset], tmpRes);
+                int tmpRes = 1.0;
+                atomic_add(& ((__global int *)(result + resOffset[j]))[offset], tmpRes);
             } else if (func == AVG) {
                 float tmpRes = calMathExp(content, colOffset, exp[j], mexp, i);
                 AtomicAdd(& ((__global float *)(result + resOffset[j]))[offset], tmpRes);
