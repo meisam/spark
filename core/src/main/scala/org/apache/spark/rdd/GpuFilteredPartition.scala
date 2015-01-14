@@ -92,7 +92,6 @@ class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLCon
   }
 
   def project[V: TypeTag](columnIndex: Int, outSize: Int) {
-    println(f"outSize = $outSize, columnIndex = $columnIndex")
     if (outSize == 0)
       return
     val colData = parent.getColumn[V](columnIndex)

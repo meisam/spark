@@ -156,8 +156,6 @@ U: TypeTag]
 
     val joinResultCount = gpuCountTotal.head + gpuResSumTotal.head
     this.size = joinResultCount
-    printf("[INFO]joinNum %,d =  gpuCountTotal.head + gpuResSumTotal.head = %,d +  %,d\n",
-      joinResultCount, gpuCountTotal.head, gpuResSumTotal.head)
     clReleaseMemObject(gpu_fact)
 
     clReleaseMemObject(gpu_bucket)

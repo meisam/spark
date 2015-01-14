@@ -32,12 +32,9 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
         assert(agg != null, { "agg is null" })
         assert(agg.mathExp != null, { "agg.mathExp is null" })
         assert(agg.mathExp.op == MathOp.NOOP, { "agg.mathExp operation should be NOOP" })
-        assert(agg.mathExp.opType == MathOperationType.column, { "agg.mathExp.opType is not column" })
         agg.mathExp.opValue
       }
     }
-
-    println("groupBy column idnexes = %s".format(gbColumnIndexes.mkString(",")))
 
     val tupleCount = parentPartition.size
 
@@ -63,15 +60,12 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
 
     val gbType: Array[Int] = gbColumnIndexes.map(i => columnTypes(i)).map(t => ColumnarTypes.getIndex(t)).toIterator.toArray
 
-    println("gb column types = %s".format(gbType.mkString(",")))
-
     val gpuGbType = createReadBuffer[Int](gbType.length)
     hostToDeviceCopy[Int](pointer(gbType), gpuGbType, gbType.length)
 
     val gpuGbSize = createReadBuffer[Int](gbColumnIndexes.length)
     val groupBySize: Array[Int] = gbColumnIndexes.map(columnTypes(_)).map(baseSize(_))
       .scanLeft(0: Int)({ case (sum, x) => sum + align(x) }).splitAt(1)._2.toArray
-    println("groupBy sizes = %s".format(groupBySize.mkString(",")))
 
     hostToDeviceCopy[Int](pointer(groupBySize), gpuGbSize, gbColumnIndexes.length)
 
@@ -113,14 +107,12 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
     clSetKernelArg(buildGroupByKeyKernel, 7, Sizeof.cl_mem, Pointer.to(gpuGbKey))
     clSetKernelArg(buildGroupByKeyKernel, 8, Sizeof.cl_mem, Pointer.to(gpu_hashNum))
 
-    println("global_work_size = %s".format(global_work_size.mkString(",")))
-    println("local_work_size = %s".format(local_work_size.mkString(",")))
-    println(f"total size = $totalSize")
+//    println("global_work_size = %s".format(global_work_size.mkString(",")))
+//    println("local_work_size = %s".format(local_work_size.mkString(",")))
+//    println(f"total size = $totalSize")
 
     clEnqueueNDRangeKernel(context.queue, buildGroupByKeyKernel, 1, null, global_work_size,
       local_work_size, 0, null, null)
-
-    println("parentPartition.size = %s".format(parentPartition.size))
 
     debugGpuBuffer[Byte](gpuContent, totalSize, "gpuContent")
 
@@ -140,10 +132,6 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
     val gpuGbKeyResults = new Array[Int](parentPartition.size)
     deviceToHostCopy[Int](gpuGbKey, Pointer.to(gpuGbKeyResults), parentPartition.size, 0)
 
-    val gpuHashNumResults = new Array[Int](HASH_SIZE)
-    deviceToHostCopy[Int](gpu_hashNum, Pointer.to(gpuHashNumResults), HASH_SIZE, 0)
-    printf("gpuHashNumResults = %s\n", gpuHashNumResults.zipWithIndex.filter(_._1 != 0).mkString(","))
-
     val gpuGbCount = createReadWriteBuffer[Int](1)
     hostToDeviceCopy[Int](pointer(Array[Int](0)), gpuGbCount, 1)
 
@@ -151,16 +139,12 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
     clSetKernelArg(countGroupNumKernel, 0, Sizeof.cl_mem, Pointer.to(gpu_hashNum))
     clSetKernelArg(countGroupNumKernel, 1, Sizeof.cl_int, pointer(Array[Int](HASH_SIZE)))
     clSetKernelArg(countGroupNumKernel, 2, Sizeof.cl_mem, Pointer.to(gpuGbCount))
-    println("count_group_num 1")
     clEnqueueNDRangeKernel(context.queue, countGroupNumKernel, 1, null, global_work_size,
       local_work_size, 0, null, null)
 
     val gbCount = Array[Int](1)
 
-    println("count_group_num 2")
     deviceToHostCopy[Int](gpuGbCount, pointer(gbCount), 1)
-
-    println("Groupby count = %s".format(gbCount.mkString(",")))
 
     val gpu_psum = createReadWriteBuffer[Int](HASH_SIZE)
 
@@ -187,27 +171,21 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
         gpuGbExpBuffer.position(gpuGbExpBuffer.position + MathExp.size)
         mathExpBuffer.position(mathExpBuffer.position + MathExp.size)
         mathExpBuffer.position(mathExpBuffer.position + MathExp.size)
-        println("skipping gbExpr  write")
 
       } else {
         gbExp.mathExp.writeTo(gpuGbExpBuffer)
-        println("writing gb math exp%s".format(gbExp.mathExp))
 
         if (gbExp.mathExp.leftExp == null) {
           mathExpBuffer.position(mathExpBuffer.position + MathExp.size)
-          println("skipping left exp")
 
         } else {
           gbExp.mathExp.leftExp.writeTo(mathExpBuffer)
-          println("writing left math exp%s".format(gbExp.mathExp.leftExp))
         }
 
         if (gbExp.mathExp.rightExp == null) {
           mathExpBuffer.position(mathExpBuffer.position + MathExp.size)
-          println("skipping right exp")
         } else {
           gbExp.mathExp.rightExp.writeTo(mathExpBuffer)
-          println("writing rightmath exp%s".format(gbExp.mathExp.rightExp))
         }
       }
     }
@@ -215,10 +193,6 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
     val gpuGbExp = createReadBuffer[Byte](MathExp.size * columnTypes.length)
     val gpuMathExp = createReadBuffer[Byte](2 * MathExp.size * columnTypes.length)
     val gpuFunc = createReadBuffer[Int](columnTypes.length)
-
-    println("gpuGbExpBuffer = %s".format(gpuGbExpBuffer.array().mkString(",")))
-
-    println("mathExpBuffer = %s".format(mathExpBuffer.array().mkString(",")))
 
     hostToDeviceCopy[Byte](Pointer.to(gpuGbExpBuffer), gpuGbExp, MathExp.size * columnTypes.length);
     hostToDeviceCopy[Byte](Pointer.to(mathExpBuffer), gpuMathExp, 2 * MathExp.size * columnTypes.length)
@@ -230,8 +204,6 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
       }).toArray[Long]
 
     val resultTotalSize = resultOffsets.last.toInt
-
-    println(f"resultTotalSize = $resultTotalSize")
 
     val gpuResult = createReadWriteBuffer[Byte](resultTotalSize)
 
@@ -251,7 +223,6 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
     aggregations.zip(resultOffsets).foreach {
       case (agg, offset) =>
         if ((agg.aggFunc == AggregationOperation.min) || (agg.aggFunc == AggregationOperation.max)) {
-          println("Nan-ing offset = %d with agg type %s".format(offset, agg.aggFunc.toString()))
           clSetKernelArg(memSetFloatKernel, 1, Sizeof.cl_int, pointer(Array[Int](this.size)))
           clSetKernelArg(memSetFloatKernel, 2, Sizeof.cl_int, pointer(Array[Long](offset / 4)))
           debugGpuBuffer[Float](gpuResult, resultTotalSize / 4, "gpuResult (float) (before NaN-ing)")
@@ -261,7 +232,6 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
           debugGpuBuffer[Float](gpuResult, resultTotalSize / 4, "gpuResult (float) (after NaN-ing)")
           debugGpuBuffer[Int](gpuResult, resultTotalSize / 4, "gpuResult (int) (after NaN-ing)")
         } else {
-          println("Zero-ing offset = %d with agg type %s".format(offset, agg.aggFunc.toString()))
           // we actually do not need zero them again because we already have done it.
         }
     }
@@ -286,7 +256,7 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
     clSetKernelArg(agggregationKernel, 11, Sizeof.cl_mem, Pointer.to(gpuResOffset))
     clSetKernelArg(agggregationKernel, 12, Sizeof.cl_mem, Pointer.to(gpuFunc))
 
-    println("MathExp.size * columnTypes.length = %d".format(MathExp.size * columnTypes.length))
+//    println("MathExp.size * columnTypes.length = %d".format(MathExp.size * columnTypes.length))
     debugGpuBuffer[Byte](gpuContent, totalSize, "gpuContent (before agg_cal)")
     debugGpuBuffer[Long](gpuOffsets, cpuOffsets.length, "gpuOffsets (before agg_cal)")
     debugGpuBuffer[Byte](gpuGbExp, MathExp.size * columnTypes.length, "gpuGbExp (before agg_cal)")
@@ -299,8 +269,8 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
     debugGpuBuffer[Long](gpuResOffset, columnTypes.length, "gpuResOffset (before agg_cal)")
     debugGpuBuffer[Int](gpuFunc, columnTypes.length, "gpuFunc (before agg_cal)")
 
-    println("aggregations = %s".format(aggregations.mkString(" ...\n,... ")))
-    println("cpuFuncs = %s".format(cpuFuncs.mkString(",")))
+//    println("aggregations = %s".format(aggregations.mkString(" ...\n,... ")))
+//    println("cpuFuncs = %s".format(cpuFuncs.mkString(",")))
 
     debugGpuBuffer[Byte](gpuResult, resultTotalSize, "gpuResult (byte) (before agg_cal)")
     debugGpuBuffer[Int](gpuResult, resultTotalSize / 4, "gpuResult (int) (before agg_cal)")
