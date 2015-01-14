@@ -116,4 +116,40 @@ class GpuFilteredPartition[T <: Product : TypeTag, U: TypeTag]
     size = resultSize
   }
 
+  def project[V: TypeTag](columnIndex: Int, outSize: Int) {
+    println(f"outSize = $outSize, columnIndex = $columnIndex")
+    if (outSize == 0)
+      return
+    val colData = parent.getColumn[V](columnIndex)
+    val global_work_size = Array[Long](globalSize)
+    val local_work_size = Array[Long](localSize)
+    val scanCol: cl_mem = createReadWriteBuffer[V](parent.size)
+    assert(scanCol != null)
+    assert(gpuPsum != null)
+
+    hostToDeviceCopy[V](colData, scanCol, parent.size, 0)
+
+    val result: cl_mem = createReadWriteBuffer[V](outSize)
+
+    val colSize = baseSize[V]
+    val kernelName: String = "scan_other"
+    val kernel = clCreateKernel(context.getOpenCLProgram, kernelName, null)
+    clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(scanCol))
+    clSetKernelArg(kernel, 1, Sizeof.cl_int, Pointer.to(Array[Int](colSize)))
+    clSetKernelArg(kernel, 2, Sizeof.cl_long, Pointer.to(Array[Long](parent.size)))
+    clSetKernelArg(kernel, 3, Sizeof.cl_mem, Pointer.to(gpuPsum))
+    clSetKernelArg(kernel, 4, Sizeof.cl_long, Pointer.to(Array[Long](this.size)))
+    clSetKernelArg(kernel, 5, Sizeof.cl_mem, Pointer.to(gpuFilter))
+    clSetKernelArg(kernel, 6, Sizeof.cl_mem, Pointer.to(result))
+
+    clEnqueueNDRangeKernel(context.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
+
+    val resultColData = this.getColumn[V](columnIndex)
+    assert(resultColData != null)
+    deviceToHostCopy[V](result, resultColData, outSize, 0)
+
+    releaseCol(result)
+    releaseCol(scanCol)
+  }
+
 }
