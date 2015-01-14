@@ -336,13 +336,6 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
     clReleaseMemObject(gpu_hashNum)
   }
 
-  def debugGpuBuffer[V: TypeTag: ClassTag](buffer: cl_mem, size: Int, msg: String, quiet: Boolean = true) {
-    if (!quiet) {
-      val tempBuffer = new Array[V](size)
-      deviceToHostCopy[V](buffer, pointer[V](tempBuffer), size, 0)
-      println("%s = \n%s".format(msg, tempBuffer.mkString(" ,")))
-    }
-  }
 }
 
 object AggregationOperation extends Enumeration {
