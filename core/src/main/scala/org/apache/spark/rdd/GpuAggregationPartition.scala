@@ -164,7 +164,6 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
     val mathExpBuffer = ByteBuffer.wrap(new Array[Byte](2 * MathExp.size * columnTypes.length))
     val cpuFuncs = aggregations.map(_.aggFunc.id)
 
-    println("all aggregations = %s".format(aggregations.mkString(",")))
 
     aggregations.foreach { gbExp =>
       if (gbExp.mathExp == null) {
