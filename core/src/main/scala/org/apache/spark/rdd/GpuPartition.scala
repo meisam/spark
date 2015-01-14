@@ -122,10 +122,6 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, val capacity: 
           shortData(toTypeAwareColumnIndex(colIndex)) = ShortBuffer.wrap(convertBuffer)
         } else if (colType == TypeTag.Int.tpe) {
           val convertBuffer = new Array[Int](totalTupleNum.toInt)
-
-          // TO See if we are doing it right
-          println("first int entry for col(%d) = %d".format(colIndex, convertBuffer(0)))
-
           restData.asIntBuffer().get(convertBuffer)
           intData(toTypeAwareColumnIndex(colIndex)) = IntBuffer.wrap(convertBuffer)
         } else if (colType == TypeTag.Long.tpe) {
