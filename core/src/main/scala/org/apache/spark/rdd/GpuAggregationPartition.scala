@@ -18,7 +18,7 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
   aggregations: Array[AggregationExp], capacity: Int)
   extends GpuPartition[T](context, capacity) {
 
-  def aggregate(iterator: Iterator[TP]): Unit = {
+  def aggregate(): Unit = {
     parentPartition.inferBestWorkGroupSize
     this.globalSize = parentPartition.globalSize
     this.localSize = parentPartition.localSize
