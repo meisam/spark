@@ -515,34 +515,6 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, val capacity: 
     }
   }
 
-  def project[V: ClassTag: TypeTag](columnIndex: Int, outSize: Int) {
-    if (outSize == 0)
-      return
-    val colData = getColumn[V](columnIndex)
-    val global_work_size = Array[Long](globalSize)
-    val local_work_size = Array[Long](localSize)
-    val scanCol: cl_mem = createReadWriteBuffer[V](size)
-
-    hostToDeviceCopy[V](colData, scanCol, size, 0)
-
-    val result: cl_mem = createReadWriteBuffer[V](outSize)
-
-    val columnTypeName = typeNameString[V]
-    val kernelName: String = "scan_%s".format(columnTypeName)
-    val kernel = clCreateKernel(context.getOpenCLProgram, kernelName, null)
-    clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(scanCol))
-    clSetKernelArg(kernel, 1, Sizeof.cl_int, Pointer.to(Array[Int](Sizeof.cl_int)))
-    clSetKernelArg(kernel, 2, Sizeof.cl_long, Pointer.to(Array[Long](size)))
-    clSetKernelArg(kernel, 3, Sizeof.cl_mem, Pointer.to(gpuPsum))
-    clSetKernelArg(kernel, 4, Sizeof.cl_long, Pointer.to(Array[Long](resCount)))
-    clSetKernelArg(kernel, 5, Sizeof.cl_mem, Pointer.to(gpuFilter))
-    clSetKernelArg(kernel, 6, Sizeof.cl_mem, Pointer.to(result))
-    clEnqueueNDRangeKernel(context.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
-    deviceToHostCopy[V](result, colData, outSize, 0)
-    releaseCol(result)
-    releaseCol(scanCol)
-  }
-
   def releaseCol(col: cl_mem) {
     clReleaseMemObject(col)
   }
