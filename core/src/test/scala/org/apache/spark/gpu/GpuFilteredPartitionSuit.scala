@@ -18,7 +18,7 @@
 package org.apache.spark.gpu
 
 import org.apache.spark.SharedSparkContext
-import org.apache.spark.rdd.{ComparisonOperation, GpuFilteredPartition}
+import org.apache.spark.rdd.{ ComparisonOperation, GpuFilteredPartition }
 import org.apache.spark.scheduler.OpenCLContext
 import org.scalatest.FunSuite
 
@@ -48,10 +48,11 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
 
     assert(gpuPartition.size === expectedData.length)
 
-    expectedData.foreach { case (value, index) =>
-      assert(gpuPartition.intData(0).get(index) === value, "values do not match")
-      assert(gpuPartition.intData(1).get(index) === index, "values do not match")
-    case _ => fail("We should not be here")
+    expectedData.foreach {
+      case (value, index) =>
+        assert(gpuPartition.intData(0).get(index) === value, "values do not match")
+        assert(gpuPartition.intData(1).get(index) === index, "values do not match")
+      case _ => fail("We should not be here")
     }
   }
 
@@ -65,10 +66,11 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
 
     assert(gpuPartition.size === expectedData.length)
 
-    expectedData.foreach { case (value, index) =>
-      assert(gpuPartition.intData(0).get(index) === value, "values do not match")
-      assert(gpuPartition.intData(1).get(index) === index, "values do not match")
-    case _ => fail("We should not be here")
+    expectedData.foreach {
+      case (value, index) =>
+        assert(gpuPartition.intData(0).get(index) === value, "values do not match")
+        assert(gpuPartition.intData(1).get(index) === index, "values do not match")
+      case _ => fail("We should not be here")
     }
   }
 
@@ -82,10 +84,11 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
 
     assert(gpuPartition.size === expectedData.length)
 
-    expectedData.foreach { case (value, index) =>
-      assert(gpuPartition.intData(0).get(index) === value, "values do not match")
-      assert(gpuPartition.intData(1).get(index) === index, "values do not match")
-    case _ => fail("We should not be here")
+    expectedData.foreach {
+      case (value, index) =>
+        assert(gpuPartition.intData(0).get(index) === value, "values do not match")
+        assert(gpuPartition.intData(1).get(index) === index, "values do not match")
+      case _ => fail("We should not be here")
     }
   }
 
@@ -100,10 +103,11 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
 
     assert(gpuPartition.size === expectedData.length)
 
-    expectedData.foreach { case (value, index) =>
-      assert(gpuPartition.intData(0).get(index) === value, "values do not match")
-      assert(gpuPartition.intData(1).get(index) === index, "values do not match")
-    case _ => fail("We should not be here")
+    expectedData.foreach {
+      case (value, index) =>
+        assert(gpuPartition.intData(0).get(index) === value, "values do not match")
+        assert(gpuPartition.intData(1).get(index) === index, "values do not match")
+      case _ => fail("We should not be here")
     }
   }
 
@@ -118,17 +122,19 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
 
     assert(gpuPartition.size === expectedData.length)
 
-    expectedData.foreach { case (value, index) =>
-      assert(gpuPartition.intData(0).get(index) === value, "values do not match")
-      assert(gpuPartition.intData(1).get(index) === index, "values do not match")
+    expectedData.foreach {
+      case (value, index) =>
+        assert(gpuPartition.intData(0).get(index) === value, "values do not match")
+        assert(gpuPartition.intData(1).get(index) === index, "values do not match")
     }
   }
 
   test("GpuFilteredPartition(Long, Boolean) <= test") {
     val START = 1000
     val LENGHT = 10
-    val testData: Array[(Long, Boolean)] = (START until START + LENGHT).zipWithIndex.map({ case (v, i) =>
-      (v.toLong, ((i % 3) == 0))
+    val testData: Array[(Long, Boolean)] = (START until START + LENGHT).zipWithIndex.map({
+      case (v, i) =>
+        (v.toLong, ((i % 3) == 0))
     }).toArray
 
     val gpuPartition = new GpuFilteredPartition[(Long, Boolean), Long](openCLContext,
@@ -139,9 +145,10 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
 
     assert(gpuPartition.size === expectedData.length)
 
-    expectedData.zipWithIndex.foreach { case ((longValue, booleanValue), index) =>
-      assert(gpuPartition.longData(0).get(index) === longValue, "values do not match")
-      assert((gpuPartition.booleanData(0).get(index) != 0) === booleanValue, "values do not match")
+    expectedData.zipWithIndex.foreach {
+      case ((longValue, booleanValue), index) =>
+        assert(gpuPartition.longData(0).get(index) === longValue, "values do not match")
+        assert((gpuPartition.booleanData(0).get(index) != 0) === booleanValue, "values do not match")
     }
   }
 
