@@ -75,8 +75,6 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, val capacity: 
     columnTypes.zip(paths).zipWithIndex.foreach({
       case ((colType, path), colIndex) =>
 
-        println(f"path = $path")
-
         val columnData = ByteBuffer.wrap(Files.readAllBytes(new File(path).toPath()))
         columnData.order(ByteOrder.LITTLE_ENDIAN)
         val totalTupleNum = columnData.getLong()
