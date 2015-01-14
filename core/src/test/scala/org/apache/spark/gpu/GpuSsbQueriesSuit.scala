@@ -17,20 +17,23 @@
 
 package org.apache.spark.gpu
 
-import org.apache.spark.SharedSparkContext
-import org.apache.spark.rdd.{ AggregationOperation, GpuAggregationPartition }
-import org.apache.spark.scheduler.OpenCLContext
-import org.scalatest.FunSuite
 import scala.language.existentials
 import scala.reflect.ClassTag
-import org.apache.spark.rdd.GpuPartition
-import org.apache.spark.rdd.GpuFilteredPartition
-import java.io.ObjectInputStream
+
+import org.apache.spark.SharedSparkContext
 import org.apache.spark.rdd.AggregationExp
+import org.apache.spark.rdd.AggregationOperation
+import org.apache.spark.rdd.ComparisonOperation
+import org.apache.spark.rdd.GpuAggregationPartition
+import org.apache.spark.rdd.GpuFilteredPartition
+import org.apache.spark.rdd.GpuJoinPartition
+import org.apache.spark.rdd.GpuJoinPartition
+import org.apache.spark.rdd.GpuPartition
 import org.apache.spark.rdd.MathExp
 import org.apache.spark.rdd.MathOp
 import org.apache.spark.rdd.MathOperationType
-import org.apache.spark.rdd.ComparisonOperation
+import org.apache.spark.scheduler.OpenCLContext
+import org.scalatest.FunSuite
 
 //PART
 // 0 P_PARTKEY:INTEGER
@@ -123,20 +126,44 @@ class GpuSsbQueriesSuit extends FunSuite with SharedSparkContext {
     // and lo_quantity<25;
 
     /*__________________________ d_datekey. d_year _____________________________*/
-    val ddateTable = new GpuPartition[(Int, Int)](openCLContext, DEFAULT_CAPACITY)
-    ddateTable.fillFromFiles(Array("/home/fathi/workspace/gpudb/src/utility/DDATE0", "/home/fathi/workspace/gpudb/src/utility/DDATE4"))
+    val ddatePartition = new GpuPartition[(Int, Int)](openCLContext, DEFAULT_CAPACITY)
+    ddatePartition.fillFromFiles(Array("/home/fathi/workspace/gpudb/src/utility/DDATE0", "/home/fathi/workspace/gpudb/src/utility/DDATE4"))
+    println("ddateTable.size = %,d".format(ddatePartition.size))
 
     /*____________________________________price,dscnt,date, qty_________________________________*/
-    val lineorderTable = new GpuPartition[(Float, Int, Int, Int)](openCLContext, DEFAULT_CAPACITY)
-    lineorderTable.fillFromFiles(Array(
+    val lineorderPartition = new GpuPartition[(Float, Int, Int, Int)](openCLContext, DEFAULT_CAPACITY)
+    lineorderPartition.fillFromFiles(Array(
       "/home/fathi/workspace/gpudb/src/utility/LINEORDER9",
       "/home/fathi/workspace/gpudb/src/utility/LINEORDER11",
       "/home/fathi/workspace/gpudb/src/utility/LINEORDER5",
       "/home/fathi/workspace/gpudb/src/utility/LINEORDER8"))
 
-    println("lineorderTable.size = ".format(lineorderTable.size))
+    println("lineorderTable.size = %,d".format(lineorderPartition.size))
 
-    val loFilter1 = new GpuFilteredPartition[(Float, Int, Int, Int), Int]( openCLContext, 3, ComparisonOperation.<, 25, DEFAULT_CAPACITY)
-    
+    val loFilterQty = new GpuFilteredPartition[(Float, Int, Int, Int), Int](openCLContext, lineorderPartition, 3, ComparisonOperation.<, 25, DEFAULT_CAPACITY)
+    loFilterQty.filter()
+    println("loFilterQty.size = %,d".format(loFilterQty.size))
+
+    val loFilterDiscount1 = new GpuFilteredPartition[(Float, Int, Int, Int), Int](openCLContext, loFilterQty, 1, ComparisonOperation.<=, 3, DEFAULT_CAPACITY)
+    loFilterDiscount1.filter()
+    println("loFilterDiscount1.size = %,d".format(loFilterDiscount1.size))
+
+    val loFilterDiscount2 = new GpuFilteredPartition[(Float, Int, Int, Int), Int](openCLContext, loFilterDiscount1, 1, ComparisonOperation.>=, 1, DEFAULT_CAPACITY)
+    loFilterDiscount2.filter()
+    println("loFilterDiscount2.size = %,d".format(loFilterDiscount2.size))
+
+    val joinPartition = new GpuJoinPartition[(Float, Int, Int, Int, Int), (Float, Int, Int, Int), (Int, Int), Int](
+      openCLContext, loFilterDiscount2, ddatePartition, 2, 0, DEFAULT_CAPACITY)
+    joinPartition.join()
+    println("joinPartition.size = %,d".format(joinPartition.size))
+
+    val col0 = new MathExp(MathOp.NOOP, 1, null, null, MathOperationType.column, 0)
+
+    val aggregations = Array(new AggregationExp(AggregationOperation.sum, col0))
+    val aggPartitoin = new GpuAggregationPartition[Tuple1[Float], (Float, Int, Int, Int, Int)](
+      openCLContext, joinPartition, aggregations, DEFAULT_CAPACITY)
+    aggPartitoin.aggregate()
+    println("aggPartitoin.size = %,d".format(aggPartitoin.size))
+
   }
 }
