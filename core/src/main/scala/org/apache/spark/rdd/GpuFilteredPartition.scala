@@ -31,7 +31,7 @@ class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLCon
 
     val kernelName = "genScanFilter_init_%s_%s".format(typeName, operationName)
 
-    var kernel = clCreateKernel(context.getOpenCLProgram, kernelName, null)
+    var kernel = clCreateKernel(context.program, kernelName, null)
 
     clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(gpuCol))
     clSetKernelArg(kernel, 1, Sizeof.cl_long, Pointer.to(Array[Long](tupleNum)))
@@ -39,12 +39,12 @@ class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLCon
     clSetKernelArg(kernel, 3, Sizeof.cl_mem, Pointer.to(gpuFilter))
     val global_work_size = Array[Long](globalSize)
     val local_work_size = Array[Long](localSize)
-    clEnqueueNDRangeKernel(context.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
-    kernel = clCreateKernel(context.getOpenCLProgram, "countScanNum", null)
+    clEnqueueNDRangeKernel(context.queue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
+    kernel = clCreateKernel(context.program, "countScanNum", null)
     clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(gpuFilter))
     clSetKernelArg(kernel, 1, Sizeof.cl_long, Pointer.to(Array[Long](tupleNum)))
     clSetKernelArg(kernel, 2, Sizeof.cl_mem, Pointer.to(gpuCount))
-    clEnqueueNDRangeKernel(context.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
+    clEnqueueNDRangeKernel(context.queue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
 
     scanImpl(gpuCount, globalSize, gpuPsum)
 
@@ -107,7 +107,7 @@ class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLCon
 
     val colSize = baseSize[V]
     val kernelName: String = "scan_other"
-    val kernel = clCreateKernel(context.getOpenCLProgram, kernelName, null)
+    val kernel = clCreateKernel(context.program, kernelName, null)
     clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(scanCol))
     clSetKernelArg(kernel, 1, Sizeof.cl_int, Pointer.to(Array[Int](colSize)))
     clSetKernelArg(kernel, 2, Sizeof.cl_long, Pointer.to(Array[Long](parent.size)))
@@ -116,7 +116,7 @@ class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLCon
     clSetKernelArg(kernel, 5, Sizeof.cl_mem, Pointer.to(gpuFilter))
     clSetKernelArg(kernel, 6, Sizeof.cl_mem, Pointer.to(result))
 
-    clEnqueueNDRangeKernel(context.getOpenCLQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
+    clEnqueueNDRangeKernel(context.queue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
 
     val resultColData = this.getColumn[V](columnIndex)
     assert(resultColData != null)

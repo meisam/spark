@@ -603,32 +603,32 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, val capacity: 
 
   protected def createReadBuffer[V: TypeTag](elementCount: Int): cl_mem = {
     val size = elementCount * baseSize[V]
-    clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_ONLY, size, null, null)
+    clCreateBuffer(context.context, CL_MEM_READ_ONLY, size, null, null)
   }
 
   protected def createReadBuffer(elementCount: Int, columnType: JavaType): cl_mem = {
     val size = elementCount * baseSize(columnType)
-    clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_ONLY, size, null, null)
+    clCreateBuffer(context.context, CL_MEM_READ_ONLY, size, null, null)
   }
 
   protected def createReadWriteBuffer[V: TypeTag](elementCount: Int): cl_mem = {
     val size = elementCount * baseSize[V]
-    clCreateBuffer(context.getOpenCLContext, CL_MEM_READ_WRITE, size, null, null)
+    clCreateBuffer(context.context, CL_MEM_READ_WRITE, size, null, null)
   }
 
   protected def createWriteBuffer[V: TypeTag](elementCount: Int): cl_mem = {
     val size = elementCount * baseSize[V]
-    clCreateBuffer(context.getOpenCLContext, CL_MEM_WRITE_ONLY, size, null, null)
+    clCreateBuffer(context.context, CL_MEM_WRITE_ONLY, size, null, null)
   }
 
   protected def createWriteBuffer(size: Long): cl_mem = {
-    clCreateBuffer(context.getOpenCLContext, CL_MEM_WRITE_ONLY, size, null, null)
+    clCreateBuffer(context.context, CL_MEM_WRITE_ONLY, size, null, null)
   }
 
   protected def hostToDeviceCopy[V: TypeTag](src: Pointer, dest: cl_mem, elementCount: Long,
     offset: Int = 0): Unit = {
     val length = elementCount * baseSize[V]
-    clEnqueueWriteBuffer(context.getOpenCLQueue, dest, CL_TRUE, offset, length, src, 0, null, null)
+    clEnqueueWriteBuffer(context.queue, dest, CL_TRUE, offset, length, src, 0, null, null)
   }
 
   protected def hostToDeviceCopy[V: TypeTag](src: Buffer, dest: cl_mem, elementCount: Long,
@@ -636,7 +636,7 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, val capacity: 
     val length = elementCount * baseSize[V]
     val scrBuffer = Pointer.to(src)
     val startTime = System.nanoTime()
-    clEnqueueWriteBuffer(context.getOpenCLQueue, dest, CL_TRUE, offset, length, scrBuffer, 0, null, null)
+    clEnqueueWriteBuffer(context.queue, dest, CL_TRUE, offset, length, scrBuffer, 0, null, null)
     val endTime = System.nanoTime()
     val copyToGpuTime = endTime - startTime
     context.pciTransferTime += copyToGpuTime
@@ -648,7 +648,7 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, val capacity: 
     offset: Int = 0): Unit = {
     val length = elementCount * baseSize(ct)
     val startTime = System.nanoTime()
-    clEnqueueWriteBuffer(context.getOpenCLQueue, dest, CL_TRUE, offset, length, src, 0, null, null)
+    clEnqueueWriteBuffer(context.queue, dest, CL_TRUE, offset, length, src, 0, null, null)
     val endTime = System.nanoTime()
     val copyToGpuTime = endTime - startTime
     context.pciTransferTime += copyToGpuTime
@@ -659,7 +659,7 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, val capacity: 
     val length = elementCount * baseSize[V]
     val offsetInBytes = offset * baseSize[V]
     val startTime = System.nanoTime()
-    clEnqueueReadBuffer(context.getOpenCLQueue, src, CL_TRUE, offsetInBytes, length, dest, 0, null,
+    clEnqueueReadBuffer(context.queue, src, CL_TRUE, offsetInBytes, length, dest, 0, null,
       null)
     val endTime = System.nanoTime()
     val copyFromGpuTime = endTime - startTime
@@ -672,7 +672,7 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, val capacity: 
     val offsetInBytes = offset * baseSize[V]
     val destPointer = Pointer.to(dest)
     val startTime = System.nanoTime()
-    clEnqueueReadBuffer(context.getOpenCLQueue, src, CL_TRUE, offsetInBytes, length, destPointer, 0,
+    clEnqueueReadBuffer(context.queue, src, CL_TRUE, offsetInBytes, length, destPointer, 0,
       null, null)
     val endTime = System.nanoTime()
     val copyFromGpuTime = endTime - startTime
@@ -684,7 +684,7 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, val capacity: 
     offset: Long = 0): Unit = {
     val length = elementCount * baseSize[V]
     val offsetInBytes = offset * baseSize[V]
-    clEnqueueCopyBuffer(context.getOpenCLQueue, src, dest, 0, offsetInBytes, length, 0, null, null)
+    clEnqueueCopyBuffer(context.queue, src, dest, 0, offsetInBytes, length, 0, null, null)
   }
 
   def release {

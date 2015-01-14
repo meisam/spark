@@ -44,7 +44,7 @@ U: TypeTag]
     val global_work_size = Array[Long](globalSize)
     val local_work_size = Array[Long](localSize)
 
-    clEnqueueNDRangeKernel(context.getOpenCLQueue, memSetIntKernel, 1, null, global_work_size, local_work_size, 0,
+    clEnqueueNDRangeKernel(context.queue, memSetIntKernel, 1, null, global_work_size, local_work_size, 0,
       null, null)
 
     val threadNum = globalSize
