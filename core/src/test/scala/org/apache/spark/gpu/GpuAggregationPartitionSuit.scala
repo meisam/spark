@@ -61,7 +61,7 @@ class GpuAggregationPartitionSuit extends FunSuite with SharedSparkContext {
       , new AggregationExp(AggregationOperation.sum, col1)) // sum col 1
       , DEFAULT_CAPACITY)
 
-    aggregationPartition.aggregate(testData.toIterator)
+    aggregationPartition.aggregate()
     val expectedData = Array((11, 2), (12, 6))
 
     assert(aggregationPartition.size === expectedData.length)
@@ -79,7 +79,7 @@ class GpuAggregationPartitionSuit extends FunSuite with SharedSparkContext {
       , new AggregationExp(AggregationOperation.sum, col1)) // COUNT col 1
       , DEFAULT_CAPACITY)
 
-    aggregationPartition.aggregate(testData.toIterator)
+    aggregationPartition.aggregate()
     val expectedData: Array[(Int, Float)] = Array((111, 8), (112, 11))
 
     assert(aggregationPartition.size === expectedData.length)
@@ -104,7 +104,7 @@ class GpuAggregationPartitionSuit extends FunSuite with SharedSparkContext {
       , new AggregationExp(AggregationOperation.sum, col1)) // sum col 1
       , DEFAULT_CAPACITY)
 
-    aggregationPartition.aggregate(testData.toIterator)
+    aggregationPartition.aggregate()
     val expectedData = Array((11, 4L), (12, 6L))
 
     assert(aggregationPartition.size === expectedData.length)
@@ -122,7 +122,7 @@ class GpuAggregationPartitionSuit extends FunSuite with SharedSparkContext {
       , new AggregationExp(AggregationOperation.count, col1)) // COUNT col 1
       , DEFAULT_CAPACITY)
 
-    aggregationPartition.aggregate(testData.toIterator)
+    aggregationPartition.aggregate()
     val expectedData = Array((12, 2), (11, 3))
 
     assert(aggregationPartition.size === expectedData.length)
@@ -149,7 +149,7 @@ class GpuAggregationPartitionSuit extends FunSuite with SharedSparkContext {
       , new AggregationExp(AggregationOperation.min, col1)) // MIN col 1
       , DEFAULT_CAPACITY)
 
-    aggregationPartition.aggregate(testData.toIterator)
+    aggregationPartition.aggregate()
     val expectedData = Array((12, 5.0f), (11, 1.0f))
 
     assert(aggregationPartition.size === expectedData.length)
@@ -174,7 +174,7 @@ class GpuAggregationPartitionSuit extends FunSuite with SharedSparkContext {
       , new AggregationExp(AggregationOperation.max, col1)) // MAX col 1
       , DEFAULT_CAPACITY)
 
-    aggregationPartition.aggregate(testData.toIterator)
+    aggregationPartition.aggregate()
     val expectedData = Array((12, 6.0f), (11, 4.0f))
 
     assert(aggregationPartition.size === expectedData.length)
