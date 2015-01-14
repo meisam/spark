@@ -105,7 +105,7 @@ import org.apache.spark.rdd.ComparisonOperation
  */
 class GpuSsbQueriesSuit extends FunSuite with SharedSparkContext {
 
-  val DEFAULT_CAPACITY = (1 << 10)
+  val DEFAULT_CAPACITY = (1 << 22)
   val openCLContext = new OpenCLContext
 
   override def beforeAll() {
