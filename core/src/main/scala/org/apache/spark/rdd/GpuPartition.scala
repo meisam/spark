@@ -706,6 +706,14 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, val capacity: 
     clReleaseMemObject(gpuFilter)
   }
 
+  def debugGpuBuffer[V: TypeTag: ClassTag](buffer: cl_mem, size: Int, msg: String, quiet: Boolean = true) {
+    if (!quiet) {
+      val tempBuffer = new Array[V](size)
+      deviceToHostCopy[V](buffer, pointer[V](tempBuffer), size, 0)
+      println("%s = \n%s".format(msg, tempBuffer.mkString(" ,")))
+    }
+  }
+
   val POW_2_S: IndexedSeq[Long] = (0 to 100).map(_.toLong).map(1L << _)
   val BLOCK_SIZE: Int = 256
   val NUM_BANKS: Int = 16
