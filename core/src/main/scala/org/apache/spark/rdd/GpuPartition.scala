@@ -17,6 +17,10 @@ import java.nio.LongBuffer
 import java.nio.FloatBuffer
 import java.nio.DoubleBuffer
 import java.nio.CharBuffer
+import java.io.FileInputStream
+import java.nio.file.Files
+import java.io.File
+import java.nio.ByteOrder
 
 class GpuPartition[T <: Product : TypeTag]
 (context: OpenCLContext, val capacity: Int)
@@ -68,6 +72,96 @@ class GpuPartition[T <: Product : TypeTag]
     this.globalSize = localSize * math.min(1 + (size - 1) / localSize, BLOCK_SIZE)
   }
 
+  def fillFromFiles(paths: Array[String]): Unit = {
+    assert(paths.length == columnTypes.size, { " %d file paths but only %d columns".format(paths.length, columnTypes.size) })
+    columnTypes.zip(paths).zipWithIndex.foreach({
+      case ((colType, path), colIndex) =>
+
+        println(f"path = $path")
+
+        val columnData = ByteBuffer.wrap(Files.readAllBytes(new File(path).toPath()))
+        columnData.order(ByteOrder.LITTLE_ENDIAN)
+        val totalTupleNum = columnData.getLong()
+
+        val tuplesInBlock = columnData.getLong()
+        assert(tuplesInBlock == totalTupleNum, { f"tuplesInBlock != totalTupleNum ($tuplesInBlock != $totalTupleNum )" })
+
+        val blockSize = columnData.getLong()
+        assert(blockSize == totalTupleNum * baseSize(colType), { f"blockSize != totalTupleNum * sizeof($colType) ($blockSize != $totalTupleNum * sizeof($colType))" })
+
+        val blockTotal = columnData.getInt()
+        assert(blockTotal == 1, { f"blockTotal != 1 ($blockTotal != 1)" })
+
+        val blockId = columnData.getInt()
+        assert(blockId == 0, { f"blockId != 0 ($blockId!= 0)" })
+
+        val format = columnData.getInt()
+        assert(format == 3, { f"format != 3 ($format != 3)" })
+
+        println(f"totalTupleNum = $totalTupleNum")
+        println(f"tuplesInBlock = $tuplesInBlock")
+        println(f"blockSize = $blockSize")
+        println(f"blockTotal = $blockTotal")
+        println(f"format= $format")
+
+        val paddingLength = 4060
+        columnData.position(columnData.position + paddingLength)
+        assert(columnData.position == 0x1000)
+
+        val restData = columnData.slice()
+        restData.order(ByteOrder.LITTLE_ENDIAN)
+        println("rest of data order %s".format(restData.order()))
+        val remaining = restData.remaining()
+        assert(remaining == blockSize, { f"remaining != blockSize ($remaining != $blockSize)" })
+
+        if (colType == TypeTag.Byte.tpe) {
+          val convertBuffer = new Array[Byte](totalTupleNum.toInt)
+          restData.get(convertBuffer)
+          byteData(toTypeAwareColumnIndex(colIndex)) = ByteBuffer.wrap(convertBuffer)
+        } else if (colType == TypeTag.Short.tpe) {
+          val convertBuffer = new Array[Short](totalTupleNum.toInt)
+          restData.asShortBuffer().get(convertBuffer)
+          shortData(toTypeAwareColumnIndex(colIndex)) = ShortBuffer.wrap(convertBuffer)
+        } else if (colType == TypeTag.Int.tpe) {
+          val convertBuffer = new Array[Int](totalTupleNum.toInt)
+
+          // TO See if we are doing it right
+          println("first int entry for col(%d) = %d".format(colIndex, convertBuffer(0)))
+
+          restData.asIntBuffer().get(convertBuffer)
+          intData(toTypeAwareColumnIndex(colIndex)) = IntBuffer.wrap(convertBuffer)
+        } else if (colType == TypeTag.Long.tpe) {
+          val convertBuffer = new Array[Long](totalTupleNum.toInt)
+          restData.asLongBuffer().get(convertBuffer)
+          longData(toTypeAwareColumnIndex(colIndex)) = LongBuffer.wrap(convertBuffer)
+        } else if (colType == TypeTag.Float.tpe) {
+          val convertBuffer = new Array[Float](totalTupleNum.toInt)
+          restData.asFloatBuffer().get(convertBuffer)
+          floatData(toTypeAwareColumnIndex(colIndex)) = FloatBuffer.wrap(convertBuffer)
+        } else if (colType == TypeTag.Double.tpe) {
+          val convertBuffer = new Array[Double](totalTupleNum.toInt)
+          restData.asDoubleBuffer().get(convertBuffer)
+          doubleData(toTypeAwareColumnIndex(colIndex)) = DoubleBuffer.wrap(convertBuffer)
+        } else if (colType == TypeTag.Boolean.tpe) {
+          val convertBuffer = new Array[Byte](totalTupleNum.toInt)
+          restData.get(convertBuffer)
+          booleanData(toTypeAwareColumnIndex(colIndex)) = ByteBuffer.wrap(convertBuffer)
+        } else if (colType == TypeTag.Char.tpe) {
+          val convertBuffer = new Array[Char](totalTupleNum.toInt)
+          restData.asCharBuffer().get(convertBuffer)
+          charData(toTypeAwareColumnIndex(colIndex)) = CharBuffer.wrap(convertBuffer)
+        } else if (colType == ColumnarTypes.StringTypeTag) {
+          val convertBuffer = new Array[Char](totalTupleNum.toInt)
+          restData.asCharBuffer().get(convertBuffer)
+          stringData(toTypeAwareColumnIndex(colIndex)) = CharBuffer.wrap(convertBuffer)
+        } else {
+          throw new NotImplementedError("Unknown type %s".format(colType))
+        }
+
+        this.size = totalTupleNum.toInt
+
+    })
+  }
 
   def fill(iter: Iterator[T]): Unit = {
     size = 0
