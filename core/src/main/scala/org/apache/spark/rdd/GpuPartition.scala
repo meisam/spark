@@ -96,19 +96,12 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, val capacity: 
         val format = columnData.getInt()
         assert(format == 3, { f"format != 3 ($format != 3)" })
 
-        println(f"totalTupleNum = $totalTupleNum")
-        println(f"tuplesInBlock = $tuplesInBlock")
-        println(f"blockSize = $blockSize")
-        println(f"blockTotal = $blockTotal")
-        println(f"format= $format")
-
         val paddingLength = 4060
         columnData.position(columnData.position + paddingLength)
         assert(columnData.position == 0x1000)
 
         val restData = columnData.slice()
         restData.order(ByteOrder.LITTLE_ENDIAN)
-        println("rest of data order %s".format(restData.order()))
         val remaining = restData.remaining()
         assert(remaining == blockSize, { f"remaining != blockSize ($remaining != $blockSize)" })
 
