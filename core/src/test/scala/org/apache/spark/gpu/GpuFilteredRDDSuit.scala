@@ -18,14 +18,14 @@
 package org.apache.spark.gpu
 
 import org.apache.spark.SharedSparkContext
-import org.apache.spark.rdd.{ComparisonOperation, GpuFilteredPartition}
+import org.apache.spark.rdd.{ ComparisonOperation, GpuFilteredPartition }
 import org.apache.spark.scheduler.OpenCLContext
 import org.jocl.CL._
-import org.jocl.{Pointer, Sizeof}
+import org.jocl.{ Pointer, Sizeof }
 import org.scalatest.FunSuite
-
 import scala.collection.immutable.IndexedSeq
 import scala.language.existentials
+import org.apache.spark.rdd.GpuPartition
 
 /**
  *
@@ -74,8 +74,7 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
       if (resultData(i) == 1) {
         assert(i === value)
         assert(testData(i) === value)
-      }
-      else
+      } else
         assert(testData(i) === i)
     }
   }
@@ -107,8 +106,7 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
     (0 until TEST_DATA_SIZE).foreach { i =>
       if (resultData(i) == 1) {
         assert(testData(i) >= value)
-      }
-      else
+      } else
         assert(testData(i) < value)
     }
   }
@@ -139,8 +137,9 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
 
     val expectedResults = (1 to TEST_DATA_SIZE).map(x => (1 + x) / 3)
 
-    expectedResults.zip(resultData).zipWithIndex.foreach { case ((expected, actual), i) =>
-      assert(expected === actual, "The %sths expected %,12d <> %,12d actual".format(i, expected, actual))
+    expectedResults.zip(resultData).zipWithIndex.foreach {
+      case ((expected, actual), i) =>
+        assert(expected === actual, "The %sths expected %,12d <> %,12d actual".format(i, expected, actual))
     }
   }
 
@@ -148,19 +147,20 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
     // This crashes  the OpenCL device
     val testData: IndexedSeq[(Int, Int)] = (0 to 10).reverse.zipWithIndex
 
-    val chunk = new GpuFilteredPartition[(Int, Int), Int](openCLContext, 1, ComparisonOperation.<,
-      1, DEFAULT_CAPACITY)
-    chunk.fill(testData.toIterator)
-    chunk.filter(1, 1, ComparisonOperation.<)
+    val parentPartition = new GpuPartition[(Int, Int)](openCLContext, DEFAULT_CAPACITY)
+    parentPartition.fill(testData.toIterator)
 
-    (0 until chunk.capacity).foreach(i =>
+    val filteredPartition = new GpuFilteredPartition[(Int, Int), Int](openCLContext, parentPartition,
+      1, ComparisonOperation.<, 1, DEFAULT_CAPACITY)
+    filteredPartition.filter()
+
+    (0 until filteredPartition.capacity).foreach(i =>
       if (i <= 10) {
-        assert(chunk.intData(0).get(i) === (10 - i), "values do not match")
-        assert(chunk.intData(1).get(i) === i, "indexes  do not match")
+        assert(filteredPartition.intData(0).get(i) === (10 - i), "values do not match")
+        assert(filteredPartition.intData(1).get(i) === i, "indexes  do not match")
       } else {
-        assert(chunk.intData(0).get(i) === 0, "values do not match")
-        assert(chunk.intData(1).get(i) === 0, "values do not match")
-      }
-    )
+        assert(filteredPartition.intData(0).get(i) === 0, "values do not match")
+        assert(filteredPartition.intData(1).get(i) === 0, "values do not match")
+      })
   }
 }
