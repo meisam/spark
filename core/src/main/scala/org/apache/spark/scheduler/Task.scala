@@ -241,5 +241,10 @@ class OpenCLContext extends Serializable{
   @transient var queue: cl_command_queue = null
   @transient var program: cl_program = null
   @transient var programSource: String = null
+  
+  // For profiling purposes only
+  var pciTransferTime = 0L
+  var pciTransferBytes = 0L
+  var diskReadTime = 0L
 }
 
