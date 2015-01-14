@@ -58,16 +58,22 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
     hostToDeviceCopy[Long](pointer(cpuOffsets), gpuOffsets, cpuOffsets.length)
     debugGpuBuffer[Long](gpuOffsets, cpuOffsets.length, "gpuOffsets (before)")
 
-    val gbType: Array[Int] = gbColumnIndexes.map(i => columnTypes(i)).map(t => ColumnarTypes.getIndex(t)).toIterator.toArray
+    val groupByJavaTypes = aggregations.map(agg =>
+      if (agg.mathExp.opType == MathOperationType.const) {
+        TypeTag.Int.tpe
+      } else {
+        parentPartition.columnTypes(agg.mathExp.opValue)
+      })
 
+    val gbType: Array[Int] = groupByJavaTypes.map(colType => ColumnarTypes.getIndex(colType)).toIterator.toArray
     val gpuGbType = createReadBuffer[Int](gbType.length)
     hostToDeviceCopy[Int](pointer(gbType), gpuGbType, gbType.length)
 
-    val gpuGbSize = createReadBuffer[Int](gbColumnIndexes.length)
-    val groupBySize: Array[Int] = gbColumnIndexes.map(columnTypes(_)).map(baseSize(_))
+    val gpuGbSize = createReadBuffer[Int](groupByJavaTypes.size)
+    val groupBySize: Array[Int] = groupByJavaTypes.map(baseSize(_))
       .scanLeft(0: Int)({ case (sum, x) => sum + align(x) }).splitAt(1)._2.toArray
 
-    hostToDeviceCopy[Int](pointer(groupBySize), gpuGbSize, gbColumnIndexes.length)
+    hostToDeviceCopy[Int](pointer(groupBySize), gpuGbSize, groupByJavaTypes.size)
 
     val gpuGbKey = createReadWriteBuffer[Int](parentPartition.size)
 
@@ -164,7 +170,6 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
     val mathExpBuffer = ByteBuffer.wrap(new Array[Byte](2 * MathExp.size * columnTypes.length))
     val cpuFuncs = aggregations.map(_.aggFunc.id)
 
-
     aggregations.foreach { gbExp =>
       if (gbExp.mathExp == null) {
         gpuGbExpBuffer.position(gpuGbExpBuffer.position + MathExp.size)
@@ -238,7 +243,9 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
     val gpuResOffset = createReadWriteBuffer[Long](columnTypes.length)
     hostToDeviceCopy[Long](Pointer.to(resultOffsets), gpuResOffset, columnTypes.length, 0)
 
-    val gpuGbColNum = columnTypes.length //FIXME is this correct?
+    //FIXME is this correct?
+    val gpuGbColNum = aggregations.filter(agg => agg.aggFunc == AggregationOperation.groupBy).size
+
 
     val agggregationKernel = clCreateKernel(context.program, "agg_cal", null)
     clSetKernelArg(agggregationKernel, 0, Sizeof.cl_mem, Pointer.to(gpuContent))
