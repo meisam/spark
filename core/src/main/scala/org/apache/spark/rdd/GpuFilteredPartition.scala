@@ -2,24 +2,25 @@ package org.apache.spark.rdd
 
 import org.apache.spark.scheduler.OpenCLContext
 import org.jocl.CL._
-import org.jocl.{Pointer, Sizeof}
-
+import org.jocl.{ Pointer, Sizeof }
+import scala.reflect.ClassTag
 import scala.reflect.runtime.universe.TypeTag
+import org.jocl.cl_mem
 
-class GpuFilteredPartition[T <: Product : TypeTag, U: TypeTag]
-(context: OpenCLContext, colIndex: Int,
- operation: ComparisonOperation.Value, value: U, capacity: Int)
+class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLContext, parent: GpuPartition[T], columnIndex: Int,
+  operation: ComparisonOperation.Value, value: U, capacity: Int)
   extends GpuPartition[T](context, capacity) {
 
-  def filter(columnIndex: Int, value: U, operation: ComparisonOperation.Value):
-  Int = {
+  def filter() = {
 
-    val tupleNum = this.size
+    val tupleNum = parent.size
     gpuCol = createReadWriteBuffer[U](tupleNum)
 
-    val col = getColumn[U](columnIndex)
+    val col = parent.getColumn[U](columnIndex)
     hostToDeviceCopy[U](col, gpuCol, tupleNum, 0)
 
+    this.globalSize = parent.globalSize
+    this.localSize = parent.localSize
     gpuFilter = createReadWriteBuffer[Int](tupleNum)
     gpuPsum = createReadWriteBuffer[Int](globalSize)
     gpuCount = createReadWriteBuffer[Int](globalSize)
@@ -54,66 +55,40 @@ class GpuFilteredPartition[T <: Product : TypeTag, U: TypeTag]
 
     deviceToHostCopy[Int](gpuPsum, pointer(tmp2), 1, globalSize - 1)
 
-    resCount = tmp1(0) + tmp2(0)
-    resCount
-  }
+    val resultSize: Int = tmp1(0) + tmp2(0)
 
 
-  override def fill(iter: Iterator[T]): Unit = {
-    super.fill(iter)
-    val resultSize = filter(colIndex, value, operation)
+    this.size = resultSize
 
-    intData.zipWithIndex.filter(_._1 != null).foreach({
-      case (_, index) => {
-        if (index != colIndex) {
-          project[Int](colIndex, resultSize)
-        }
-      }
+    parent.byteData.zipWithIndex.filter(_._1 != null).foreach({
+      case (_, index) => project[Byte](index, this.size)
     })
-    longData.zipWithIndex.filter(_._1 != null).foreach({
-      case (_, index) => {
-        if (index != colIndex) {
-          project[Long](colIndex, resultSize)
-        }
-      }
+    parent.shortData.zipWithIndex.filter(_._1 != null).foreach({
+      case (_, index) => project[Short](index, this.size)
     })
-    floatData.zipWithIndex.filter(_._1 != null).foreach({
-      case (_, index) => {
-        if (index != colIndex) {
-          project[Float](colIndex, resultSize)
-        }
-      }
+    parent.intData.zipWithIndex.filter(_._1 != null).foreach({
+      case (_, index) => project[Int](index, this.size)
     })
-    doubleData.zipWithIndex.filter(_._1 != null).foreach({
-      case (_, index) => {
-        if (index != colIndex) {
-          project[Double](colIndex, resultSize)
-        }
-      }
+    parent.longData.zipWithIndex.filter(_._1 != null).foreach({
+      case (_, index) => project[Long](index, this.size)
     })
-    booleanData.zipWithIndex.filter(_._1 != null).foreach({
-      case (_, index) => {
-        if (index != colIndex) {
-          project[Boolean](colIndex, resultSize)
-        }
-      }
+    parent.floatData.zipWithIndex.filter(_._1 != null).foreach({
+      case (_, index) => project[Float](index, this.size)
     })
-    charData.zipWithIndex.filter(_._1 != null).foreach({
-      case (_, index) => {
-        if (index != colIndex) {
-          project[Char](colIndex, resultSize)
-        }
-      }
+    parent.doubleData.zipWithIndex.filter(_._1 != null).foreach({
+      case (_, index) => project[Double](index, this.size)
     })
-    stringData.zipWithIndex.filter(_._1 != null).foreach({
-      case (_, index) => {
-        if (index != colIndex) {
-          project[String](colIndex, resultSize)
-        }
-      }
+    parent.booleanData.zipWithIndex.filter(_._1 != null).foreach({
+      case (_, index) => project[Boolean](index, this.size)
     })
-    release
-    size = resultSize
+    parent.charData.zipWithIndex.filter(_._1 != null).foreach({
+      case (_, index) => project[Char](index, this.size)
+    })
+    parent.stringData.zipWithIndex.filter(_._1 != null).foreach({
+      case (_, index) => project[String](index, this.size)
+    })
+
+    release  
   }
 
   def project[V: TypeTag](columnIndex: Int, outSize: Int) {
