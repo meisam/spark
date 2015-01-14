@@ -153,7 +153,7 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, val capacity: 
         }
 
         this.size = totalTupleNum.toInt
-
+        inferBestWorkGroupSize
     })
   }
 
