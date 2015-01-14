@@ -75,6 +75,8 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, val capacity: 
     columnTypes.zip(paths).zipWithIndex.foreach({
       case ((colType, path), colIndex) =>
 
+      val startDiskRedTime = System.nanoTime()
+
         val columnData = ByteBuffer.wrap(Files.readAllBytes(new File(path).toPath()))
         columnData.order(ByteOrder.LITTLE_ENDIAN)
         val totalTupleNum = columnData.getLong()
@@ -150,8 +152,15 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, val capacity: 
           throw new NotImplementedError("Unknown type %s".format(colType))
         }
 
+        val endDiskReadTime = System.nanoTime()
+        
+        val diskReadTime = endDiskReadTime - startDiskRedTime
+        
         this.size = totalTupleNum.toInt
         inferBestWorkGroupSize
+        
+        context.diskReadTime += diskReadTime
+
     })
   }
 
@@ -633,29 +642,49 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, val capacity: 
     offset: Int): Unit = {
     val length = elementCount * baseSize[V]
     val scrBuffer = Pointer.to(src)
+    val startTime = System.nanoTime()
     clEnqueueWriteBuffer(context.getOpenCLQueue, dest, CL_TRUE, offset, length, scrBuffer, 0, null, null)
+    val endTime = System.nanoTime()
+    val copyToGpuTime = endTime - startTime
+    context.pciTransferTime += copyToGpuTime
+    context.pciTransferBytes += length
   }
 
   protected def hostToDeviceCopy(ct: JavaType)(src: Pointer, dest: cl_mem,
     elementCount: Long,
     offset: Int = 0): Unit = {
     val length = elementCount * baseSize(ct)
+    val startTime = System.nanoTime()
     clEnqueueWriteBuffer(context.getOpenCLQueue, dest, CL_TRUE, offset, length, src, 0, null, null)
+    val endTime = System.nanoTime()
+    val copyToGpuTime = endTime - startTime
+    context.pciTransferTime += copyToGpuTime
+    context.pciTransferBytes += length
   }
 
   protected def deviceToHostCopy[V: TypeTag](src: cl_mem, dest: Pointer, elementCount: Long, offset: Long = 0): Unit = {
     val length = elementCount * baseSize[V]
     val offsetInBytes = offset * baseSize[V]
+    val startTime = System.nanoTime()
     clEnqueueReadBuffer(context.getOpenCLQueue, src, CL_TRUE, offsetInBytes, length, dest, 0, null,
       null)
+    val endTime = System.nanoTime()
+    val copyFromGpuTime = endTime - startTime
+    context.pciTransferTime += copyFromGpuTime
+    context.pciTransferBytes += length
   }
 
   protected def deviceToHostCopy[V: TypeTag](src: cl_mem, dest: Buffer, elementCount: Long, offset: Long): Unit = {
     val length = elementCount * baseSize[V]
     val offsetInBytes = offset * baseSize[V]
     val destPointer = Pointer.to(dest)
+    val startTime = System.nanoTime()
     clEnqueueReadBuffer(context.getOpenCLQueue, src, CL_TRUE, offsetInBytes, length, destPointer, 0,
       null, null)
+    val endTime = System.nanoTime()
+    val copyFromGpuTime = endTime - startTime
+    context.pciTransferTime += copyFromGpuTime
+    context.pciTransferBytes += length
   }
 
   protected def deviceToDeviceCopy[V: TypeTag](src: cl_mem, dest: cl_mem, elementCount: Long,
