@@ -179,17 +179,6 @@ private[spark] object Task {
 }
 
 class OpenCLContext extends Serializable{
-  def getOpenCLContext: cl_context = {
-    context
-  }
-
-  def getOpenCLQueue: cl_command_queue = {
-    queue
-  }
-
-  def getOpenCLProgram: cl_program = {
-    return program
-  }
 
   /**
    * This method should be called after the task is sent to workers because all the fields in this
