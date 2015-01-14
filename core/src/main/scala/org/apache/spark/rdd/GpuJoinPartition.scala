@@ -233,9 +233,4 @@ U: TypeTag]
 
   }
 
-  override def fill(iter: Iterator[T]): Unit = {
-    super.fill(iter)
-    val resultSize = join
-  }
-
 }
