@@ -242,6 +242,12 @@ class OpenCLContext extends Serializable{
     program = clCreateProgramWithSource(context, 1, Array[String](programSource), null, null)
     clBuildProgram(program, 0, null, null, null, null)
   }
+  
+  def close(): Unit = {
+    clReleaseProgram(program)
+    clReleaseCommandQueue(queue)
+    clReleaseContext(context)
+  }
 
 
   @transient var context: cl_context = null
