@@ -42,10 +42,6 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
     openCLContext.initOpenCL("/org/apache/spark/gpu/kernel.cl")
   }
 
-  override def afterAll(): Unit = {
-    // maybe release resources
-  }
-
   test("kernel.genScanFilter_init_int_eq test") {
     val TEST_DATA_SIZE = 3 + (1 << 10) // TODO larger data sizes may saturate java heap
 

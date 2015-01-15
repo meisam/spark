@@ -30,10 +30,6 @@ import scala.language.existentials
 class GpuRDDSuit extends FunSuite with SharedSparkContext {
 
 
-  override def afterAll(): Unit = {
-    // maybe release resources
-  }
-
   test("org.apache.spark.rdd.GpuRDD 1 partition") {
     val PARTITIONS_COUNT = 1
     val TEST_DATA_SIZE = 3 + (1 << 4)
