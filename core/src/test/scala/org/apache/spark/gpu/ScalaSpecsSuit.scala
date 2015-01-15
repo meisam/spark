@@ -34,10 +34,6 @@ import org.apache.spark.rdd.MathOperationType
  */
 class ScalaSpecsSuit extends FunSuite with SharedSparkContext {
 
-  override def afterAll(): Unit = {
-    // maybe release resources
-  }
-
   test("String hash") {
     def stringHash(s: String): Int = {
 
