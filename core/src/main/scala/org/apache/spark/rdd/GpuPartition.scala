@@ -628,7 +628,12 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, val capacity: 
   protected def hostToDeviceCopy[V: TypeTag](src: Pointer, dest: cl_mem, elementCount: Long,
     offset: Int = 0): Unit = {
     val length = elementCount * baseSize[V]
+    val startTime = System.nanoTime()
     clEnqueueWriteBuffer(context.queue, dest, CL_TRUE, offset, length, src, 0, null, null)
+    val endTime = System.nanoTime()
+    val copyToGpuTime = endTime - startTime
+    context.pciTransferTime += copyToGpuTime
+    context.pciTransferBytes += length
   }
 
   protected def hostToDeviceCopy[V: TypeTag](src: Buffer, dest: cl_mem, elementCount: Long,
@@ -637,18 +642,6 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, val capacity: 
     val scrBuffer = Pointer.to(src)
     val startTime = System.nanoTime()
     clEnqueueWriteBuffer(context.queue, dest, CL_TRUE, offset, length, scrBuffer, 0, null, null)
-    val endTime = System.nanoTime()
-    val copyToGpuTime = endTime - startTime
-    context.pciTransferTime += copyToGpuTime
-    context.pciTransferBytes += length
-  }
-
-  protected def hostToDeviceCopy(ct: JavaType)(src: Pointer, dest: cl_mem,
-    elementCount: Long,
-    offset: Int = 0): Unit = {
-    val length = elementCount * baseSize(ct)
-    val startTime = System.nanoTime()
-    clEnqueueWriteBuffer(context.queue, dest, CL_TRUE, offset, length, src, 0, null, null)
     val endTime = System.nanoTime()
     val copyToGpuTime = endTime - startTime
     context.pciTransferTime += copyToGpuTime
