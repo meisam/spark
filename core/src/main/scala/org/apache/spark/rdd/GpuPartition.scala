@@ -37,31 +37,31 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, val capacity: 
 
   var size = 0
 
-  val byteData = Array.fill[ByteBuffer](columnTypes.count(_ == TypeTag.Byte.tpe)) {
+  val byteData = Array.fill[ByteBuffer](columnTypes.count(_ =:= TypeTag.Byte.tpe)) {
     ByteBuffer.wrap(Array.ofDim[Byte](capacity))
   }
-  val shortData = Array.fill[ShortBuffer](columnTypes.count(_ == TypeTag.Short.tpe)) {
+  val shortData = Array.fill[ShortBuffer](columnTypes.count(_ =:= TypeTag.Short.tpe)) {
     ShortBuffer.wrap(Array.ofDim[Short](capacity))
   }
-  val intData = Array.fill[IntBuffer](columnTypes.count(_ == TypeTag.Int.tpe)) {
+  val intData = Array.fill[IntBuffer](columnTypes.count(_ =:= TypeTag.Int.tpe)) {
     IntBuffer.wrap(Array.ofDim[Int](capacity))
   }
-  val longData = Array.fill[LongBuffer](columnTypes.count(_ == TypeTag.Long.tpe)) {
+  val longData = Array.fill[LongBuffer](columnTypes.count(_ =:= TypeTag.Long.tpe)) {
     LongBuffer.wrap(Array.ofDim[Long](capacity))
   }
-  val floatData = Array.fill[FloatBuffer](columnTypes.count(_ == TypeTag.Float.tpe)) {
+  val floatData = Array.fill[FloatBuffer](columnTypes.count(_ =:= TypeTag.Float.tpe)) {
     FloatBuffer.wrap(Array.ofDim[Float](capacity))
   }
-  val doubleData = Array.fill[DoubleBuffer](columnTypes.count(_ == TypeTag.Double.tpe)) {
+  val doubleData = Array.fill[DoubleBuffer](columnTypes.count(_ =:= TypeTag.Double.tpe)) {
     DoubleBuffer.wrap(Array.ofDim[Double](capacity))
   }
-  val booleanData = Array.fill[ByteBuffer](columnTypes.count(_ == TypeTag.Boolean.tpe)) {
+  val booleanData = Array.fill[ByteBuffer](columnTypes.count(_ =:= TypeTag.Boolean.tpe)) {
     ByteBuffer.wrap(Array.ofDim[Byte](capacity))
   }
-  val charData = Array.fill[CharBuffer](columnTypes.count(_ == TypeTag.Char.tpe)) {
+  val charData = Array.fill[CharBuffer](columnTypes.count(_ =:= TypeTag.Char.tpe)) {
     CharBuffer.wrap(Array.ofDim[Char](capacity))
   }
-  val stringData = Array.fill[CharBuffer](columnTypes.count(_ == ColumnarTypes.StringTypeTag.tpe)) {
+  val stringData = Array.fill[CharBuffer](columnTypes.count(_ =:= ColumnarTypes.StringTypeTag.tpe)) {
     CharBuffer.wrap(Array.ofDim[Char](capacity * MAX_STRING_SIZE))
   }
 
@@ -105,39 +105,39 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, val capacity: 
         val remaining = restData.remaining()
         assert(remaining == blockSize, { f"remaining != blockSize ($remaining != $blockSize)" })
 
-        if (colType == TypeTag.Byte.tpe) {
+        if (colType =:= TypeTag.Byte.tpe) {
           val convertBuffer = new Array[Byte](totalTupleNum.toInt)
           restData.get(convertBuffer)
           byteData(toTypeAwareColumnIndex(colIndex)) = ByteBuffer.wrap(convertBuffer)
-        } else if (colType == TypeTag.Short.tpe) {
+        } else if (colType =:= TypeTag.Short.tpe) {
           val convertBuffer = new Array[Short](totalTupleNum.toInt)
           restData.asShortBuffer().get(convertBuffer)
           shortData(toTypeAwareColumnIndex(colIndex)) = ShortBuffer.wrap(convertBuffer)
-        } else if (colType == TypeTag.Int.tpe) {
+        } else if (colType =:= TypeTag.Int.tpe) {
           val convertBuffer = new Array[Int](totalTupleNum.toInt)
           restData.asIntBuffer().get(convertBuffer)
           intData(toTypeAwareColumnIndex(colIndex)) = IntBuffer.wrap(convertBuffer)
-        } else if (colType == TypeTag.Long.tpe) {
+        } else if (colType =:= TypeTag.Long.tpe) {
           val convertBuffer = new Array[Long](totalTupleNum.toInt)
           restData.asLongBuffer().get(convertBuffer)
           longData(toTypeAwareColumnIndex(colIndex)) = LongBuffer.wrap(convertBuffer)
-        } else if (colType == TypeTag.Float.tpe) {
+        } else if (colType =:= TypeTag.Float.tpe) {
           val convertBuffer = new Array[Float](totalTupleNum.toInt)
           restData.asFloatBuffer().get(convertBuffer)
           floatData(toTypeAwareColumnIndex(colIndex)) = FloatBuffer.wrap(convertBuffer)
-        } else if (colType == TypeTag.Double.tpe) {
+        } else if (colType =:= TypeTag.Double.tpe) {
           val convertBuffer = new Array[Double](totalTupleNum.toInt)
           restData.asDoubleBuffer().get(convertBuffer)
           doubleData(toTypeAwareColumnIndex(colIndex)) = DoubleBuffer.wrap(convertBuffer)
-        } else if (colType == TypeTag.Boolean.tpe) {
+        } else if (colType =:= TypeTag.Boolean.tpe) {
           val convertBuffer = new Array[Byte](totalTupleNum.toInt)
           restData.get(convertBuffer)
           booleanData(toTypeAwareColumnIndex(colIndex)) = ByteBuffer.wrap(convertBuffer)
-        } else if (colType == TypeTag.Char.tpe) {
+        } else if (colType =:= TypeTag.Char.tpe) {
           val convertBuffer = new Array[Char](totalTupleNum.toInt)
           restData.asCharBuffer().get(convertBuffer)
           charData(toTypeAwareColumnIndex(colIndex)) = CharBuffer.wrap(convertBuffer)
-        } else if (colType == ColumnarTypes.StringTypeTag) {
+        } else if (colType =:= ColumnarTypes.StringTypeTag.tpe) {
           val convertBuffer = new Array[Char](totalTupleNum.toInt)
           restData.asCharBuffer().get(convertBuffer)
           stringData(toTypeAwareColumnIndex(colIndex)) = CharBuffer.wrap(convertBuffer)
@@ -165,23 +165,23 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, val capacity: 
         size = rowIndex + 1
         v.productIterator.zipWithIndex.foreach {
           case (p, colIndex) =>
-            if (columnTypes(colIndex) == TypeTag.Byte.tpe) {
+            if (columnTypes(colIndex) =:= TypeTag.Byte.tpe) {
               byteData(toTypeAwareColumnIndex(colIndex)).put(rowIndex, p.asInstanceOf[Byte])
-            } else if (columnTypes(colIndex) == TypeTag.Short.tpe) {
+            } else if (columnTypes(colIndex) =:= TypeTag.Short.tpe) {
               shortData(toTypeAwareColumnIndex(colIndex)).put(rowIndex, p.asInstanceOf[Short])
-            } else if (columnTypes(colIndex) == TypeTag.Int.tpe) {
+            } else if (columnTypes(colIndex) =:= TypeTag.Int.tpe) {
               intData(toTypeAwareColumnIndex(colIndex)).put(rowIndex, p.asInstanceOf[Int])
-            } else if (columnTypes(colIndex) == TypeTag.Long.tpe) {
+            } else if (columnTypes(colIndex) =:= TypeTag.Long.tpe) {
               longData(toTypeAwareColumnIndex(colIndex)).put(rowIndex, p.asInstanceOf[Long])
-            } else if (columnTypes(colIndex) == TypeTag.Float.tpe) {
+            } else if (columnTypes(colIndex) =:= TypeTag.Float.tpe) {
               floatData(toTypeAwareColumnIndex(colIndex)).put(rowIndex, p.asInstanceOf[Float])
-            } else if (columnTypes(colIndex) == TypeTag.Double.tpe) {
+            } else if (columnTypes(colIndex) =:= TypeTag.Double.tpe) {
               doubleData(toTypeAwareColumnIndex(colIndex)).put(rowIndex, p.asInstanceOf[Double])
-            } else if (columnTypes(colIndex) == TypeTag.Boolean.tpe) {
+            } else if (columnTypes(colIndex) =:= TypeTag.Boolean.tpe) {
               booleanData(toTypeAwareColumnIndex(colIndex)).put(rowIndex, if (p.asInstanceOf[Boolean]) 1 else 0)
-            } else if (columnTypes(colIndex) == TypeTag.Char.tpe) {
+            } else if (columnTypes(colIndex) =:= TypeTag.Char.tpe) {
               charData(toTypeAwareColumnIndex(colIndex)).put(rowIndex, p.asInstanceOf[Char])
-            } else if (columnTypes(colIndex) == ColumnarTypes.StringTypeTag.tpe) {
+            } else if (columnTypes(colIndex) =:= ColumnarTypes.StringTypeTag.tpe) {
               val str = p.toString
               str.getChars(0, Math.min(MAX_STRING_SIZE, str.length),
                 stringData(toTypeAwareColumnIndex(colIndex)).array, rowIndex * MAX_STRING_SIZE)
@@ -217,23 +217,23 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, val capacity: 
 
     val values = columnTypes.zipWithIndex.map({
       case (colType, colIndex) =>
-        if (colType == TypeTag.Byte.tpe) {
+        if (colType =:= TypeTag.Byte.tpe) {
           byteData(toTypeAwareColumnIndex(colIndex)).get(rowIndex)
-        } else if (colType == TypeTag.Short.tpe) {
+        } else if (colType =:= TypeTag.Short.tpe) {
           shortData(toTypeAwareColumnIndex(colIndex)).get(rowIndex)
-        } else if (colType == TypeTag.Int.tpe) {
+        } else if (colType =:= TypeTag.Int.tpe) {
           intData(toTypeAwareColumnIndex(colIndex)).get(rowIndex)
-        } else if (colType == TypeTag.Long.tpe) {
+        } else if (colType =:= TypeTag.Long.tpe) {
           longData(toTypeAwareColumnIndex(colIndex)).get(rowIndex)
-        } else if (colType == TypeTag.Float.tpe) {
+        } else if (colType =:= TypeTag.Float.tpe) {
           floatData(toTypeAwareColumnIndex(colIndex)).get(rowIndex)
-        } else if (colType == TypeTag.Double.tpe) {
+        } else if (colType =:= TypeTag.Double.tpe) {
           doubleData(toTypeAwareColumnIndex(colIndex)).get(rowIndex)
-        } else if (colType == TypeTag.Boolean.tpe) {
+        } else if (colType =:= TypeTag.Boolean.tpe) {
           booleanData(toTypeAwareColumnIndex(colIndex)).get(rowIndex) != 0
-        } else if (colType == TypeTag.Char.tpe) {
+        } else if (colType =:= TypeTag.Char.tpe) {
           charData(toTypeAwareColumnIndex(colIndex)).get(rowIndex)
-        } else if (colType == ColumnarTypes.StringTypeTag) {
+        } else if (colType =:= ColumnarTypes.StringTypeTag.tpe) {
           getStringData(toTypeAwareColumnIndex(colIndex), rowIndex)
         } else {
           throw new NotImplementedError("Unknown type %s".format(colType))
