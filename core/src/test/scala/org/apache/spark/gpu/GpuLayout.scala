@@ -21,8 +21,8 @@ import org.apache.spark.SharedSparkContext
 import org.apache.spark.deploy.worker.WorkerArguments
 import org.apache.spark.rdd.GpuPartitionIterator
 import org.scalatest.FunSuite
-
 import scala.language.existentials
+import org.apache.spark.SparkConf
 
 /**
  *
@@ -50,7 +50,8 @@ class GpuLayout extends FunSuite with SharedSparkContext {
   }
 
   test("org.apache.spark.deploy.worker.WorkerArguments.inferDefaultGpu test") {
-    val arguments = new WorkerArguments(Array("spark://localhost:7077"))
+    val conf = new SparkConf(true)
+    val arguments = new WorkerArguments(Array("spark://localhost:7077"), conf)
     assert(arguments.inferDefaultGpu() === 1, "There is one GPU on this device")
   }
 
