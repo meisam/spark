@@ -1,6 +1,7 @@
 typedef unsigned char boolean;
 
 #define HSIZE 131072
+#define MAX_SRING_SIZE (1 << 7)
 
 // The order of these definitions should be the same as the order in the counterpart scala files
 // The scala definitions are in GpuPartiotion
@@ -62,7 +63,25 @@ __kernel void genScanFilter_##assign_name##_##column_type##_##operation_name    
                 con = col[i] operation where;                                                \
                 filter[i] assign_operation con;                                              \
         }                                                                                    \
-}
+}                                                                                            \
+                                                                                             \
+
+#define genScanFilter_string(assign_name,assign_operation, operation_name, operation)        \
+__kernel void genScanFilter_##assign_name##_string_##operation_name                          \
+(__global char *col, long tupleNum, __global char *where, __global int * filter)             \
+{                                                                                            \
+    size_t stride = get_global_size(0);                                                      \
+    size_t tid = get_global_id(0);                                                           \
+        int con = 1;                                                                         \
+                                                                                             \
+        for(size_t i = tid; i<tupleNum;i+=stride){                                           \
+                for(int k = 0; k < MAX_SRING_SIZE; k++) {                                    \
+                    con = con && col[i * MAX_SRING_SIZE + k] operation where[k];             \
+                }                                                                            \
+                filter[i] assign_operation con;                                              \
+        }                                                                                    \
+}                                                                                            \
+                                                                                             \
 
 #define declare_genScanFilter(column_type, operation_name, operation)                        \
 genScanFilter(init, =, column_type, operation_name, operation)                               \
@@ -77,12 +96,27 @@ declare_genScanFilter(column_type, geq, >=)                          \
 declare_genScanFilter(column_type, eql, ==)                          \
 declare_genScanFilter(column_type, neq, !=)                          \
 
+#define declare_genScan_string_Filter(operation_name, operation)                       \
+genScanFilter_string(init, =, operation_name, operation)                               \
+genScanFilter_string(and, &=, operation_name, operation)                               \
+genScanFilter_string(or, |=, operation_name, operation)                                \
+
+#define define_gen_scan_string_kernels                          \
+declare_genScan_string_Filter(lth, < )                          \
+declare_genScan_string_Filter(leq, <=)                          \
+declare_genScan_string_Filter(gth, > )                          \
+declare_genScan_string_Filter(geq, >=)                          \
+declare_genScan_string_Filter(eql, ==)                          \
+declare_genScan_string_Filter(neq, !=)                          \
+
 define_gen_scan_kernels(int)
 define_gen_scan_kernels(long)
 define_gen_scan_kernels(float)
 define_gen_scan_kernels(double)
 define_gen_scan_kernels(boolean)
 define_gen_scan_kernels(char)
+// strings need special treatment
+define_gen_scan_string_kernels
 
 // Sets all the values on the given buffer to zero
 #define declare_cl_memset(buffer_type)                                      \
