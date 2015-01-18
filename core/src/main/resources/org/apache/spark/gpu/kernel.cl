@@ -1,7 +1,7 @@
 typedef unsigned char boolean;
 
 #define HSIZE 131072
-#define MAX_SRING_SIZE (1 << 7)
+#define MAX_SRING_SIZE ( (1 << 7) * 2)
 
 // The order of these definitions should be the same as the order in the counterpart scala files
 // The scala definitions are in GpuPartiotion
