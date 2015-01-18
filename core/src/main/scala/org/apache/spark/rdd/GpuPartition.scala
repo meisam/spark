@@ -563,7 +563,7 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, val capacity: 
       case TypeTag.Float => Sizeof.cl_float
       case TypeTag.Double => Sizeof.cl_double
       case TypeTag.Boolean => Sizeof.cl_char
-      case ColumnarTypes.StringTypeTag => Sizeof.cl_char * MAX_STRING_SIZE
+      case ColumnarTypes.StringTypeTag => Sizeof.cl_char * MAX_STRING_SIZE * 2
       case _ => throw new NotImplementedError("Unknown type %s".format(implicitly[TypeTag[V]]))
     }
   }
