@@ -180,7 +180,7 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
 
     val parentPartition = new GpuPartition[(Int, String)](openCLContext, DEFAULT_CAPACITY)
     parentPartition.fill(testData.toIterator)
-
+    
     val gpuPartition = new GpuFilteredPartition[(Int, String), String](openCLContext, parentPartition,
       0, ComparisonOperation.==, crieterion, DEFAULT_CAPACITY)
     gpuPartition.filter()
@@ -191,8 +191,8 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
 
     expectedData.zipWithIndex.foreach {
       case ((intValue, strValue), index) =>
-        assert(gpuPartition.longData(0).get(index) === intValue, "values do not match")
-        assert((gpuPartition.booleanData(0).get(index) != 0) === strValue, "values do not match")
+        assert(gpuPartition.intData(0).get(index) === intValue, "values do not match")
+        assert(gpuPartition.getStringData(0,index).equals(strValue), "values do not match")
     }
   }
 }
