@@ -75,7 +75,7 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, val capacity: 
     columnTypes.zip(paths).zipWithIndex.foreach({
       case ((colType, path), colIndex) =>
 
-      val startDiskRedTime = System.nanoTime()
+        val startDiskReadTime = System.nanoTime()
 
         val columnData = ByteBuffer.wrap(Files.readAllBytes(new File(path).toPath()))
         columnData.order(ByteOrder.LITTLE_ENDIAN)
@@ -146,12 +146,12 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, val capacity: 
         }
 
         val endDiskReadTime = System.nanoTime()
-        
-        val diskReadTime = endDiskReadTime - startDiskRedTime
-        
+
+        val diskReadTime = endDiskReadTime - startDiskReadTime
+
         this.size = totalTupleNum.toInt
         inferBestWorkGroupSize
-        
+
         context.diskReadTime += diskReadTime
 
     })
