@@ -34,22 +34,6 @@ import org.apache.spark.rdd.MathOperationType
  */
 class ScalaSpecsSuit extends FunSuite with SharedSparkContext {
 
-  test("String hash") {
-    def stringHash(s: String): Int = {
-
-      var hash = 0
-
-      s.foreach { c =>
-        hash = ((hash << 5) + hash) ^ c;
-      }
-
-      hash
-    }
-
-    assert(stringHash("111") === 53841)
-    assert(stringHash("112") === 1)
-  }
-
   test("scanLeft test") {
     val testData = Array(1, 5, -4, 0, 1)
 
