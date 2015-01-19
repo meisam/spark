@@ -107,38 +107,6 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
     }
   }
 
-  test("kernel.countScanNum test") {
-    // countScanNum does not do what I thought.
-    val TEST_DATA_SIZE = 3 + (1 << 10)
-
-    // the test sequence is     (0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,...)
-    // the prefix sum should be (0,0,1,1,1,2,2,2,3,3,3,4,4,4,5,5,5,6,6,6,...)
-    val testData: Array[Int] = (0 until TEST_DATA_SIZE).map(_ % 3).map(_ % 2).toArray
-    val tupleNum: Long = testData.length
-    val globalSize = tupleNum / 4
-    val localSize = Math.min(globalSize, 256)
-
-    val gpuFilter = clCreateBuffer(openCLContext.context, CL_MEM_READ_WRITE, Sizeof.cl_int * tupleNum, null, null)
-    clEnqueueWriteBuffer(openCLContext.queue, gpuFilter, CL_TRUE, 0, Sizeof.cl_int * tupleNum, Pointer.to(testData), 0, null, null)
-    val gpuCount = clCreateBuffer(openCLContext.context, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
-    val kernel = clCreateKernel(openCLContext.program, "countScanNum", null)
-    clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(gpuFilter))
-    clSetKernelArg(kernel, 1, Sizeof.cl_long, Pointer.to(Array[Long](tupleNum)))
-    clSetKernelArg(kernel, 2, Sizeof.cl_mem, Pointer.to(gpuCount))
-    val global_work_size = Array[Long](globalSize)
-    val local_work_size = Array[Long](localSize)
-    clEnqueueNDRangeKernel(openCLContext.queue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
-    val resultData = new Array[Int](tupleNum.toInt)
-    clEnqueueReadBuffer(openCLContext.queue, gpuCount, CL_TRUE, 0, Sizeof.cl_int * globalSize, Pointer.to(resultData), 0, null, null)
-
-    val expectedResults = (1 to TEST_DATA_SIZE).map(x => (1 + x) / 3)
-
-    expectedResults.zip(resultData).zipWithIndex.foreach {
-      case ((expected, actual), i) =>
-        assert(expected === actual, "The %sths expected %,12d <> %,12d actual".format(i, expected, actual))
-    }
-  }
-
   test("org.apache.spark.rdd.GpuRDD.filter test") {
     // This crashes  the OpenCL device
     val testData: IndexedSeq[(Int, Int)] = (0 to 10).reverse.zipWithIndex
