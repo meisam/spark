@@ -138,7 +138,7 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, val capacity: 
           restData.asCharBuffer().get(convertBuffer)
           charData(toTypeAwareColumnIndex(colIndex)) = CharBuffer.wrap(convertBuffer)
         } else if (colType =:= ColumnarTypes.StringTypeTag.tpe) {
-          val convertBuffer = new Array[Char](totalTupleNum.toInt)
+          val convertBuffer = new Array[Char](totalTupleNum.toInt * MAX_STRING_SIZE)
           restData.asCharBuffer().get(convertBuffer)
           stringData(toTypeAwareColumnIndex(colIndex)) = CharBuffer.wrap(convertBuffer)
         } else {
@@ -558,13 +558,13 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, val capacity: 
     implicitly[TypeTag[V]] match {
       case TypeTag.Byte => Sizeof.cl_char
       case TypeTag.Short => Sizeof.cl_short
-      case TypeTag.Char => Sizeof.cl_char
+      case TypeTag.Char => Sizeof.cl_char2
       case TypeTag.Int => Sizeof.cl_int
       case TypeTag.Long => Sizeof.cl_long
       case TypeTag.Float => Sizeof.cl_float
       case TypeTag.Double => Sizeof.cl_double
       case TypeTag.Boolean => Sizeof.cl_char
-      case ColumnarTypes.StringTypeTag => Sizeof.cl_char * MAX_STRING_SIZE * 2
+      case ColumnarTypes.StringTypeTag => Sizeof.cl_char2 * MAX_STRING_SIZE
       case _ => throw new NotImplementedError("Unknown type %s".format(implicitly[TypeTag[V]]))
     }
   }
@@ -682,10 +682,6 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, val capacity: 
   }
 
   def release {
-    clReleaseMemObject(gpuPsum)
-    clReleaseMemObject(gpuCount)
-    clReleaseMemObject(gpuCol)
-    clReleaseMemObject(gpuFilter)
   }
 
   def debugGpuBuffer[V: TypeTag: ClassTag](buffer: cl_mem, size: Int, msg: String, quiet: Boolean = true) {
