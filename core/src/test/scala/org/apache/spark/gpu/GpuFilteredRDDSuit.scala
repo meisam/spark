@@ -108,18 +108,22 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
   }
 
   test("org.apache.spark.rdd.GpuRDD.filter test") {
-    // This crashes  the OpenCL device
-    val testData: IndexedSeq[(Int, Int)] = (0 to 10).reverse.zipWithIndex
+    val PARENT_SIZE = 10
+    val testData: IndexedSeq[(Int, Int)] = (1 to PARENT_SIZE).reverse.zipWithIndex
 
     val parentPartition = new GpuPartition[(Int, Int)](openCLContext, DEFAULT_CAPACITY)
     parentPartition.fill(testData.toIterator)
 
+    assert(parentPartition.size === PARENT_SIZE, "Size of the parent parition is incorrect")
+
+    val COMPARISSION_VALUE = 3
+
     val filteredPartition = new GpuFilteredPartition[(Int, Int), Int](openCLContext, parentPartition,
-      1, ComparisonOperation.<, 1, DEFAULT_CAPACITY)
+      1, ComparisonOperation.<, COMPARISSION_VALUE, DEFAULT_CAPACITY)
     filteredPartition.filter()
 
     (0 until filteredPartition.capacity).foreach(i =>
-      if (i <= 10) {
+      if (i < COMPARISSION_VALUE) {
         assert(filteredPartition.intData(0).get(i) === (10 - i), "values do not match")
         assert(filteredPartition.intData(1).get(i) === i, "indexes  do not match")
       } else {
