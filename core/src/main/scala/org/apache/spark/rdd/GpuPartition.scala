@@ -283,7 +283,7 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, val capacity: 
     return 1 << (exp - 1)
   }
 
-  def preallocBlockSums(maxNumElements: Int) {
+  def preallocBlockSums(maxNumElements: Int): Array[cl_mem] = {
     g_numEltsAllocated = maxNumElements
     val blockSize: Int = BLOCK_SIZE
     var numElts: Int = maxNumElements
@@ -296,7 +296,7 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, val capacity: 
       }
       numElts = numBlocks
     } while (numElts > 1)
-    g_scanBlockSums = new Array[cl_mem](level)
+    val g_scanBlockSums = new Array[cl_mem](level)
     g_numLevelsAllocated = level
     numElts = maxNumElements
     level = 0
@@ -309,10 +309,11 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, val capacity: 
       }
       numElts = numBlocks
     } while (numElts > 1)
+    g_scanBlockSums
   }
 
   def prescanArrayRecursive(outArray: cl_mem, inArray: cl_mem, numElements: Int, level: Int,
-    same: Int) {
+    same: Int, g_scanBlockSums: Array[cl_mem]) {
 
     val blockSize: Int = BLOCK_SIZE
     val waitEvents = Array(new cl_event)
@@ -387,7 +388,7 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, val capacity: 
         local_work_size = Array[Long](localSize)
         clEnqueueNDRangeKernel(context.queue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
       }
-      prescanArrayRecursive(g_scanBlockSums(level), g_scanBlockSums(level), numBlocks, level + 1, 1)
+      prescanArrayRecursive(g_scanBlockSums(level), g_scanBlockSums(level), numBlocks, level + 1, 1, g_scanBlockSums)
       kernel = clCreateKernel(context.program, "uniformAdd", null)
       clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(outArray))
       clSetKernelArg(kernel, 1, Sizeof.cl_mem, Pointer.to(g_scanBlockSums(level)))
@@ -467,20 +468,20 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, val capacity: 
     clFinish(context.queue)
   }
 
-  def deallocBlockSums {
+  def deallocBlockSums(g_scanBlockSums: Array[cl_mem]) {
     g_scanBlockSums.foreach(clReleaseMemObject(_))
     g_numEltsAllocated = 0
     g_numLevelsAllocated = 0
   }
 
-  def prescanArray(outArray: cl_mem, inArray: cl_mem, numElements: Int) {
-    prescanArrayRecursive(outArray, inArray, numElements, 0, 0)
+  def prescanArray(outArray: cl_mem, inArray: cl_mem, numElements: Int, g_scanBlockSums: Array[cl_mem]) {
+    prescanArrayRecursive(outArray, inArray, numElements, 0, 0, g_scanBlockSums)
   }
 
   def scanImpl(d_input: cl_mem, rLen: Int, d_output: cl_mem) {
-    preallocBlockSums(rLen)
-    prescanArray(d_output, d_input, rLen)
-    deallocBlockSums
+    val g_scanBlockSums = preallocBlockSums(rLen)
+    prescanArray(d_output, d_input, rLen, g_scanBlockSums)
+    deallocBlockSums(g_scanBlockSums)
   }
 
   def toArray[X: TypeTag](value: X): Array[X] = {
@@ -702,12 +703,6 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, val capacity: 
 
   var g_numEltsAllocated: Int = 0
   var g_numLevelsAllocated: Int = 0
-
-  @transient var g_scanBlockSums: Array[cl_mem] = null
-  @transient var gpuCol: cl_mem = null
-  @transient var gpuFilter: cl_mem = null
-  @transient var gpuCount: cl_mem = null
-  @transient var gpuPsum: cl_mem = null
 
   var globalSize = 0
 
