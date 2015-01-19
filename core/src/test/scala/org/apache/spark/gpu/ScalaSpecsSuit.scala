@@ -85,7 +85,12 @@ class ScalaSpecsSuit extends FunSuite with SharedSparkContext {
 
     val bytes = byteBuffer.array()
 
-    println("bytes = %s".format(bytes.mkString(",")))
+    val expectedData = Array(4, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0).map(_.toByte)
+
+    expectedData.zip(bytes).foreach {
+      case (expected, actual) => assert(expected === actual, "Expected value does not match the actual values")
+      case _ => fail("This should not happen")
+    }
   }
 
   test("Enumerations") {
