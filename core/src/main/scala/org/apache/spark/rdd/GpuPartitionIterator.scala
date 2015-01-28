@@ -10,13 +10,6 @@ class GpuPartitionIterator[T <: Product : TypeTag]
 (itr: Iterator[T], chunkCapacity: Int = 1 << 20)
   extends Serializable with Iterator[T] {
 
-
-  val columnTypes = typeOf[T] match {
-    case ru.TypeRef(tpe, sym, typeArgs) => typeArgs
-    case _ => throw new NotImplementedError("Unknown type %s".format(typeOf[T]))
-  }
-
-
   override def hasNext: Boolean = {
     currentPosition < currentPartition.size || itr.hasNext
   }
