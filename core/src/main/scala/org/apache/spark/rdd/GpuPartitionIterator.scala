@@ -18,7 +18,7 @@ class GpuPartitionIterator[T <: Product : TypeTag]
 
 
   override def hasNext: Boolean = {
-    currentPosition < currentChunk.size || itr.hasNext
+    currentPosition < currentPartition.size || itr.hasNext
   }
 
   protected var currentPosition: Int = -1
@@ -27,18 +27,18 @@ class GpuPartitionIterator[T <: Product : TypeTag]
 
   context.initOpenCL("/org/apache/spark/gpu/kernel.cl")
 
-  protected val currentChunk: GpuPartition[T] = new GpuPartition[T](context, chunkCapacity)
+  protected val currentPartition: GpuPartition[T] = new GpuPartition[T](context, chunkCapacity)
 
   override def next(): T = {
     guaranteeFill
-    val t: T = currentChunk(currentPosition)
+    val t: T = currentPartition(currentPosition)
     currentPosition += 1
     t
   }
 
   def guaranteeFill {
-    if (currentPosition >= currentChunk.size || currentPosition < 0) {
-      currentChunk.fill(itr)
+    if (currentPosition >= currentPartition.size || currentPosition < 0) {
+      currentPartition.fill(itr)
       currentPosition = 0
     }
   }
