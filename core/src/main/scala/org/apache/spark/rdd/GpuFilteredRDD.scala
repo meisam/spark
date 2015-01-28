@@ -11,7 +11,7 @@ import scala.reflect.runtime.{universe => ru}
  * Created by fathi on 10/1/14.
  */
 class GpuFilteredRDD[T <: Product: ClassTag : TypeTag, V: TypeTag]
-(prev: GpuRDD[T], colIndex: Int, operation: Int, value: V,
+(prev: GpuRDD[T], colIndex: Int, operation: ComparisonOperation.Value, value: V,
  chunkCapacity: Int)
   extends GpuRDD[T](prev, chunkCapacity) {
 
