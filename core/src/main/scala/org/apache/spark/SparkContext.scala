@@ -29,6 +29,7 @@ import scala.collection.JavaConversions._
 import scala.collection.generic.Growable
 import scala.collection.mutable.HashMap
 import scala.reflect.{ClassTag, classTag}
+import scala.reflect.runtime.universe.TypeTag
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.{ArrayWritable, BooleanWritable, BytesWritable, DoubleWritable, FloatWritable, IntWritable, LongWritable, NullWritable, Text, Writable}
@@ -514,6 +515,10 @@ class SparkContext(config: SparkConf) extends Logging {
    */
   def parallelize[T: ClassTag](seq: Seq[T], numSlices: Int = defaultParallelism): RDD[T] = {
     new ParallelCollectionRDD[T](this, seq, numSlices, Map[Int, Seq[String]]())
+  }
+
+  def toGpuRDD[TT<: Product: TypeTag: ClassTag]( data:Array[TT], chunkCapacity: Int = (1 << 20)) = {
+    new GpuRDD[TT](this, data, chunkCapacity)
   }
 
   /** Distribute a local Scala collection to form an RDD.

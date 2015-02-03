@@ -1387,9 +1387,4 @@ abstract class RDD[T: ClassTag](
     new JavaRDD(this)(elementClassTag)
   }
 
-  def toGpuRDD[TT<: Product: TypeTag: ClassTag](chunkCapacity: Int = (1 << 20)) = {
-    new GpuRDD[TT](this.sc, this.collect().asInstanceOf[Array[TT]].toIterator, chunkCapacity)
-
-  }
-
 }
