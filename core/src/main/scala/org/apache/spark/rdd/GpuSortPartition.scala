@@ -5,9 +5,9 @@ import org.apache.spark.scheduler.OpenCLContext
 import scala.reflect.runtime.universe.TypeTag
 
 class GpuSortPartition[T <: Product : TypeTag]
-(context: OpenCLContext, groupByColumnIndexes: Array[Int],
+(context: OpenCLContext, idx:Int, groupByColumnIndexes: Array[Int],
  aggregations: Array[AggregationOperation.Value], capacity: Int)
-  extends GpuPartition[T](context, capacity) {
+  extends GpuPartition[T](context, idx, capacity) {
 
   def sort(): Unit = {
 
