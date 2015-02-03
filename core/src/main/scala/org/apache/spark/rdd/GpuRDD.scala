@@ -18,29 +18,89 @@
 package org.apache.spark.rdd
 
 import org.apache.spark.scheduler.OpenCLContext
-import org.apache.spark.{Partition, TaskContext}
+import org.apache.spark.util.NextIterator
+import org.apache.spark.{InterruptibleIterator, Partition, SparkContext, TaskContext}
 
-import scala.reflect.ClassTag
-import scala.reflect.runtime.universe.TypeTag
+import scala.reflect.runtime.universe.{TypeTag, typeOf}
+import scala.reflect.runtime.{universe => ru}
+
+
+class GpuRDD[
+T <: Product : TypeTag
+](
+   @transient private var sc: SparkContext,
+   iterator: Iterator[T], capacity: Int)
+  extends RDD[GpuPartition[T]](sc, Nil) {
+  /**
+   * :: DeveloperApi ::
+   * Implemented by subclasses to compute a given partition.
+   */
+
+  val allPartitions = new Array[GpuPartition[T]](1) // asuming there is only one partition
+
+  override def compute(split: Partition, context: TaskContext): Iterator[GpuPartition[T]] = {
+    val partition = new GpuPartition[T](null, 0, capacity)
+    partition.fill(iterator)
+    allPartitions(0) = partition
+    allPartitions.toIterator
+  }
+
+/**
+   * Implemented by subclasses to return the set of partitions in this RDD. This method will only
+   * be called once, so it is safe to implement a time-consuming computation in it.
+   */
+  override protected def getPartitions: Array[Partition] = allPartitions
+    .asInstanceOf[Array[Partition]]
+}
 
 /**
  *
  */
-class GpuRDD[T <: Product : TypeTag : ClassTag](prev: RDD[GpuPartition[T]], chunkCapacity: Int)
-  extends RDD[GpuPartition[T]](prev) {
+class ColumnarFileGpuRDD[
+T <: Product : TypeTag
+](
+   @transient private var sc: SparkContext,
+   paths: Array[String], capacity: Int)
+  extends RDD[GpuPartition[T]](sc, Nil) {
+
+  val columnTypes = typeOf[T] match {
+    case ru.TypeRef(tpe, sym, typeArgs) => typeArgs
+    case _ => throw new NotImplementedError("Unknown type %s".format(typeOf[T]))
+  }
+
+  val rddId = sc.newRddId()
+
   /**
    * :: DeveloperApi ::
    * Implemented by subclasses to compute a given partition.
    */
   override def compute(split: Partition, context: TaskContext): Iterator[GpuPartition[T]] = {
-    new GpuPartitionIterator(firstParent[GpuPartition[T]].iterator(split, context), chunkCapacity)
+
+    val partitionIterator = new NextIterator[GpuPartition[T]] {
+
+      override def getNext() = {
+        //assuming there is only one partition
+        __partitions(0).fillFromFiles(paths)
+        finished = true
+        __partitions(0)
+      }
+
+      override def close(): Unit = {
+        // TODO Close open streams?
+      }
+
   }
+
+    new InterruptibleIterator[GpuPartition[T]](context, partitionIterator)
+  }
+
+  val __partitions = Array(new GpuPartition[T](openCLContext, 0, capacity))
 
   /**
    * Implemented by subclasses to return the set of partitions in this RDD. This method will only
    * be called once, so it is safe to implement a time-consuming computation in it.
    */
-  override def getPartitions: Array[Partition] = firstParent[GpuPartition[T]].partitions
+  override def getPartitions: Array[Partition] = __partitions.asInstanceOf[Array[Partition]]
 
   /**
    * This field should be @transient because we want to initialize it after we send the task over

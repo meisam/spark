@@ -1505,6 +1505,11 @@ class SparkContext(config: SparkConf) extends Logging {
   // context as having finished construction.
   // NOTE: this must be placed at the end of the SparkContext constructor.
   SparkContext.setActiveContext(this, allowMultipleContexts)
+
+  def fillFromFiles[T <: Product : TypeTag](paths: Array[String]): Unit = {
+    val defaultCapacity = 1000
+    new ColumnarFileGpuRDD[T](this, paths, defaultCapacity)
+}
 }
 
 /**
