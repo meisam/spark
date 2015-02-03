@@ -18,28 +18,36 @@
 package org.apache.spark.gpu
 
 import org.apache.spark.SharedSparkContext
-import org.apache.spark.rdd.{ ComparisonOperation, GpuFilteredPartition }
-import org.apache.spark.scheduler.OpenCLContext
-import org.jocl.CL._
-import org.jocl.{ Pointer, Sizeof }
+import org.apache.spark.rdd.{GpuPartition, ComparisonOperation, GpuFilteredRDD}
 import org.scalatest.FunSuite
-import scala.collection.immutable.IndexedSeq
+
 import scala.language.existentials
-import org.apache.spark.rdd.GpuPartition
 
 /**
  *
  */
 class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
 
-  val DEFAULT_CAPACITY = (1 << 20)
-  val openCLContext = new OpenCLContext
-  val POW_2_S: IndexedSeq[Long] = (0 to 100).map(_.toLong).map(1L << _)
+  val DEFAULT_CAPACITY = (1 << 10)
 
-  override def beforeAll() {
-    super.beforeAll()
-    //    setLogLevel(LogLevel.LOG_TRACE)
-    openCLContext.initOpenCL("/org/apache/spark/gpu/kernel.cl")
+  test("Filtered Partition (Int, Int)") {
+    val PARTITIONS_COUNT = 1
+    val TEST_DATA_SIZE = 3 + (1 << 4)
+    val testData = (0 until TEST_DATA_SIZE).reverse.zipWithIndex.toArray
+    val rdd = sc.parallelize(testData, PARTITIONS_COUNT)
+    val gpuRDD = rdd.toGpuRDD[(Int, Int)]()
+
+
+    val expectedDatea = testData.filter(_._1 == 10)
+    val filteredData = new GpuFilteredRDD(gpuRDD, 0, ComparisonOperation.==, 10: Int,
+      DEFAULT_CAPACITY)
+    val collectedData: GpuPartition[(Int, Int)] = filteredData.collect()(0)
+    assert(collectedData.size === expectedDatea.length)
+    expectedDatea.zipWithIndex.foreach {
+      case (v, i) =>
+        assert(v._1 === collectedData.intData(0).get(i))
+        assert(v._2 === collectedData.intData(1).get(i))
+    }
   }
 
 }
