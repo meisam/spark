@@ -7,11 +7,12 @@ import scala.reflect.ClassTag
 import scala.reflect.runtime.universe.{ TypeTag, typeOf }
 import org.jocl.cl_mem
 
-class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLContext, parent: GpuPartition[T], columnIndex: Int,
+class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLContext,
+                                                              idx:Int, columnIndex: Int,
   operation: ComparisonOperation.Value, value: U, capacity: Int)
-  extends GpuPartition[T](context, capacity) {
+  extends GpuPartition[T](context, idx, capacity) {
 
-  def filter() = {
+  def filter(parent: GpuPartition[T]) = {
 
     val tupleNum = parent.size
     val gpuCol = if (typeOf[U] =:= ColumnarTypes.StringTypeTag.tpe) {
@@ -86,31 +87,31 @@ class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLCon
     this.size = resultSize
 
     parent.byteData.zipWithIndex.filter(_._1 != null).foreach({
-      case (_, index) => project[Byte](index, this.size, gpuFilter, gpuPsum)
+      case (_, index) => project[Byte](index, this.size, gpuFilter, gpuPsum, parent)
     })
     parent.shortData.zipWithIndex.filter(_._1 != null).foreach({
-      case (_, index) => project[Short](index, this.size, gpuFilter, gpuPsum)
+      case (_, index) => project[Short](index, this.size, gpuFilter, gpuPsum, parent)
     })
     parent.intData.zipWithIndex.filter(_._1 != null).foreach({
-      case (_, index) => project[Int](index, this.size, gpuFilter, gpuPsum)
+      case (_, index) => project[Int](index, this.size, gpuFilter, gpuPsum, parent)
     })
     parent.longData.zipWithIndex.filter(_._1 != null).foreach({
-      case (_, index) => project[Long](index, this.size, gpuFilter, gpuPsum)
+      case (_, index) => project[Long](index, this.size, gpuFilter, gpuPsum, parent)
     })
     parent.floatData.zipWithIndex.filter(_._1 != null).foreach({
-      case (_, index) => project[Float](index, this.size, gpuFilter, gpuPsum)
+      case (_, index) => project[Float](index, this.size, gpuFilter, gpuPsum, parent)
     })
     parent.doubleData.zipWithIndex.filter(_._1 != null).foreach({
-      case (_, index) => project[Double](index, this.size, gpuFilter, gpuPsum)
+      case (_, index) => project[Double](index, this.size, gpuFilter, gpuPsum, parent)
     })
     parent.booleanData.zipWithIndex.filter(_._1 != null).foreach({
-      case (_, index) => project[Boolean](index, this.size, gpuFilter, gpuPsum)
+      case (_, index) => project[Boolean](index, this.size, gpuFilter, gpuPsum, parent)
     })
     parent.charData.zipWithIndex.filter(_._1 != null).foreach({
-      case (_, index) => project[Char](index, this.size, gpuFilter, gpuPsum)
+      case (_, index) => project[Char](index, this.size, gpuFilter, gpuPsum, parent)
     })
     parent.stringData.zipWithIndex.filter(_._1 != null).foreach({
-      case (_, index) => project[String](index, this.size, gpuFilter, gpuPsum)
+      case (_, index) => project[String](index, this.size, gpuFilter, gpuPsum, parent)
     })
 
     clReleaseMemObject(gpuFilter)
@@ -119,7 +120,7 @@ class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLCon
     release
   }
 
-  def project[V: TypeTag](columnIndex: Int, outSize: Int, gpuFilter: cl_mem, gpuPsum: cl_mem) {
+  def project[V: TypeTag](columnIndex: Int, outSize: Int, gpuFilter: cl_mem, gpuPsum: cl_mem, parent: GpuPartition[T]) {
     if (outSize == 0)
       return
     val colData = parent.getColumn[V](columnIndex)

@@ -17,6 +17,7 @@
 
 package org.apache.spark.rdd
 
+import org.apache.spark.scheduler.OpenCLContext
 import org.apache.spark.{Partition, TaskContext}
 
 import scala.reflect.ClassTag
@@ -25,19 +26,26 @@ import scala.reflect.runtime.universe.TypeTag
 /**
  *
  */
-class GpuRDD[T <: Product : TypeTag: ClassTag](prev: RDD[T], chunkCapacity: Int)
-  extends RDD[T](prev) {
+class GpuRDD[T <: Product : TypeTag : ClassTag](prev: RDD[GpuPartition[T]], chunkCapacity: Int)
+  extends RDD[GpuPartition[T]](prev) {
   /**
    * :: DeveloperApi ::
    * Implemented by subclasses to compute a given partition.
    */
-  override def compute(split: Partition, context: TaskContext): Iterator[T] = {
-    new GpuPartitionIterator(firstParent[T].iterator(split, context), chunkCapacity)
+  override def compute(split: Partition, context: TaskContext): Iterator[GpuPartition[T]] = {
+    new GpuPartitionIterator(firstParent[GpuPartition[T]].iterator(split, context), chunkCapacity)
   }
 
   /**
    * Implemented by subclasses to return the set of partitions in this RDD. This method will only
    * be called once, so it is safe to implement a time-consuming computation in it.
    */
-  override def getPartitions: Array[Partition] = firstParent[T].partitions
+  override def getPartitions: Array[Partition] = firstParent[GpuPartition[T]].partitions
+
+  /**
+   * This field should be @transient because we want to initialize it after we send the task over
+   * the network.
+   */
+  @transient var openCLContext: OpenCLContext = null
+
 }

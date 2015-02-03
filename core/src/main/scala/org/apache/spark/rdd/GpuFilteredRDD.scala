@@ -19,9 +19,9 @@ class GpuFilteredRDD[T <: Product: ClassTag : TypeTag, V: TypeTag]
 //
 //  implicit val xClassTag = ClassTag[T](mirror.runtimeClass(typeOf[T]))
 
-  override def compute(split: Partition, context: TaskContext): GpuFilteredPartitionIterator[T, V]
+  override def compute(split: Partition, context: TaskContext): Iterator[GpuPartition[T]]
   = {
-    new GpuFilteredPartitionIterator(firstParent[T].iterator(split, context),
+    new GpuFilteredPartitionIterator(firstParent[GpuPartition[T]].iterator(split, context),
       openCLContext, colIndex, operation, value, chunkCapacity)
   }
 }

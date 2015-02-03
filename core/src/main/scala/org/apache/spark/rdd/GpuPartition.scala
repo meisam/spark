@@ -1,6 +1,6 @@
 package org.apache.spark.rdd
 
-import org.apache.spark.Logging
+import org.apache.spark.{Partition, Logging}
 import org.apache.spark.scheduler.OpenCLContext
 import org.jocl.CL._
 import org.jocl._
@@ -21,8 +21,8 @@ import java.nio.file.Files
 import java.io.File
 import java.nio.ByteOrder
 
-class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, val capacity: Int)
-  extends Serializable with Logging {
+class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, idx: Int, val capacity: Int)
+  extends Partition with Serializable with Logging {
 
   type JavaType = JavaUniverse#Type
 
@@ -706,6 +706,12 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, val capacity: 
 
   var resCount = 0
 
+//  /**
+//   * Get the split's index within its parent RDD
+//   */
+//  override def hashCode(): Int = 41 * (41 + this.idxrddId) + idx
+
+  override val index: Int = idx
 }
 
 class ComparisonOperation extends Enumeration {
