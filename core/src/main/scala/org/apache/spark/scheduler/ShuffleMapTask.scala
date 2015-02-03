@@ -23,7 +23,7 @@ import scala.language.existentials
 
 import org.apache.spark._
 import org.apache.spark.broadcast.Broadcast
-import org.apache.spark.rdd.RDD
+import org.apache.spark.rdd.{GpuRDD, RDD}
 import org.apache.spark.shuffle.ShuffleWriter
 
 /**
@@ -64,7 +64,9 @@ private[spark] class ShuffleMapTask(
     var writer: ShuffleWriter[Any, Any] = null
     try {
       val manager = SparkEnv.get.shuffleManager
-      rdd.openCLContext = openCLContext
+      if (rdd.isInstanceOf[GpuRDD[_]]) {
+        rdd.asInstanceOf[GpuRDD[_]].openCLContext = openCLContext
+      }
       writer = manager.getWriter[Any, Any](dep.shuffleHandle, partitionId, context)
       writer.write(rdd.iterator(partition, context).asInstanceOf[Iterator[_ <: Product2[Any, Any]]])
       return writer.stop(success = true).get
