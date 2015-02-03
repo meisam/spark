@@ -18,7 +18,7 @@ class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLCon
     val gpuCol = if (typeOf[U] =:= ColumnarTypes.StringTypeTag.tpe) {
       createReadWriteBuffer[Byte](tupleNum * baseSize[U])
     } else {
-    	createReadWriteBuffer[U](tupleNum)
+      createReadWriteBuffer[U](tupleNum)
     }
 
     val col = parent.getColumn[U](columnIndex)
@@ -46,7 +46,7 @@ class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLCon
     	val conditionValueBuffer = new Array[Char](MAX_STRING_SIZE)
       val length = Math.min(value.toString().length(), MAX_STRING_SIZE)
       val stringBytes = value.toString().getChars(0, length, conditionValueBuffer, 0)
-      
+
       val conditionValue = createReadBuffer[Char](MAX_STRING_SIZE)
       hostToDeviceCopy[Char](Pointer.to(conditionValueBuffer), conditionValue, MAX_STRING_SIZE)
       debugGpuBuffer[Byte](conditionValue, MAX_STRING_SIZE, "conditionValue")
@@ -79,7 +79,7 @@ class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLCon
     deviceToHostCopy[Int](gpuCount, pointer(tmp1), 1, globalSize - 1)
 
     deviceToHostCopy[Int](gpuPsum, pointer(tmp2), 1, globalSize - 1)
-    
+
     clReleaseMemObject(gpuCount)
 
     val resultSize: Int = tmp1(0) + tmp2(0)
