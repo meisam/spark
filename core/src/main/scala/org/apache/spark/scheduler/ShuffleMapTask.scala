@@ -65,7 +65,8 @@ private[spark] class ShuffleMapTask(
     try {
       val manager = SparkEnv.get.shuffleManager
       if (rdd.isInstanceOf[GpuRDD[_]]) {
-        rdd.asInstanceOf[GpuRDD[_]].openCLContext = openCLContext
+        // FIXME openCLContext is not in RDD anymore. It should move to TaskContext
+        // rdd.asInstanceOf[GpuRDD[_]].openCLContext = openCLContext
       }
       writer = manager.getWriter[Any, Any](dep.shuffleHandle, partitionId, context)
       writer.write(rdd.iterator(partition, context).asInstanceOf[Iterator[_ <: Product2[Any, Any]]])

@@ -41,8 +41,7 @@ import org.apache.spark.partial.PartialResult
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.util.{BoundedPriorityQueue, Utils}
 import org.apache.spark.util.collection.OpenHashMap
-import org.apache.spark.util.random.{BernoulliSampler, PoissonSampler, BernoulliCellSampler,
-  SamplingUtils}
+import org.apache.spark.util.random.{BernoulliSampler, PoissonSampler, BernoulliCellSampler,SamplingUtils}
 
 /**
  * A Resilient Distributed Dataset (RDD), the basic abstraction in Spark. Represents an immutable,
@@ -1525,8 +1524,8 @@ abstract class RDD[T: ClassTag](
   }
 
   def toGpuRDD[TT<: Product: TypeTag: ClassTag](chunkCapacity: Int = (1 << 20)) = {
-	// FIXME this is utterly wrong
-    new GpuRDD(this.asInstanceOf[RDD[GpuPartition[TT]]], chunkCapacity)
+    new GpuRDD[TT](this.sc, this.collect().asInstanceOf[Array[TT]].toIterator, chunkCapacity)
+
   }
 
 }

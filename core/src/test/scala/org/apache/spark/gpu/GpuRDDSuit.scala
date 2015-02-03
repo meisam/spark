@@ -43,7 +43,7 @@ class GpuRDDSuit extends FunSuite with SharedSparkContext {
         assert(v._1 === collectedData.intData(0).get(i))
         assert(v._2 === collectedData.intData(1).get(i))
     }
-    assert(gpuRDD.getPartitions.length === PARTITIONS_COUNT)
+    assert(gpuRDD.collect.length === PARTITIONS_COUNT)
   }
 
   test("org.apache.spark.rdd.GpuRDD 2 partition") {
@@ -59,7 +59,7 @@ class GpuRDDSuit extends FunSuite with SharedSparkContext {
         assert(v._1 === collectedData.intData(0).get(i))
         assert(v._2 === collectedData.intData(1).get(i))
     }
-    assert(gpuRDD.getPartitions.length === PARTITIONS_COUNT)
+    assert(gpuRDD.collect.length === PARTITIONS_COUNT)
   }
 
   test("org.apache.spark.rdd.GpuRDD 2 partition and capacity < data size") {
@@ -76,7 +76,7 @@ class GpuRDDSuit extends FunSuite with SharedSparkContext {
         assert(v._1 === collectedData.intData(0).get(i))
         assert(v._2 === collectedData.intData(1).get(i))
     }
-    assert(gpuRDD.getPartitions.length === PARTITIONS_COUNT)
+    assert(gpuRDD.collect.length === PARTITIONS_COUNT)
   }
 
   // This would not work with the given desing of GpuRDD
