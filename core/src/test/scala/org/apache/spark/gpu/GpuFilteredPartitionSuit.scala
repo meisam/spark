@@ -44,12 +44,12 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
   test("GpuFilteredPartition(Int, Int) == 1 match test") {
     val testData: IndexedSeq[(Int, Int)] = (1000 until 1000 + 10).zipWithIndex
 
-    val parentPartition = new GpuPartition[(Int, Int)](openCLContext, DEFAULT_CAPACITY)
+    val parentPartition = new GpuPartition[(Int, Int)](openCLContext, 0, DEFAULT_CAPACITY)
     parentPartition.fill(testData.toIterator)
-    
-    val gpuPartition = new GpuFilteredPartition[(Int, Int), Int](openCLContext, parentPartition,
+
+    val gpuPartition = new GpuFilteredPartition[(Int, Int), Int](openCLContext, 0,
       0, ComparisonOperation.==, 1000 + 1, DEFAULT_CAPACITY)
-    gpuPartition.filter()
+    gpuPartition.filter(parentPartition)
 
     val expectedData = testData.filter(_._1 == 1000 + 1)
 
@@ -66,12 +66,12 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
   test("GpuFilteredPartition(Int, Int) == 0 match test") {
     val testData: IndexedSeq[(Int, Int)] = (1000 until 1000 + 10).zipWithIndex
 
-    val parentPartition = new GpuPartition[(Int, Int)](openCLContext, DEFAULT_CAPACITY)
+    val parentPartition = new GpuPartition[(Int, Int)](openCLContext, 0, DEFAULT_CAPACITY)
     parentPartition.fill(testData.toIterator)
 
-    val gpuPartition = new GpuFilteredPartition[(Int, Int), Int](openCLContext, parentPartition,
+    val gpuPartition = new GpuFilteredPartition[(Int, Int), Int](openCLContext, 0,
       0, ComparisonOperation.==, 20000, DEFAULT_CAPACITY)
-    gpuPartition.filter()
+    gpuPartition.filter(parentPartition)
     val expectedData = testData.filter(_._1 == 20000)
 
     assert(gpuPartition.size === expectedData.length)
@@ -87,12 +87,12 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
   test("GpuFilteredPartition(Int, Int) == many matches test") {
     val testData: IndexedSeq[(Int, Int)] = (1000 until 1000 + 10).map(_ % 3).zipWithIndex
 
-    val parentPartition = new GpuPartition[(Int, Int)](openCLContext, DEFAULT_CAPACITY)
+    val parentPartition = new GpuPartition[(Int, Int)](openCLContext, 0, DEFAULT_CAPACITY)
     parentPartition.fill(testData.toIterator)
 
-    val gpuPartition = new GpuFilteredPartition[(Int, Int), Int](openCLContext, parentPartition,
+    val gpuPartition = new GpuFilteredPartition[(Int, Int), Int](openCLContext, 0,
       0, ComparisonOperation.==, 2, DEFAULT_CAPACITY)
-    gpuPartition.filter()
+    gpuPartition.filter(parentPartition)
     val expectedData = testData.filter(_._1 == 2)
 
     assert(gpuPartition.size === expectedData.length)
@@ -108,12 +108,12 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
   test("GpuFilteredPartition(Int, Int) >= test") {
     val testData: IndexedSeq[(Int, Int)] = (0 until 10).zipWithIndex
 
-    val parentPartition = new GpuPartition[(Int, Int)](openCLContext, DEFAULT_CAPACITY)
+    val parentPartition = new GpuPartition[(Int, Int)](openCLContext, 0, DEFAULT_CAPACITY)
     parentPartition.fill(testData.toIterator)
 
-    val gpuPartition = new GpuFilteredPartition[(Int, Int), Int](openCLContext, parentPartition,
+    val gpuPartition = new GpuFilteredPartition[(Int, Int), Int](openCLContext, 0,
       0, ComparisonOperation.>=, 7, DEFAULT_CAPACITY)
-    gpuPartition.filter()
+    gpuPartition.filter(parentPartition)
 
     val expectedData = testData.filter(_._1 >= 7)
 
@@ -130,12 +130,12 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
   test("GpuFilteredPartition(Int, Int) <= test") {
     val testData: IndexedSeq[(Int, Int)] = (0 until 10).zipWithIndex
 
-    val parentPartition = new GpuPartition[(Int, Int)](openCLContext, DEFAULT_CAPACITY)
+    val parentPartition = new GpuPartition[(Int, Int)](openCLContext, 0, DEFAULT_CAPACITY)
     parentPartition.fill(testData.toIterator)
 
-    val gpuPartition = new GpuFilteredPartition[(Int, Int), Int](openCLContext, parentPartition,
+    val gpuPartition = new GpuFilteredPartition[(Int, Int), Int](openCLContext, 0,
       0, ComparisonOperation.<=, 5, DEFAULT_CAPACITY)
-    gpuPartition.filter()
+    gpuPartition.filter(parentPartition)
 
     val expectedData = testData.filter(_._1 <= 5)
 
@@ -156,12 +156,12 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
         (v.toLong, ((i % 3) == 0))
     }).toArray
 
-    val parentPartition = new GpuPartition[(Long, Boolean)](openCLContext, DEFAULT_CAPACITY)
+    val parentPartition = new GpuPartition[(Long, Boolean)](openCLContext, 0, DEFAULT_CAPACITY)
     parentPartition.fill(testData.toIterator)
 
-    val gpuPartition = new GpuFilteredPartition[(Long, Boolean), Long](openCLContext, parentPartition,
+    val gpuPartition = new GpuFilteredPartition[(Long, Boolean), Long](openCLContext, 0,
       0, ComparisonOperation.<=, START + 5L, DEFAULT_CAPACITY)
-    gpuPartition.filter()
+    gpuPartition.filter(parentPartition)
 
     val expectedData = testData.filter(_._1 <= START + 5)
 
@@ -176,116 +176,117 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
 
   test("GpuFilteredPartition(Int, String) == test") {
     val START = 1000
-    val LENGHT = 10
-    val testData: Array[(Int, String)] = (START until START + LENGHT).map(v => (v, f"STR_VAL$v")).toArray
+    val LENGTH = 10
+    val testData: Array[(Int, String)] = (START until START + LENGTH).map(v => (v, f"STR_VAL$v")).toArray
 
-    val crieterion = "STR_VAL%d".format(START + 5)
+    val criterion = "STR_VAL%d".format(START + 5)
 
-    val parentPartition = new GpuPartition[(Int, String)](openCLContext, DEFAULT_CAPACITY)
+    val parentPartition = new GpuPartition[(Int, String)](openCLContext, 0, DEFAULT_CAPACITY)
     parentPartition.fill(testData.toIterator)
-    
-    val gpuPartition = new GpuFilteredPartition[(Int, String), String](openCLContext, parentPartition,
-      0, ComparisonOperation.==, crieterion, DEFAULT_CAPACITY)
-    gpuPartition.filter()
 
-    val expectedData = testData.filter(_._2 == crieterion)
+    val gpuPartition = new GpuFilteredPartition[(Int, String), String](openCLContext, 0,
+      0, ComparisonOperation.==, criterion, DEFAULT_CAPACITY)
+
+    gpuPartition.filter(parentPartition)
+
+    val expectedData = testData.filter(_._2 == criterion)
 
     assert(gpuPartition.size === expectedData.length)
 
     expectedData.zipWithIndex.foreach {
       case ((intValue, strValue), index) =>
         assert(gpuPartition.intData(0).get(index) === intValue, "values do not match")
-        assert(gpuPartition.getStringData(0,index).equals(strValue), "values do not match")
+        assert(gpuPartition.getStringData(0, index).equals(strValue), "values do not match")
     }
+  }
 
-    test("kernel.genScanFilter_init_int_eq test") {
-      val TEST_DATA_SIZE = 3 + (1 << 10) // TODO larger data sizes may saturate java heap
+  test("kernel.genScanFilter_init_int_eq test") {
+    val TEST_DATA_SIZE = 3 + (1 << 10) // TODO larger data sizes may saturate java heap
 
-      val testData: Array[Int] = (0 until TEST_DATA_SIZE).toArray
-      val globalSize = POW_2_S.filter(_ >= testData.length).head
-      val localSize = Math.min(globalSize, 256)
-      val value = 50
+    val testData: Array[Int] = (0 until TEST_DATA_SIZE).toArray
+    val globalSize = POW_2_S.filter(_ >= testData.length).head
+    val localSize = Math.min(globalSize, 256)
+    val value = 50
 
-      val gpuCol = clCreateBuffer(openCLContext.context, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
-      clEnqueueWriteBuffer(openCLContext.queue, gpuCol, CL_TRUE, 0, Sizeof.cl_int * testData.length, Pointer.to(testData), 0, null, null)
+    val gpuCol = clCreateBuffer(openCLContext.context, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
+    clEnqueueWriteBuffer(openCLContext.queue, gpuCol, CL_TRUE, 0, Sizeof.cl_int * testData.length, Pointer.to(testData), 0, null, null)
 
-      val gpuFilter = clCreateBuffer(openCLContext.context, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
-      val gpuPsum = clCreateBuffer(openCLContext.context, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
-      val gpuCount = clCreateBuffer(openCLContext.context, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
-      var kernel = clCreateKernel(openCLContext.program, "genScanFilter_init_int_eql", null)
-      clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(gpuCol))
-      clSetKernelArg(kernel, 1, Sizeof.cl_long, Pointer.to(Array[Long](testData.length.toLong)))
-      clSetKernelArg(kernel, 2, Sizeof.cl_int, Pointer.to(Array[Int](value)))
-      clSetKernelArg(kernel, 3, Sizeof.cl_mem, Pointer.to(gpuFilter))
-      val global_work_size = Array[Long](globalSize)
-      val local_work_size = Array[Long](localSize)
-      clEnqueueNDRangeKernel(openCLContext.queue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
-      val resultData = new Array[Int](testData.length.toInt)
-      clEnqueueReadBuffer(openCLContext.queue, gpuFilter, CL_TRUE, 0, Sizeof.cl_int * testData.length, Pointer.to(resultData), 0, null, null)
-      (0 until TEST_DATA_SIZE).foreach { i =>
-        if (resultData(i) == 1) {
-          assert(i === value)
-          assert(testData(i) === value)
-        } else
-          assert(testData(i) === i)
-      }
+    val gpuFilter = clCreateBuffer(openCLContext.context, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
+    val gpuPsum = clCreateBuffer(openCLContext.context, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
+    val gpuCount = clCreateBuffer(openCLContext.context, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
+    var kernel = clCreateKernel(openCLContext.program, "genScanFilter_init_int_eql", null)
+    clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(gpuCol))
+    clSetKernelArg(kernel, 1, Sizeof.cl_long, Pointer.to(Array[Long](testData.length.toLong)))
+    clSetKernelArg(kernel, 2, Sizeof.cl_int, Pointer.to(Array[Int](value)))
+    clSetKernelArg(kernel, 3, Sizeof.cl_mem, Pointer.to(gpuFilter))
+    val global_work_size = Array[Long](globalSize)
+    val local_work_size = Array[Long](localSize)
+    clEnqueueNDRangeKernel(openCLContext.queue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
+    val resultData = new Array[Int](testData.length.toInt)
+    clEnqueueReadBuffer(openCLContext.queue, gpuFilter, CL_TRUE, 0, Sizeof.cl_int * testData.length, Pointer.to(resultData), 0, null, null)
+    (0 until TEST_DATA_SIZE).foreach { i =>
+      if (resultData(i) == 1) {
+        assert(i === value)
+        assert(testData(i) === value)
+      } else
+        assert(testData(i) === i)
     }
+  }
 
-    test("kernel.genScanFilter_init_int_geq test") {
-      val TEST_DATA_SIZE = 3 + (1 << 10) // TODO larger data sizes may saturate java heap
+  test("kernel.genScanFilter_init_int_geq test") {
+    val TEST_DATA_SIZE = 3 + (1 << 10) // TODO larger data sizes may saturate java heap
 
-      val testData: Array[Int] = (0 until TEST_DATA_SIZE).toArray
-      val globalSize = POW_2_S.filter(_ >= testData.length).head
-      val localSize = Math.min(globalSize, 256)
-      val value = 50
+    val testData: Array[Int] = (0 until TEST_DATA_SIZE).toArray
+    val globalSize = POW_2_S.filter(_ >= testData.length).head
+    val localSize = Math.min(globalSize, 256)
+    val value = 50
 
-      val gpuCol = clCreateBuffer(openCLContext.context, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
-      clEnqueueWriteBuffer(openCLContext.queue, gpuCol, CL_TRUE, 0, Sizeof.cl_int * testData.length, Pointer.to(testData), 0, null, null)
+    val gpuCol = clCreateBuffer(openCLContext.context, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
+    clEnqueueWriteBuffer(openCLContext.queue, gpuCol, CL_TRUE, 0, Sizeof.cl_int * testData.length, Pointer.to(testData), 0, null, null)
 
-      val gpuFilter = clCreateBuffer(openCLContext.context, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
-      val gpuPsum = clCreateBuffer(openCLContext.context, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
-      val gpuCount = clCreateBuffer(openCLContext.context, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
-      var kernel = clCreateKernel(openCLContext.program, "genScanFilter_init_int_geq", null)
-      clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(gpuCol))
-      clSetKernelArg(kernel, 1, Sizeof.cl_long, Pointer.to(Array[Long](globalSize)))
-      clSetKernelArg(kernel, 2, Sizeof.cl_int, Pointer.to(Array[Int](value)))
-      clSetKernelArg(kernel, 3, Sizeof.cl_mem, Pointer.to(gpuFilter))
-      val global_work_size = Array[Long](globalSize)
-      val local_work_size = Array[Long](localSize)
-      clEnqueueNDRangeKernel(openCLContext.queue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
-      val resultData = new Array[Int](testData.length)
-      clEnqueueReadBuffer(openCLContext.queue, gpuFilter, CL_TRUE, 0, Sizeof.cl_int * testData.length, Pointer.to(resultData), 0, null, null)
-      (0 until TEST_DATA_SIZE).foreach { i =>
-        if (resultData(i) == 1) {
-          assert(testData(i) >= value)
-        } else
-          assert(testData(i) < value)
-      }
+    val gpuFilter = clCreateBuffer(openCLContext.context, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
+    val gpuPsum = clCreateBuffer(openCLContext.context, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
+    val gpuCount = clCreateBuffer(openCLContext.context, CL_MEM_READ_WRITE, Sizeof.cl_int * globalSize, null, null)
+    var kernel = clCreateKernel(openCLContext.program, "genScanFilter_init_int_geq", null)
+    clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(gpuCol))
+    clSetKernelArg(kernel, 1, Sizeof.cl_long, Pointer.to(Array[Long](globalSize)))
+    clSetKernelArg(kernel, 2, Sizeof.cl_int, Pointer.to(Array[Int](value)))
+    clSetKernelArg(kernel, 3, Sizeof.cl_mem, Pointer.to(gpuFilter))
+    val global_work_size = Array[Long](globalSize)
+    val local_work_size = Array[Long](localSize)
+    clEnqueueNDRangeKernel(openCLContext.queue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
+    val resultData = new Array[Int](testData.length)
+    clEnqueueReadBuffer(openCLContext.queue, gpuFilter, CL_TRUE, 0, Sizeof.cl_int * testData.length, Pointer.to(resultData), 0, null, null)
+    (0 until TEST_DATA_SIZE).foreach { i =>
+      if (resultData(i) == 1) {
+        assert(testData(i) >= value)
+      } else
+        assert(testData(i) < value)
     }
+  }
 
-    test("org.apache.spark.rdd.GpuRDD.filter test") {
-      val PARENT_SIZE = 10
-      val testData: IndexedSeq[(Int, Int)] = (1 to PARENT_SIZE).reverse.zipWithIndex
+  test("org.apache.spark.rdd.GpuRDD.filter test") {
+    val PARENT_SIZE = 10
+    val testData: IndexedSeq[(Int, Int)] = (1 to PARENT_SIZE).reverse.zipWithIndex
 
-      val parentPartition = new GpuPartition[(Int, Int)](openCLContext, DEFAULT_CAPACITY)
-      parentPartition.fill(testData.toIterator)
+    val parentPartition = new GpuPartition[(Int, Int)](openCLContext, 0, DEFAULT_CAPACITY)
+    parentPartition.fill(testData.toIterator)
 
-      assert(parentPartition.size === PARENT_SIZE, "Size of the parent parition is incorrect")
+    assert(parentPartition.size === PARENT_SIZE, "Size of the parent parition is incorrect")
 
-      val COMPARISSION_VALUE = 3
+    val COMPARISSION_VALUE = 3
 
-      val filteredPartition = new GpuFilteredPartition[(Int, Int), Int](openCLContext, parentPartition,
-        1, ComparisonOperation.<, COMPARISSION_VALUE, DEFAULT_CAPACITY)
-      filteredPartition.filter()
+    val filteredPartition = new GpuFilteredPartition[(Int, Int), Int](openCLContext, 0,
+      1, ComparisonOperation.<, COMPARISSION_VALUE, DEFAULT_CAPACITY)
+    filteredPartition.filter(parentPartition)
 
-      (0 until filteredPartition.capacity).foreach(i =>
-        if (i < COMPARISSION_VALUE) {
-          assert(filteredPartition.intData(0).get(i) === (10 - i), "values do not match")
-          assert(filteredPartition.intData(1).get(i) === i, "indexes  do not match")
-        } else {
-          assert(filteredPartition.intData(0).get(i) === 0, "values do not match")
-          assert(filteredPartition.intData(1).get(i) === 0, "values do not match")
-        })
-    }
+    (0 until filteredPartition.capacity).foreach(i =>
+      if (i < COMPARISSION_VALUE) {
+        assert(filteredPartition.intData(0).get(i) === (10 - i), "values do not match")
+        assert(filteredPartition.intData(1).get(i) === i, "indexes  do not match")
+      } else {
+        assert(filteredPartition.intData(0).get(i) === 0, "values do not match")
+        assert(filteredPartition.intData(1).get(i) === 0, "values do not match")
+      })
   }
 }

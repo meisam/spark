@@ -36,11 +36,14 @@ class GpuRDDSuit extends FunSuite with SharedSparkContext {
     val testData = (0 until TEST_DATA_SIZE).reverse.zipWithIndex.toArray
     val rdd = sc.parallelize(testData, PARTITIONS_COUNT)
     val gpuRDD = rdd.toGpuRDD[(Int, Int)]()
-    val collectedData: Array[(Int, Int)] = gpuRDD.collect
-    assert(collectedData.length === testData.length)
-    collectedData.zip(testData).foreach {
-      case (v1, v2) => assert(v1 === v2)
+    val collectedData = gpuRDD.collect()(0)
+    assert(collectedData.size === testData.length)
+    testData.zipWithIndex.foreach {
+      case (v, i) =>
+        assert(v._1 === collectedData.intData(0).get(i))
+        assert(v._2 === collectedData.intData(1).get(i))
     }
+    assert(gpuRDD.getPartitions.length === PARTITIONS_COUNT)
   }
 
   test("org.apache.spark.rdd.GpuRDD 2 partition") {
@@ -49,10 +52,12 @@ class GpuRDDSuit extends FunSuite with SharedSparkContext {
     val testData = (0 until TEST_DATA_SIZE).reverse.zipWithIndex.toArray
     val rdd: RDD[(Int, Int)] = sc.parallelize(testData, PARTITIONS_COUNT)
     val gpuRDD = rdd.toGpuRDD[(Int, Int)]()
-    val collectedData: Array[(Int, Int)] = gpuRDD.collect
-    assert(collectedData.length === testData.length)
-    collectedData.zip(testData).foreach {
-      case (v1, v2) => assert(v1 === v2)
+    val collectedData = gpuRDD.collect()(0)
+    assert(collectedData.size === testData.length)
+    testData.zipWithIndex.foreach {
+      case (v, i) =>
+        assert(v._1 === collectedData.intData(0).get(i))
+        assert(v._2 === collectedData.intData(1).get(i))
     }
     assert(gpuRDD.getPartitions.length === PARTITIONS_COUNT)
   }
@@ -64,25 +69,28 @@ class GpuRDDSuit extends FunSuite with SharedSparkContext {
     val testData = (0 until TEST_DATA_SIZE).reverse.zipWithIndex.toArray
     val rdd: RDD[(Int, Int)] = sc.parallelize(testData, PARTITIONS_COUNT)
     val gpuRDD = rdd.toGpuRDD[(Int, Int)](CHUNK_CAPACITY)
-    val collectedData: Array[(Int, Int)] = gpuRDD.collect
-    assert(collectedData.length === testData.length)
-    collectedData.zip(testData).foreach {
-      case (v1, v2) => assert(v1 === v2)
+    val collectedData = gpuRDD.collect()(0)
+    assert(collectedData.size === testData.length)
+    testData.zipWithIndex.foreach {
+      case (v, i) =>
+        assert(v._1 === collectedData.intData(0).get(i))
+        assert(v._2 === collectedData.intData(1).get(i))
     }
     assert(gpuRDD.getPartitions.length === PARTITIONS_COUNT)
   }
 
-  test("org.apache.spark.rdd.GpuRDD with map afterwards") {
+  // This would not work with the given desing of GpuRDD
+  ignore("org.apache.spark.rdd.GpuRDD with map afterwards") {
     val PARTITIONS_COUNT = 1
     val TEST_DATA_SIZE = 3 + (1 << 4)
     val testData = (0 until TEST_DATA_SIZE).reverse.zipWithIndex.toArray
     val rdd = sc.parallelize(testData, PARTITIONS_COUNT)
-    val gpuRDD: RDD[Int] = rdd.toGpuRDD[(Int, Int)]().map(_._1)
-    val collectedData: Array[Int] = gpuRDD.collect
+    val gpuRDD = rdd.toGpuRDD[(Int, Int)]()// FIXME.map(_._1)
+    val collectedData = gpuRDD.collect()(0)
     val expectedData = testData.map(x => x.productElement(0).asInstanceOf[Int])
-    assert(collectedData.length === expectedData.length)
-    collectedData.zip(expectedData).foreach {
-      case (v1, v2) => assert(v1 === v2)
+    assert(collectedData.size === expectedData.length)
+    testData.zipWithIndex.foreach {
+      case (v, i) => assert(v === collectedData.intData(0).get(i))
     }
   }
 
@@ -92,15 +100,15 @@ class GpuRDDSuit extends FunSuite with SharedSparkContext {
 
     val rdd = sc.parallelize(testData)
     val gpuRdd = rdd.toGpuRDD[(Int, Int)]()
-    val collectedData: Array[(Int, Int)] = gpuRdd.collect()
-    assert(collectedData.length === testData.length)
-    collectedData.zipWithIndex.foreach({ case ((v1, v2), i) =>
+    val collectedData = gpuRdd.collect()(0)
+    assert(collectedData.size === testData.length)
+    testData.zipWithIndex.foreach({ case (v, i) =>
       if (i <= 10) {
-        assert(v1 === (10 - i), "values do not match")
-        assert(v2 === i, "indexes  do not match")
+        assert(collectedData.intData(0).get(i) === (10 - i), "values do not match")
+        assert(collectedData.intData(1).get(i) === i, "indexes  do not match")
       } else {
-        assert(v1 === 0, "values do not match")
-        assert(v2 === 0, "values do not match")
+        assert(collectedData.intData(0).get(i) === 0, "values do not match")
+        assert(collectedData.intData(1).get(i) === 0, "values do not match")
       }
     }
     )
@@ -112,9 +120,13 @@ class GpuRDDSuit extends FunSuite with SharedSparkContext {
 
     val rdd = sc.parallelize(testData)
     val gpuRdd = rdd.toGpuRDD[(Int, String, Int, String)]()
-    val collectedData = gpuRdd.collect()
-    assert(collectedData.length === testData.length)
-    collectedData.zipWithIndex.foreach { case ((v1, v2, v3, v4), i) =>
+    val collectedData = gpuRdd.collect()(0)
+    assert(collectedData.size === testData.length)
+    testData.zipWithIndex.foreach { case (v, i) =>
+      val v1 = collectedData.intData(0).get(i)
+      val v2 = collectedData.stringData(0).get(i)
+      val v3 = collectedData.intData(1).get(i)
+      val v4 = collectedData.stringData(1).get(i)
       if (i <= 10) {
         assert(v1 === (10 - i), "values do not match at row %d".format(i))
         assert(v2 === ("STR_I_" + (10 - i)), "at row %d".format(i))

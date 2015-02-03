@@ -18,12 +18,8 @@
 package org.apache.spark.gpu
 
 import org.apache.spark.SharedSparkContext
-import org.apache.spark.scheduler.OpenCLContext
-import org.jocl.CL._
-import org.jocl.{Pointer, Sizeof}
 import org.scalatest.FunSuite
 
-import scala.collection.immutable.IndexedSeq
 import scala.language.existentials
 
 /**
@@ -31,15 +27,12 @@ import scala.language.existentials
  */
 class CpuPerformanceTestsSuit extends FunSuite with SharedSparkContext {
 
-  val POW_2_S: IndexedSeq[Long] = (0 to 100).map(_.toLong).map(1L << _)
-
-
-  test("selection with 10% selectivity on one CPU core") {
+  ignore("selection with 10% selectivity on one CPU core") {
     val SIZE_OF_INTEGER = 4
-    (10 to 12).foreach { size => {
+    (10 to 24).foreach { size =>
       val TEST_DATA_SIZE = (1 << size) / SIZE_OF_INTEGER
       val selectivity = 10 //percent
-      val value = 1
+    val value = 1
 
       val testData = (0 until TEST_DATA_SIZE).map(x => if (x % 10 == 0) value else 0)
 
@@ -48,7 +41,11 @@ class CpuPerformanceTestsSuit extends FunSuite with SharedSparkContext {
 
       val rdd = sc.parallelize(testData, cores)
 
-      val iterations = 1000
+      val iterations = 10
+      rdd.cache
+
+      rdd.filter(_ == 1).count
+
       (0 until iterations).foreach { x =>
         val startTime = System.nanoTime
         rdd.filter(_ == 1).collect()
@@ -56,9 +53,8 @@ class CpuPerformanceTestsSuit extends FunSuite with SharedSparkContext {
         totalTime += endTime - startTime
       }
 
-      println("time (ns) to do 10% selection on 1 CPU core %d bytes of data = %f".format
-        (TEST_DATA_SIZE, totalTime.toDouble / iterations))
-    }
+      println(f"${selectivity}d%% selection (1 CPU core) ${TEST_DATA_SIZE}%,d integer elements "
+        + f" took ${totalTime / iterations}%,d nano seconds")
     }
   }
 }
