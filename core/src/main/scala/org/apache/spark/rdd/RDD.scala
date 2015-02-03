@@ -1389,7 +1389,8 @@ abstract class RDD[T: ClassTag](
   }
 
   def toGpuRDD[TT<: Product: TypeTag: ClassTag](chunkCapacity: Int = (1 << 20)) = {
-    new GpuRDD(this.asInstanceOf[RDD[TT]], chunkCapacity)
+	// FIXME this is utterly wrong
+    new GpuRDD(this.asInstanceOf[RDD[GpuPartition[TT]]], chunkCapacity)
   }
 
 }
