@@ -19,8 +19,6 @@ package org.apache.spark.rdd
 
 import java.util.Random
 
-import org.apache.spark.scheduler.OpenCLContext
-
 import scala.collection.{mutable, Map}
 import scala.collection.mutable.ArrayBuffer
 import scala.language.implicitConversions
@@ -1530,11 +1528,6 @@ abstract class RDD[T: ClassTag](
     new GpuRDD(this.asInstanceOf[RDD[TT]], chunkCapacity)
   }
 
-  /**
-   * This field should be @transient because we want to initialize it after we send the task over
-   * the network.
-   */
-  @transient var openCLContext: OpenCLContext = null
 }
 
 
