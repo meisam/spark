@@ -29,28 +29,35 @@ class GpuRDD[
 T <: Product : TypeTag
 ](
    @transient private var sc: SparkContext,
-   iterator: Iterator[T], capacity: Int)
+   @transient ar: Array[T], capacity: Int)
   extends RDD[GpuPartition[T]](sc, Nil) {
   /**
    * :: DeveloperApi ::
    * Implemented by subclasses to compute a given partition.
+   * FIXME assuming there is only one partition
    */
+  val allPartitions = Array[Partition](new ColumnarPartition(id, 0))
 
-  val allPartitions = new Array[GpuPartition[T]](1) // asuming there is only one partition
-
-  override def compute(split: Partition, context: TaskContext): Iterator[GpuPartition[T]] = {
-    val partition = new GpuPartition[T](null, 0, capacity)
-    partition.fill(iterator)
-    allPartitions(0) = partition
-    allPartitions.toIterator
-  }
-
-/**
+  /**
    * Implemented by subclasses to return the set of partitions in this RDD. This method will only
    * be called once, so it is safe to implement a time-consuming computation in it.
    */
   override protected def getPartitions: Array[Partition] = allPartitions
-    .asInstanceOf[Array[Partition]]
+
+  override def compute(split: Partition, context: TaskContext): Iterator[GpuPartition[T]] = {
+    val partition = new GpuPartition[T](null, 0, capacity)
+    println(ar)
+    partition.fill(ar.toIterator)
+    Array(partition).toIterator
+  }
+}
+
+private class ColumnarPartition(rddId: Int, idx: Int)
+  extends Partition {
+  /**
+   * Get the split's index within its parent RDD
+   */
+  override def index: Int = idx
 }
 
 /**
@@ -89,7 +96,7 @@ T <: Product : TypeTag
         // TODO Close open streams?
       }
 
-  }
+    }
 
     new InterruptibleIterator[GpuPartition[T]](context, partitionIterator)
   }

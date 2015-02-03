@@ -34,9 +34,7 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
     val PARTITIONS_COUNT = 1
     val TEST_DATA_SIZE = 3 + (1 << 4)
     val testData = (0 until TEST_DATA_SIZE).reverse.zipWithIndex.toArray
-    val rdd = sc.parallelize(testData, PARTITIONS_COUNT)
-    val gpuRDD = rdd.toGpuRDD[(Int, Int)]()
-
+    val gpuRDD = sc.toGpuRDD[(Int, Int)](testData)
 
     val expectedDatea = testData.filter(_._1 == 10)
     val filteredData = new GpuFilteredRDD(gpuRDD, 0, ComparisonOperation.==, 10: Int,
