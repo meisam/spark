@@ -75,7 +75,7 @@ class GpuRDDSuit extends FunSuite with SharedSparkContext {
     assert(gpuRDD.collect.length === PARTITIONS_COUNT)
   }
 
-  // This would not work with the given desing of GpuRDD
+  // This would not work with the given design of GpuRDD
   ignore("org.apache.spark.rdd.GpuRDD with map afterwards") {
     val PARTITIONS_COUNT = 1
     val TEST_DATA_SIZE = 3 + (1 << 4)
