@@ -517,8 +517,10 @@ class SparkContext(config: SparkConf) extends Logging {
     new ParallelCollectionRDD[T](this, seq, numSlices, Map[Int, Seq[String]]())
   }
 
-  def toGpuRDD[TT<: Product: TypeTag: ClassTag]( data:Array[TT], chunkCapacity: Int = (1 << 20)) = {
-    new GpuRDD[TT](this, data, chunkCapacity)
+  def toGpuRDD[TT<: Product: TypeTag: ClassTag]( data:Array[TT], chunkCapacity: Int = (1 << 20),
+                                                 numPartitions: Int = defaultParallelism)
+  = {
+    new GpuRDD[TT](this, data, chunkCapacity, numPartitions)
   }
 
   /** Distribute a local Scala collection to form an RDD.

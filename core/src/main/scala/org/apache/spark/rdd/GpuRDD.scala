@@ -30,7 +30,7 @@ class GpuRDD[
 T <: Product : TypeTag
 ](
    @transient private var sc: SparkContext,
-   @transient data: Array[T], capacity: Int)
+   @transient data: Array[T], capacity: Int, numPartitions: Int)
   extends RDD[GpuPartition[T]](sc, Nil) {
 
   /**
@@ -39,7 +39,7 @@ T <: Product : TypeTag
    */
   override def getPartitions: Array[Partition] = {
     implicit val ct = ClassTag[T](typeTag[T].mirror.runtimeClass(typeTag[T].tpe))
-    val slices = ParallelCollectionRDD.slice(data, 1)(ct).toArray
+    val slices = ParallelCollectionRDD.slice(data, numPartitions)(ct).toArray
     slices.indices.map(i => new ParallelCollectionPartition(id, i, slices(i))).toArray
   }
 
