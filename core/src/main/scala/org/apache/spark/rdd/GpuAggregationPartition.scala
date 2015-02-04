@@ -14,9 +14,9 @@ import org.jocl.cl_mem
 import scala.reflect.ClassTag
 
 class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
-  context: OpenCLContext, idx: Int, parentPartition: GpuPartition[TP],
+  context: OpenCLContext, parentPartition: GpuPartition[TP],
   aggregations: Array[AggregationExp], capacity: Int)
-  extends GpuPartition[T](context, idx: Int, capacity) {
+  extends GpuPartition[T](context, capacity) {
 
   def aggregate(): Unit = {
     parentPartition.inferBestWorkGroupSize

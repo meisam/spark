@@ -14,8 +14,8 @@ import scala.reflect.api.JavaUniverse
 import scala.reflect.runtime.universe.{TypeTag, typeOf}
 import scala.reflect.runtime.{universe => ru}
 
-class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, idx: Int, val capacity: Int)
-  extends Partition with Serializable with Logging {
+class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity: Int)
+  extends Serializable with Logging {
 
   type JavaType = JavaUniverse#Type
 
@@ -812,13 +812,6 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, idx: Int, val
   var localSize = 0
 
   var resCount = 0
-
-//  /**
-//   * Get the split's index within its parent RDD
-//   */
-//  override def hashCode(): Int = 41 * (41 + this.idxrddId) + idx
-
-  override val index: Int = idx
 }
 
 class ComparisonOperation extends Enumeration {

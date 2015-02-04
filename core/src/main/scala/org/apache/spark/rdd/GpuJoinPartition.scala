@@ -8,9 +8,9 @@ import scala.reflect.runtime.universe.TypeTag
 
 class GpuJoinPartition[T <: Product : TypeTag, TL <: Product : TypeTag, TR <: Product : TypeTag,
 U: TypeTag]
-(context: OpenCLContext, idx:Int, leftPartition: GpuPartition[TL], rightPartition: GpuPartition[TR],
+(context: OpenCLContext, leftPartition: GpuPartition[TL], rightPartition: GpuPartition[TR],
  joinColIndexLeft: Int, joinColIndexRight: Int, capacity: Int)
-  extends GpuPartition[T](context, idx, capacity) {
+  extends GpuPartition[T](context, capacity) {
 
   def columnFromLeftPartition(columnIndex: Int): Boolean = {
     columnIndex < leftPartition.columnTypes.length

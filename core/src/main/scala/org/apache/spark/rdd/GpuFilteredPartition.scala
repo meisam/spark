@@ -10,7 +10,7 @@ import org.jocl.cl_mem
 class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLContext,
                                                               idx:Int, columnIndex: Int,
   operation: ComparisonOperation.Value, value: U, capacity: Int)
-  extends GpuPartition[T](context, idx, capacity) {
+  extends GpuPartition[T](context, capacity) {
 
   def filter(parent: GpuPartition[T]) = {
 
