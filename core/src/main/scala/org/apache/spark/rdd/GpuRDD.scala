@@ -21,7 +21,8 @@ import org.apache.spark.scheduler.OpenCLContext
 import org.apache.spark.util.NextIterator
 import org.apache.spark.{InterruptibleIterator, Partition, SparkContext, TaskContext}
 
-import scala.reflect.runtime.universe.{TypeTag, typeOf}
+import scala.reflect.ClassTag
+import scala.reflect.runtime.universe.{TypeTag, typeOf, typeTag}
 import scala.reflect.runtime.{universe => ru}
 
 
@@ -29,35 +30,25 @@ class GpuRDD[
 T <: Product : TypeTag
 ](
    @transient private var sc: SparkContext,
-   @transient ar: Array[T], capacity: Int)
+   @transient data: Array[T], capacity: Int)
   extends RDD[GpuPartition[T]](sc, Nil) {
-  /**
-   * :: DeveloperApi ::
-   * Implemented by subclasses to compute a given partition.
-   * FIXME assuming there is only one partition
-   */
-  val allPartitions = Array[Partition](new ColumnarPartition(id, 0))
 
   /**
    * Implemented by subclasses to return the set of partitions in this RDD. This method will only
    * be called once, so it is safe to implement a time-consuming computation in it.
    */
-  override protected def getPartitions: Array[Partition] = allPartitions
+  override def getPartitions: Array[Partition] = {
+    implicit val ct = ClassTag[T](typeTag[T].mirror.runtimeClass(typeTag[T].tpe))
+    val slices = ParallelCollectionRDD.slice(data, 1)(ct).toArray
+    slices.indices.map(i => new ParallelCollectionPartition(id, i, slices(i))).toArray
+  }
 
-  override def compute(split: Partition, context: TaskContext): Iterator[GpuPartition[T]] = {
+  override def compute(p: Partition, context: TaskContext): Iterator[GpuPartition[T]] = {
+    val data: Iterator[T] = p.asInstanceOf[ParallelCollectionPartition[T]].iterator
     val partition = new GpuPartition[T](null, 0, capacity)
-    println(ar)
-    partition.fill(ar.toIterator)
+    partition.fill(data)
     Array(partition).toIterator
   }
-}
-
-private class ColumnarPartition(rddId: Int, idx: Int)
-  extends Partition {
-  /**
-   * Get the split's index within its parent RDD
-   */
-  override def index: Int = idx
 }
 
 /**
@@ -69,11 +60,6 @@ T <: Product : TypeTag
    @transient private var sc: SparkContext,
    paths: Array[String], capacity: Int)
   extends RDD[GpuPartition[T]](sc, Nil) {
-
-  val columnTypes = typeOf[T] match {
-    case ru.TypeRef(tpe, sym, typeArgs) => typeArgs
-    case _ => throw new NotImplementedError("Unknown type %s".format(typeOf[T]))
-  }
 
   val rddId = sc.newRddId()
 
