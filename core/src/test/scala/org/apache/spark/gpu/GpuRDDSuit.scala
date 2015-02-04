@@ -43,13 +43,12 @@ class GpuRDDSuit extends FunSuite with SharedSparkContext {
     }
     assert(gpuRDD.collect.length === PARTITIONS_COUNT)
   }
-/*
+
   test("org.apache.spark.rdd.GpuRDD 2 partition") {
     val PARTITIONS_COUNT = 1
     val TEST_DATA_SIZE = 3 + (1 << 4)
     val testData = (0 until TEST_DATA_SIZE).reverse.zipWithIndex.toArray
-    val rdd: RDD[(Int, Int)] = sc.parallelize(testData, PARTITIONS_COUNT)
-    val gpuRDD = rdd.toGpuRDD[(Int, Int)]()
+    val gpuRDD = sc.toGpuRDD[(Int, Int)](testData)
     val collectedData = gpuRDD.collect()(0)
     assert(collectedData.size === testData.length)
     testData.zipWithIndex.foreach {
@@ -65,10 +64,9 @@ class GpuRDDSuit extends FunSuite with SharedSparkContext {
     val TEST_DATA_SIZE = 3 + (1 << 10)
     val CHUNK_CAPACITY = 8
     val testData = (0 until TEST_DATA_SIZE).reverse.zipWithIndex.toArray
-    val rdd: RDD[(Int, Int)] = sc.parallelize(testData, PARTITIONS_COUNT)
-    val gpuRDD = rdd.toGpuRDD[(Int, Int)](CHUNK_CAPACITY)
+    val gpuRDD = sc.toGpuRDD[(Int, Int)](testData, CHUNK_CAPACITY, PARTITIONS_COUNT)
     val collectedData = gpuRDD.collect()(0)
-    assert(collectedData.size === testData.length)
+    assert(collectedData.size === CHUNK_CAPACITY)
     testData.zipWithIndex.foreach {
       case (v, i) =>
         assert(v._1 === collectedData.intData(0).get(i))
@@ -82,8 +80,7 @@ class GpuRDDSuit extends FunSuite with SharedSparkContext {
     val PARTITIONS_COUNT = 1
     val TEST_DATA_SIZE = 3 + (1 << 4)
     val testData = (0 until TEST_DATA_SIZE).reverse.zipWithIndex.toArray
-    val rdd = sc.parallelize(testData, PARTITIONS_COUNT)
-    val gpuRDD = rdd.toGpuRDD[(Int, Int)]()// FIXME.map(_._1)
+    val gpuRDD = sc.toGpuRDD[(Int, Int)](testData)// FIXME.map(_._1)
     val collectedData = gpuRDD.collect()(0)
     val expectedData = testData.map(x => x.productElement(0).asInstanceOf[Int])
     assert(collectedData.size === expectedData.length)
@@ -94,10 +91,9 @@ class GpuRDDSuit extends FunSuite with SharedSparkContext {
 
 
   test("GpuRDD(Int, Int) test") {
-    val testData: IndexedSeq[(Int, Int)] = (0 to 10).reverse.zipWithIndex
+    val testData = (0 to 10).reverse.zipWithIndex.toArray
 
-    val rdd = sc.parallelize(testData)
-    val gpuRdd = rdd.toGpuRDD[(Int, Int)]()
+    val gpuRdd = sc.toGpuRDD[(Int, Int)](testData)
     val collectedData = gpuRdd.collect()(0)
     assert(collectedData.size === testData.length)
     testData.zipWithIndex.foreach({ case (v, i) =>
@@ -113,11 +109,11 @@ class GpuRDDSuit extends FunSuite with SharedSparkContext {
   }
 
   test("GpuRDD(Int, String, Int, String) test") {
-    val testData: IndexedSeq[(Int, String, Int, String)] = (0 to 10).reverse.zipWithIndex
-      .map(x => (x._1, "STR_I_%d".format(x._1), x._2, "STR_II_%d".format(x._2)))
+    val testData = (0 to 10).reverse.zipWithIndex.map{x =>
+      (x._1, "STR_I_%d".format(x._1), x._2,"STR_II_%d".format(x._2))
+    }.toArray
 
-    val rdd = sc.parallelize(testData)
-    val gpuRdd = rdd.toGpuRDD[(Int, String, Int, String)]()
+    val gpuRdd = sc.toGpuRDD[(Int, String, Int, String)](testData)
     val collectedData = gpuRdd.collect()(0)
     assert(collectedData.size === testData.length)
     testData.zipWithIndex.foreach { case (v, i) =>
@@ -138,6 +134,5 @@ class GpuRDDSuit extends FunSuite with SharedSparkContext {
       }
     }
   }
-  */
 }
 
