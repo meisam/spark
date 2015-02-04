@@ -26,7 +26,7 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, idx: Int, val 
 
   type JavaType = JavaUniverse#Type
 
-  val columnTypes = typeOf[T] match {
+  def columnTypes = typeOf[T] match {
     case ru.TypeRef(tpe, sym, typeArgs) => typeArgs
     case _ => throw new NotImplementedError("Unknown type %s".format(typeOf[T]))
   }
