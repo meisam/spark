@@ -1,27 +1,20 @@
 package org.apache.spark.rdd
 
-import org.apache.spark.{Partition, Logging}
+import java.io.File
+import java.nio.{Buffer, ByteBuffer, ByteOrder, CharBuffer, DoubleBuffer, FloatBuffer, IntBuffer, LongBuffer, ShortBuffer}
+import java.nio.file.Files
+
 import org.apache.spark.scheduler.OpenCLContext
+import org.apache.spark.{Logging, Partition}
 import org.jocl.CL._
 import org.jocl._
+
 import scala.reflect.ClassTag
 import scala.reflect.api.JavaUniverse
-import scala.reflect.runtime.universe.{ TypeTag, typeOf }
-import scala.reflect.runtime.{ universe => ru }
-import java.nio.Buffer
-import java.nio.ByteBuffer
-import java.nio.ShortBuffer
-import java.nio.IntBuffer
-import java.nio.LongBuffer
-import java.nio.FloatBuffer
-import java.nio.DoubleBuffer
-import java.nio.CharBuffer
-import java.io.FileInputStream
-import java.nio.file.Files
-import java.io.File
-import java.nio.ByteOrder
+import scala.reflect.runtime.universe.{TypeTag, typeOf}
+import scala.reflect.runtime.{universe => ru}
 
-class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, idx: Int, val capacity: Int)
+class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, idx: Int, val capacity: Int)
   extends Partition with Serializable with Logging {
 
   type JavaType = JavaUniverse#Type
@@ -37,33 +30,147 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, idx: Int, val 
 
   var size = 0
 
-  val byteData = Array.fill[ByteBuffer](columnTypes.count(_ =:= TypeTag.Byte.tpe)) {
-    ByteBuffer.wrap(Array.ofDim[Byte](capacity))
+  val columnOffsets = columnTypes.map(t => baseSize(t) * capacity).scan(0)(_ + _).toArray
+
+  val capacityInBytes = columnOffsets.last
+
+  val rawData = new Array[Byte](capacityInBytes)
+
+  def byteData = {
+    if (_byteData == null) {
+      val colIndexes = columnTypes.zipWithIndex.filter(_._1 =:= TypeTag.Byte.tpe).map(_._2)
+      _byteData = new Array[ByteBuffer](colIndexes.length)
+      _byteData.indices.foreach{ i =>
+        val offset = columnOffsets(i)
+        val length = columnOffsets(i+1) - offset
+        _byteData(i) = ByteBuffer.wrap(rawData,offset, length)
+      }
+    }
+    _byteData
   }
-  val shortData = Array.fill[ShortBuffer](columnTypes.count(_ =:= TypeTag.Short.tpe)) {
-    ShortBuffer.wrap(Array.ofDim[Short](capacity))
+
+  def shortData = {
+    if (_shortData == null) {
+      val colIndexes = columnTypes.zipWithIndex.filter(_._1 =:= TypeTag.Short.tpe).map(_._2)
+      _shortData = new Array[ShortBuffer](colIndexes.length)
+      _shortData.indices.foreach{ i =>
+        val offset = columnOffsets(i)
+        val length = columnOffsets(i+1) - offset
+        _shortData(i) = ByteBuffer.wrap(rawData,offset, length).asShortBuffer()
+      }
+    }
+    _shortData
   }
-  val intData = Array.fill[IntBuffer](columnTypes.count(_ =:= TypeTag.Int.tpe)) {
-    IntBuffer.wrap(Array.ofDim[Int](capacity))
+
+  def intData = {
+    if (_intData == null) {
+      val colIndexes = columnTypes.zipWithIndex.filter(_._1 =:= TypeTag.Int.tpe).map(_._2)
+      _intData = new Array[IntBuffer](colIndexes.length)
+      _intData.indices.foreach{ i =>
+        val offset = columnOffsets(i)
+        val length = columnOffsets(i+1) - offset
+        _intData(i) = ByteBuffer.wrap(rawData,offset, length).asIntBuffer()
+      }
+    }
+    _intData
   }
-  val longData = Array.fill[LongBuffer](columnTypes.count(_ =:= TypeTag.Long.tpe)) {
-    LongBuffer.wrap(Array.ofDim[Long](capacity))
+
+  def longData = {
+    if (_longData == null) {
+      val colIndexes = columnTypes.zipWithIndex.filter(_._1 =:= TypeTag.Long.tpe).map(_._2)
+      _longData = new Array[LongBuffer](colIndexes.length)
+      _longData.indices.foreach{ i =>
+        val offset = columnOffsets(i)
+        val length = columnOffsets(i+1) - offset
+        _longData(i) = ByteBuffer.wrap(rawData,offset, length).asLongBuffer()
+      }
+    }
+    _longData
   }
-  val floatData = Array.fill[FloatBuffer](columnTypes.count(_ =:= TypeTag.Float.tpe)) {
-    FloatBuffer.wrap(Array.ofDim[Float](capacity))
+
+  def floatData = {
+    if (_floatData == null) {
+      val colIndexes = columnTypes.zipWithIndex.filter(_._1 =:= TypeTag.Float.tpe).map(_._2)
+      _floatData = new Array[FloatBuffer](colIndexes.length)
+      _floatData.indices.foreach{ i =>
+        val offset = columnOffsets(i)
+        val length = columnOffsets(i+1) - offset
+        _floatData(i) = ByteBuffer.wrap(rawData,offset, length).asFloatBuffer()
+      }
+    }
+    _floatData
   }
-  val doubleData = Array.fill[DoubleBuffer](columnTypes.count(_ =:= TypeTag.Double.tpe)) {
-    DoubleBuffer.wrap(Array.ofDim[Double](capacity))
+
+  def doubleData = {
+    if (_doubleData == null) {
+      val colIndexes = columnTypes.zipWithIndex.filter(_._1 =:= TypeTag.Double.tpe).map(_._2)
+      _doubleData = new Array[DoubleBuffer](colIndexes.length)
+      _doubleData.indices.foreach{ i =>
+        val offset = columnOffsets(i)
+        val length = columnOffsets(i+1) - offset
+        _doubleData(i) = ByteBuffer.wrap(rawData,offset, length).asDoubleBuffer()
+      }
+    }
+    _doubleData
   }
-  val booleanData = Array.fill[ByteBuffer](columnTypes.count(_ =:= TypeTag.Boolean.tpe)) {
-    ByteBuffer.wrap(Array.ofDim[Byte](capacity))
+
+  def booleanData = {
+    if (_booleanData == null) {
+      val colIndexes = columnTypes.zipWithIndex.filter(_._1 =:= TypeTag.Boolean.tpe).map(_._2)
+      _booleanData = new Array[ByteBuffer](colIndexes.length)
+      _booleanData.indices.foreach{ i =>
+        val offset = columnOffsets(i)
+        val length = columnOffsets(i+1) - offset
+        _booleanData(i) = ByteBuffer.wrap(rawData,offset, length)
+      }
+    }
+    _booleanData
   }
-  val charData = Array.fill[CharBuffer](columnTypes.count(_ =:= TypeTag.Char.tpe)) {
-    CharBuffer.wrap(Array.ofDim[Char](capacity))
+
+  def charData = {
+    if (_charData == null) {
+      val colIndexes = columnTypes.zipWithIndex.filter(_._1 =:= TypeTag.Char.tpe).map(_._2)
+      _charData = new Array[CharBuffer](colIndexes.length)
+      _charData.indices.foreach{ i =>
+        val offset = columnOffsets(i)
+        val length = columnOffsets(i+1) - offset
+        _charData(i) = ByteBuffer.wrap(rawData,offset, length).asCharBuffer()
+      }
+    }
+    _charData
   }
-  val stringData = Array.fill[CharBuffer](columnTypes.count(_ =:= ColumnarTypes.StringTypeTag.tpe)) {
-    CharBuffer.wrap(Array.ofDim[Char](capacity * MAX_STRING_SIZE))
+
+  def stringData = {
+    if (_stringData == null) {
+      val colIndexes = columnTypes.zipWithIndex.filter(_._1 =:= ColumnarTypes.StringTypeTag.tpe).map(_._2)
+      _stringData = new Array[CharBuffer](colIndexes.length)
+      _stringData.indices.foreach{ i =>
+        val offset = columnOffsets(i)
+        val length = columnOffsets(i+1) - offset // TODO?  * MAX_STRING_SIZE ?
+        _stringData(i) = ByteBuffer.wrap(rawData,offset, length).asCharBuffer()
+      }
+    }
+    _stringData
   }
+
+
+  @transient var _byteData :Array[ByteBuffer]= null
+
+  @transient var _shortData :Array[ShortBuffer]= null
+
+  @transient var _intData :Array[IntBuffer]= null
+
+  @transient var _longData :Array[LongBuffer]= null
+
+  @transient var _floatData :Array[FloatBuffer]= null
+
+  @transient var _doubleData :Array[DoubleBuffer]= null
+
+  @transient var _booleanData :Array[ByteBuffer]= null
+
+  @transient var _charData :Array[CharBuffer]= null
+
+  @transient var _stringData :Array[CharBuffer]= null
 
   def inferBestWorkGroupSize(): Unit = {
     this.localSize = if (size == 0) 1 else math.min(BLOCK_SIZE, size)
@@ -627,7 +734,7 @@ class GpuPartition[T <: Product: TypeTag](context: OpenCLContext, idx: Int, val 
   }
 
   protected def hostToDeviceCopy[V: TypeTag](src: Pointer, dest: cl_mem, elementCount: Long,
-    offset: Int = 0): Unit = {
+                                             offset: Int = 0): Unit = {
     val length = elementCount * baseSize[V]
     val startTime = System.nanoTime()
     clEnqueueWriteBuffer(context.queue, dest, CL_TRUE, offset, length, src, 0, null, null)
