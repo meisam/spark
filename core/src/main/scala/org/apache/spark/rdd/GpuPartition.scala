@@ -40,10 +40,10 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
     if (_byteData == null) {
       val colIndexes = columnTypes.zipWithIndex.filter(_._1 =:= TypeTag.Byte.tpe).map(_._2)
       _byteData = new Array[ByteBuffer](colIndexes.length)
-      _byteData.indices.foreach{ i =>
+      _byteData.indices.foreach { i =>
         val offset = columnOffsets(i)
-        val length = columnOffsets(i+1) - offset
-        _byteData(i) = ByteBuffer.wrap(rawData,offset, length)
+        val length = columnOffsets(i + 1) - offset
+        _byteData(i) = ByteBuffer.wrap(rawData, offset, length)
       }
     }
     _byteData
@@ -53,10 +53,10 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
     if (_shortData == null) {
       val colIndexes = columnTypes.zipWithIndex.filter(_._1 =:= TypeTag.Short.tpe).map(_._2)
       _shortData = new Array[ShortBuffer](colIndexes.length)
-      _shortData.indices.foreach{ i =>
+      _shortData.indices.foreach { i =>
         val offset = columnOffsets(i)
-        val length = columnOffsets(i+1) - offset
-        _shortData(i) = ByteBuffer.wrap(rawData,offset, length).asShortBuffer()
+        val length = columnOffsets(i + 1) - offset
+        _shortData(i) = ByteBuffer.wrap(rawData, offset, length).asShortBuffer()
       }
     }
     _shortData
@@ -66,10 +66,10 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
     if (_intData == null) {
       val colIndexes = columnTypes.zipWithIndex.filter(_._1 =:= TypeTag.Int.tpe).map(_._2)
       _intData = new Array[IntBuffer](colIndexes.length)
-      _intData.indices.foreach{ i =>
+      _intData.indices.foreach { i =>
         val offset = columnOffsets(i)
-        val length = columnOffsets(i+1) - offset
-        _intData(i) = ByteBuffer.wrap(rawData,offset, length).asIntBuffer()
+        val length = columnOffsets(i + 1) - offset
+        _intData(i) = ByteBuffer.wrap(rawData, offset, length).asIntBuffer()
       }
     }
     _intData
@@ -79,10 +79,10 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
     if (_longData == null) {
       val colIndexes = columnTypes.zipWithIndex.filter(_._1 =:= TypeTag.Long.tpe).map(_._2)
       _longData = new Array[LongBuffer](colIndexes.length)
-      _longData.indices.foreach{ i =>
+      _longData.indices.foreach { i =>
         val offset = columnOffsets(i)
-        val length = columnOffsets(i+1) - offset
-        _longData(i) = ByteBuffer.wrap(rawData,offset, length).asLongBuffer()
+        val length = columnOffsets(i + 1) - offset
+        _longData(i) = ByteBuffer.wrap(rawData, offset, length).asLongBuffer()
       }
     }
     _longData
@@ -92,10 +92,10 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
     if (_floatData == null) {
       val colIndexes = columnTypes.zipWithIndex.filter(_._1 =:= TypeTag.Float.tpe).map(_._2)
       _floatData = new Array[FloatBuffer](colIndexes.length)
-      _floatData.indices.foreach{ i =>
+      _floatData.indices.foreach { i =>
         val offset = columnOffsets(i)
-        val length = columnOffsets(i+1) - offset
-        _floatData(i) = ByteBuffer.wrap(rawData,offset, length).asFloatBuffer()
+        val length = columnOffsets(i + 1) - offset
+        _floatData(i) = ByteBuffer.wrap(rawData, offset, length).asFloatBuffer()
       }
     }
     _floatData
@@ -105,10 +105,10 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
     if (_doubleData == null) {
       val colIndexes = columnTypes.zipWithIndex.filter(_._1 =:= TypeTag.Double.tpe).map(_._2)
       _doubleData = new Array[DoubleBuffer](colIndexes.length)
-      _doubleData.indices.foreach{ i =>
+      _doubleData.indices.foreach { i =>
         val offset = columnOffsets(i)
-        val length = columnOffsets(i+1) - offset
-        _doubleData(i) = ByteBuffer.wrap(rawData,offset, length).asDoubleBuffer()
+        val length = columnOffsets(i + 1) - offset
+        _doubleData(i) = ByteBuffer.wrap(rawData, offset, length).asDoubleBuffer()
       }
     }
     _doubleData
@@ -118,10 +118,10 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
     if (_booleanData == null) {
       val colIndexes = columnTypes.zipWithIndex.filter(_._1 =:= TypeTag.Boolean.tpe).map(_._2)
       _booleanData = new Array[ByteBuffer](colIndexes.length)
-      _booleanData.indices.foreach{ i =>
+      _booleanData.indices.foreach { i =>
         val offset = columnOffsets(i)
-        val length = columnOffsets(i+1) - offset
-        _booleanData(i) = ByteBuffer.wrap(rawData,offset, length)
+        val length = columnOffsets(i + 1) - offset
+        _booleanData(i) = ByteBuffer.wrap(rawData, offset, length)
       }
     }
     _booleanData
@@ -131,10 +131,10 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
     if (_charData == null) {
       val colIndexes = columnTypes.zipWithIndex.filter(_._1 =:= TypeTag.Char.tpe).map(_._2)
       _charData = new Array[CharBuffer](colIndexes.length)
-      _charData.indices.foreach{ i =>
+      _charData.indices.foreach { i =>
         val offset = columnOffsets(i)
-        val length = columnOffsets(i+1) - offset
-        _charData(i) = ByteBuffer.wrap(rawData,offset, length).asCharBuffer()
+        val length = columnOffsets(i + 1) - offset
+        _charData(i) = ByteBuffer.wrap(rawData, offset, length).asCharBuffer()
       }
     }
     _charData
@@ -144,33 +144,33 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
     if (_stringData == null) {
       val colIndexes = columnTypes.zipWithIndex.filter(_._1 =:= ColumnarTypes.StringTypeTag.tpe).map(_._2)
       _stringData = new Array[CharBuffer](colIndexes.length)
-      _stringData.indices.foreach{ i =>
+      _stringData.indices.foreach { i =>
         val offset = columnOffsets(i)
-        val length = columnOffsets(i+1) - offset // TODO?  * MAX_STRING_SIZE ?
-        _stringData(i) = ByteBuffer.wrap(rawData,offset, length).asCharBuffer()
+        val length = columnOffsets(i + 1) - offset // TODO?  * MAX_STRING_SIZE ?
+        _stringData(i) = ByteBuffer.wrap(rawData, offset, length).asCharBuffer()
       }
     }
     _stringData
   }
 
 
-  @transient var _byteData :Array[ByteBuffer]= null
+  @transient var _byteData: Array[ByteBuffer] = null
 
-  @transient var _shortData :Array[ShortBuffer]= null
+  @transient var _shortData: Array[ShortBuffer] = null
 
-  @transient var _intData :Array[IntBuffer]= null
+  @transient var _intData: Array[IntBuffer] = null
 
-  @transient var _longData :Array[LongBuffer]= null
+  @transient var _longData: Array[LongBuffer] = null
 
-  @transient var _floatData :Array[FloatBuffer]= null
+  @transient var _floatData: Array[FloatBuffer] = null
 
-  @transient var _doubleData :Array[DoubleBuffer]= null
+  @transient var _doubleData: Array[DoubleBuffer] = null
 
-  @transient var _booleanData :Array[ByteBuffer]= null
+  @transient var _booleanData: Array[ByteBuffer] = null
 
-  @transient var _charData :Array[CharBuffer]= null
+  @transient var _charData: Array[CharBuffer] = null
 
-  @transient var _stringData :Array[CharBuffer]= null
+  @transient var _stringData: Array[CharBuffer] = null
 
   def inferBestWorkGroupSize(): Unit = {
     this.localSize = if (size == 0) 1 else math.min(BLOCK_SIZE, size)
@@ -178,7 +178,9 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
   }
 
   def fillFromFiles(paths: Array[String]): Unit = {
-    assert(paths.length == columnTypes.size, { " %d file paths but only %d columns".format(paths.length, columnTypes.size) })
+    assert(paths.length == columnTypes.size, {
+      " %d file paths but only %d columns".format(paths.length, columnTypes.size)
+    })
     columnTypes.zip(paths).zipWithIndex.foreach({
       case ((colType, path), colIndex) =>
 
@@ -189,19 +191,29 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
         val totalTupleNum = columnData.getLong()
 
         val tuplesInBlock = columnData.getLong()
-        assert(tuplesInBlock == totalTupleNum, { f"tuplesInBlock != totalTupleNum ($tuplesInBlock != $totalTupleNum )" })
+        assert(tuplesInBlock == totalTupleNum, {
+          f"tuplesInBlock != totalTupleNum ($tuplesInBlock != $totalTupleNum )"
+        })
 
         val blockSize = columnData.getLong()
-        assert(blockSize == totalTupleNum * baseSize(colType), { f"blockSize != totalTupleNum * sizeof($colType) ($blockSize != $totalTupleNum * sizeof($colType))" })
+        assert(blockSize == totalTupleNum * baseSize(colType), {
+          f"blockSize != totalTupleNum * sizeof($colType) ($blockSize != $totalTupleNum * sizeof($colType))"
+        })
 
         val blockTotal = columnData.getInt()
-        assert(blockTotal == 1, { f"blockTotal != 1 ($blockTotal != 1)" })
+        assert(blockTotal == 1, {
+          f"blockTotal != 1 ($blockTotal != 1)"
+        })
 
         val blockId = columnData.getInt()
-        assert(blockId == 0, { f"blockId != 0 ($blockId!= 0)" })
+        assert(blockId == 0, {
+          f"blockId != 0 ($blockId!= 0)"
+        })
 
         val format = columnData.getInt()
-        assert(format == 3, { f"format != 3 ($format != 3)" })
+        assert(format == 3, {
+          f"format != 3 ($format != 3)"
+        })
 
         val paddingLength = 4060
         columnData.position(columnData.position + paddingLength)
@@ -210,7 +222,9 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
         val restData = columnData.slice()
         restData.order(ByteOrder.LITTLE_ENDIAN)
         val remaining = restData.remaining()
-        assert(remaining == blockSize, { f"remaining != blockSize ($remaining != $blockSize)" })
+        assert(remaining == blockSize, {
+          f"remaining != blockSize ($remaining != $blockSize)"
+        })
 
         if (colType =:= TypeTag.Byte.tpe) {
           val convertBuffer = new Array[Byte](totalTupleNum.toInt)
