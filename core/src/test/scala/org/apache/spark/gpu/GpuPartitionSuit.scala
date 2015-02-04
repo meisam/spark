@@ -41,7 +41,7 @@ class GpuPartitionSuit extends FunSuite with SharedSparkContext {
 
 
   test("org.apache.spark.rdd.GpuPartition.initArray test") {
-    val x = new GpuPartition[(Int, String, Float, Double, String)](openCLContext, 0, DEFAULT_CAPACITY)
+    val x = new GpuPartition[(Int, String, Float, Double, String)](openCLContext, DEFAULT_CAPACITY)
     assert(x.intData.length === 1)
     assert(x.longData.length === 0)
     assert(x.floatData.length === 1)
@@ -52,7 +52,7 @@ class GpuPartitionSuit extends FunSuite with SharedSparkContext {
   test("org.apache.spark.rdd.GpuPartition.fill test") {
     val testData = (0 to 10).reverse.zipWithIndex.toIterator
 
-    val chunk = new GpuPartition[(Int, Int)](openCLContext, 0, DEFAULT_CAPACITY)
+    val chunk = new GpuPartition[(Int, Int)](openCLContext, DEFAULT_CAPACITY)
     chunk.fill(testData)
     (0 until chunk.capacity).foreach(i =>
       if (i <= 10) {
@@ -69,7 +69,7 @@ class GpuPartitionSuit extends FunSuite with SharedSparkContext {
     val testData: IndexedSeq[(Int, String, Float, Double, String, Int, String)] = (0 to 10).map(x => (x, "STR_I_%d".format(x), 1.5f + x, 2.5d + x, "STR_II_%d".format(x), x - 1, "STR_III_%d".format(x)))
 
     val rddChunk = new GpuPartition[(Int, String, Float, Double, String, Int, String)](
-      openCLContext, 0, DEFAULT_CAPACITY)
+      openCLContext, DEFAULT_CAPACITY)
     assert(rddChunk.toTypeAwareColumnIndex(0) === 0)
     assert(rddChunk.toTypeAwareColumnIndex(1) === 0)
     assert(rddChunk.toTypeAwareColumnIndex(2) === 0)
@@ -83,7 +83,7 @@ class GpuPartitionSuit extends FunSuite with SharedSparkContext {
     val testData: IndexedSeq[(String, String)] = (0 to 10).reverse.zipWithIndex.map(
       x => ("STR_I_%d".format(x._1), "STR_II_%d".format(x._2)))
 
-    val chunk = new GpuPartition[(String, String)](openCLContext, 0, DEFAULT_CAPACITY)
+    val chunk = new GpuPartition[(String, String)](openCLContext, DEFAULT_CAPACITY)
     chunk.fill(testData.toIterator)
     (0 until chunk.capacity).foreach(i =>
       if (i <= 10) {

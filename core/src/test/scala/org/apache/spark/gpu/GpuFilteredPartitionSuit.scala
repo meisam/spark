@@ -44,7 +44,7 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
   test("GpuFilteredPartition(Int, Int) == 1 match test") {
     val testData: IndexedSeq[(Int, Int)] = (1000 until 1000 + 10).zipWithIndex
 
-    val parentPartition = new GpuPartition[(Int, Int)](openCLContext, 0, DEFAULT_CAPACITY)
+    val parentPartition = new GpuPartition[(Int, Int)](openCLContext, DEFAULT_CAPACITY)
     parentPartition.fill(testData.toIterator)
 
     val gpuPartition = new GpuFilteredPartition[(Int, Int), Int](openCLContext, 0,
@@ -66,7 +66,7 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
   test("GpuFilteredPartition(Int, Int) == 0 match test") {
     val testData: IndexedSeq[(Int, Int)] = (1000 until 1000 + 10).zipWithIndex
 
-    val parentPartition = new GpuPartition[(Int, Int)](openCLContext, 0, DEFAULT_CAPACITY)
+    val parentPartition = new GpuPartition[(Int, Int)](openCLContext, DEFAULT_CAPACITY)
     parentPartition.fill(testData.toIterator)
 
     val gpuPartition = new GpuFilteredPartition[(Int, Int), Int](openCLContext, 0,
@@ -87,7 +87,7 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
   test("GpuFilteredPartition(Int, Int) == many matches test") {
     val testData: IndexedSeq[(Int, Int)] = (1000 until 1000 + 10).map(_ % 3).zipWithIndex
 
-    val parentPartition = new GpuPartition[(Int, Int)](openCLContext, 0, DEFAULT_CAPACITY)
+    val parentPartition = new GpuPartition[(Int, Int)](openCLContext, DEFAULT_CAPACITY)
     parentPartition.fill(testData.toIterator)
 
     val gpuPartition = new GpuFilteredPartition[(Int, Int), Int](openCLContext, 0,
@@ -108,7 +108,7 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
   test("GpuFilteredPartition(Int, Int) >= test") {
     val testData: IndexedSeq[(Int, Int)] = (0 until 10).zipWithIndex
 
-    val parentPartition = new GpuPartition[(Int, Int)](openCLContext, 0, DEFAULT_CAPACITY)
+    val parentPartition = new GpuPartition[(Int, Int)](openCLContext, DEFAULT_CAPACITY)
     parentPartition.fill(testData.toIterator)
 
     val gpuPartition = new GpuFilteredPartition[(Int, Int), Int](openCLContext, 0,
@@ -130,7 +130,7 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
   test("GpuFilteredPartition(Int, Int) <= test") {
     val testData: IndexedSeq[(Int, Int)] = (0 until 10).zipWithIndex
 
-    val parentPartition = new GpuPartition[(Int, Int)](openCLContext, 0, DEFAULT_CAPACITY)
+    val parentPartition = new GpuPartition[(Int, Int)](openCLContext, DEFAULT_CAPACITY)
     parentPartition.fill(testData.toIterator)
 
     val gpuPartition = new GpuFilteredPartition[(Int, Int), Int](openCLContext, 0,
@@ -156,7 +156,7 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
         (v.toLong, ((i % 3) == 0))
     }).toArray
 
-    val parentPartition = new GpuPartition[(Long, Boolean)](openCLContext, 0, DEFAULT_CAPACITY)
+    val parentPartition = new GpuPartition[(Long, Boolean)](openCLContext, DEFAULT_CAPACITY)
     parentPartition.fill(testData.toIterator)
 
     val gpuPartition = new GpuFilteredPartition[(Long, Boolean), Long](openCLContext, 0,
@@ -181,7 +181,7 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
 
     val criterion = "STR_VAL%d".format(START + 5)
 
-    val parentPartition = new GpuPartition[(Int, String)](openCLContext, 0, DEFAULT_CAPACITY)
+    val parentPartition = new GpuPartition[(Int, String)](openCLContext, DEFAULT_CAPACITY)
     parentPartition.fill(testData.toIterator)
 
     val gpuPartition = new GpuFilteredPartition[(Int, String), String](openCLContext, 0,
@@ -269,7 +269,7 @@ class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
     val PARENT_SIZE = 10
     val testData: IndexedSeq[(Int, Int)] = (1 to PARENT_SIZE).reverse.zipWithIndex
 
-    val parentPartition = new GpuPartition[(Int, Int)](openCLContext, 0, DEFAULT_CAPACITY)
+    val parentPartition = new GpuPartition[(Int, Int)](openCLContext, DEFAULT_CAPACITY)
     parentPartition.fill(testData.toIterator)
 
     assert(parentPartition.size === PARENT_SIZE, "Size of the parent parition is incorrect")
