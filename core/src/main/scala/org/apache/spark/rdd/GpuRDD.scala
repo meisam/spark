@@ -45,9 +45,7 @@ T <: Product : TypeTag
 
   override def compute(p: Partition, context: TaskContext): Iterator[GpuPartition[T]] = {
     val data: Iterator[T] = p.asInstanceOf[ParallelCollectionPartition[T]].iterator
-    val partition = new GpuPartition[T](null, 0, capacity)
-    partition.fill(data)
-    Array(partition).toIterator
+    new GpuPartitionIterator[T](data, capacity)
   }
 }
 
@@ -87,7 +85,7 @@ T <: Product : TypeTag
     new InterruptibleIterator[GpuPartition[T]](context, partitionIterator)
   }
 
-  val __partitions = Array(new GpuPartition[T](openCLContext, 0, capacity))
+  val __partitions = Array(new GpuPartition[T](openCLContext, capacity))
 
   /**
    * Implemented by subclasses to return the set of partitions in this RDD. This method will only
