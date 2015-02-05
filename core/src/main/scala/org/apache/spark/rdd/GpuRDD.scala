@@ -45,7 +45,8 @@ T <: Product : TypeTag
 
   override def compute(p: Partition, context: TaskContext): Iterator[GpuPartition[T]] = {
     val data: Iterator[T] = p.asInstanceOf[ParallelCollectionPartition[T]].iterator
-    new GpuPartitionIterator[T](data, capacity)
+    new InterruptibleIterator[GpuPartition[T]]( context, new GpuPartitionIterator[T](data,
+      capacity))
   }
 }
 
