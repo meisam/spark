@@ -7,10 +7,8 @@ class GpuPartitionIterator[T <: Product : TypeTag]
   extends Serializable with Iterator[GpuPartition[T]] {
 
   override def next(): GpuPartition[T] = {
-    val nextDataChunk = itr.take(capacity)
-    val optimalCapacity = Math.min(nextDataChunk.length, capacity)
-    val currentPartition = new GpuPartition[T](null, optimalCapacity)
-    currentPartition.fill(nextDataChunk)
+    val currentPartition = new GpuPartition[T](null, capacity)
+    currentPartition.fill(itr)
     currentPartition
   }
 
