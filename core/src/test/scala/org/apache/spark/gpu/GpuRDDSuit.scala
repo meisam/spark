@@ -18,10 +18,8 @@
 package org.apache.spark.gpu
 
 import org.apache.spark.SharedSparkContext
-import org.apache.spark.rdd.RDD
 import org.scalatest.FunSuite
 
-import scala.collection.immutable.IndexedSeq
 import scala.language.existentials
 
 /**
@@ -32,8 +30,10 @@ class GpuRDDSuit extends FunSuite with SharedSparkContext {
   test("org.apache.spark.rdd.GpuRDD 1 partition") {
     val PARTITIONS_COUNT = 1
     val TEST_DATA_SIZE = 3 + (1 << 4)
+    val CHUNK_CAPACITY = 1 << 10
     val testData = (0 until TEST_DATA_SIZE).reverse.zipWithIndex.toArray
-    val gpuRDD = sc.toGpuRDD[(Int, Int)](testData)
+    val gpuRDD = sc.toGpuRDD[(Int, Int)](testData, CHUNK_CAPACITY, PARTITIONS_COUNT)
+    val allPartitions =  gpuRDD.collect()
     val collectedData = gpuRDD.collect()(0)
     assert(collectedData.size === testData.length)
     testData.zipWithIndex.foreach {
@@ -47,8 +47,9 @@ class GpuRDDSuit extends FunSuite with SharedSparkContext {
   test("org.apache.spark.rdd.GpuRDD 2 partition") {
     val PARTITIONS_COUNT = 1
     val TEST_DATA_SIZE = 3 + (1 << 4)
+    val CHUNK_CAPACITY = 1<< 10
     val testData = (0 until TEST_DATA_SIZE).reverse.zipWithIndex.toArray
-    val gpuRDD = sc.toGpuRDD[(Int, Int)](testData)
+    val gpuRDD = sc.toGpuRDD[(Int, Int)](testData, CHUNK_CAPACITY, PARTITIONS_COUNT)
     val collectedData = gpuRDD.collect()(0)
     assert(collectedData.size === testData.length)
     testData.zipWithIndex.foreach {
