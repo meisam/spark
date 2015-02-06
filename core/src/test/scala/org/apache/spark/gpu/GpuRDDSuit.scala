@@ -18,14 +18,37 @@
 package org.apache.spark.gpu
 
 import org.apache.spark.SharedSparkContext
+import org.apache.spark.rdd.GpuPartition
 import org.scalatest.FunSuite
 
 import scala.language.existentials
+import scala.reflect.ClassTag
+import scala.reflect.runtime.universe.TypeTag
 
 /**
  *
  */
 class GpuRDDSuit extends FunSuite with SharedSparkContext {
+
+  private def flattenResults[T <: Product : TypeTag : ClassTag](collectedPartitions: Array[GpuPartition[T]]): Array[T] = {
+
+    val collectedData: Array[T] = collectedPartitions.map { p =>
+      (0 until p.size).map(i => p(i))
+    }.flatten[T]
+    collectedData
+  }
+
+  def validateResults[T <: Product : TypeTag : ClassTag](testData: Array[T], collectedPartitions: Array[GpuPartition[T]]):
+  Unit = {
+    val collectedData = flattenResults[T](collectedPartitions)
+    testData.zip(collectedData).foreach {
+      case (vt, vc) =>
+        assert(vt === vc)
+    }
+
+    val totalResult = collectedPartitions.map(p => p.size).reduce(_ + _)
+    assert(totalResult === testData.length)
+  }
 
   test("org.apache.spark.rdd.GpuRDD 1 partition") {
     val PARTITIONS_COUNT = 1
@@ -33,47 +56,34 @@ class GpuRDDSuit extends FunSuite with SharedSparkContext {
     val CHUNK_CAPACITY = 1 << 10
     val testData = (0 until TEST_DATA_SIZE).reverse.zipWithIndex.toArray
     val gpuRDD = sc.toGpuRDD[(Int, Int)](testData, CHUNK_CAPACITY, PARTITIONS_COUNT)
-    val allPartitions =  gpuRDD.collect()
-    val collectedData = gpuRDD.collect()(0)
-    assert(collectedData.size === testData.length)
-    testData.zipWithIndex.foreach {
-      case (v, i) =>
-        assert(v._1 === collectedData.intData(0).get(i))
-        assert(v._2 === collectedData.intData(1).get(i))
-    }
-    assert(gpuRDD.collect.length === PARTITIONS_COUNT)
+    val collectedPartitions = gpuRDD.collect()
+    assert(collectedPartitions.size === PARTITIONS_COUNT)
+    validateResults(testData, collectedPartitions)
   }
 
   test("org.apache.spark.rdd.GpuRDD 2 partition") {
     val PARTITIONS_COUNT = 1
     val TEST_DATA_SIZE = 3 + (1 << 4)
-    val CHUNK_CAPACITY = 1<< 10
+    val CHUNK_CAPACITY = 1 << 10
     val testData = (0 until TEST_DATA_SIZE).reverse.zipWithIndex.toArray
     val gpuRDD = sc.toGpuRDD[(Int, Int)](testData, CHUNK_CAPACITY, PARTITIONS_COUNT)
-    val collectedData = gpuRDD.collect()(0)
-    assert(collectedData.size === testData.length)
-    testData.zipWithIndex.foreach {
-      case (v, i) =>
-        assert(v._1 === collectedData.intData(0).get(i))
-        assert(v._2 === collectedData.intData(1).get(i))
-    }
-    assert(gpuRDD.collect.length === PARTITIONS_COUNT)
+    val collectedPartitions = gpuRDD.collect()
+    assert(collectedPartitions.length === PARTITIONS_COUNT)
+
+    validateResults(testData, collectedPartitions)
   }
 
-  test("org.apache.spark.rdd.GpuRDD 2 partition and capacity < data size") {
+
+  test("org.apache.spark.rdd.GpuRDD 3 partition and capacity < data size") {
     val PARTITIONS_COUNT = 3
     val TEST_DATA_SIZE = 3 + (1 << 10)
     val CHUNK_CAPACITY = 8
     val testData = (0 until TEST_DATA_SIZE).reverse.zipWithIndex.toArray
     val gpuRDD = sc.toGpuRDD[(Int, Int)](testData, CHUNK_CAPACITY, PARTITIONS_COUNT)
-    val collectedData = gpuRDD.collect()(0)
-    assert(collectedData.size === CHUNK_CAPACITY)
-    testData.zipWithIndex.foreach {
-      case (v, i) =>
-        assert(v._1 === collectedData.intData(0).get(i))
-        assert(v._2 === collectedData.intData(1).get(i))
-    }
-    assert(gpuRDD.collect.length === PARTITIONS_COUNT)
+    val collectedPartitions: Array[GpuPartition[(Int, Int)]] = gpuRDD.collect()
+    assert(collectedPartitions.length === Math.ceil(TEST_DATA_SIZE.toDouble / CHUNK_CAPACITY))
+    validateResults(testData, collectedPartitions)
+
   }
 
   // This would not work with the given design of GpuRDD
@@ -81,37 +91,29 @@ class GpuRDDSuit extends FunSuite with SharedSparkContext {
     val PARTITIONS_COUNT = 1
     val TEST_DATA_SIZE = 3 + (1 << 4)
     val testData = (0 until TEST_DATA_SIZE).reverse.zipWithIndex.toArray
-    val gpuRDD = sc.toGpuRDD[(Int, Int)](testData)// FIXME.map(_._1)
-    val collectedData = gpuRDD.collect()(0)
+    val gpuRDD = sc.toGpuRDD[(Int, Int)](testData) // FIXME.map(_._1)
+    val collectedPartitions = gpuRDD.collect()
     val expectedData = testData.map(x => x.productElement(0).asInstanceOf[Int])
-    assert(collectedData.size === expectedData.length)
-    testData.zipWithIndex.foreach {
-      case (v, i) => assert(v === collectedData.intData(0).get(i))
-    }
+    assert(collectedPartitions.size === PARTITIONS_COUNT)
+    validateResults(testData, collectedPartitions)
   }
 
 
   test("GpuRDD(Int, Int) test") {
+    val PARTITIONS_COUNT = 1
+
     val testData = (0 to 10).reverse.zipWithIndex.toArray
 
     val gpuRdd = sc.toGpuRDD[(Int, Int)](testData)
-    val collectedData = gpuRdd.collect()(0)
-    assert(collectedData.size === testData.length)
-    testData.zipWithIndex.foreach({ case (v, i) =>
-      if (i <= 10) {
-        assert(collectedData.intData(0).get(i) === (10 - i), "values do not match")
-        assert(collectedData.intData(1).get(i) === i, "indexes  do not match")
-      } else {
-        assert(collectedData.intData(0).get(i) === 0, "values do not match")
-        assert(collectedData.intData(1).get(i) === 0, "values do not match")
-      }
-    }
-    )
+    val collectedPartitions = gpuRdd.collect()
+    val expectedData = testData.map(x => x.productElement(0).asInstanceOf[Int])
+    assert(collectedPartitions.size === PARTITIONS_COUNT)
+    validateResults(testData, collectedPartitions)
   }
 
   test("GpuRDD(Int, String, Int, String) test") {
-    val testData = (0 to 10).reverse.zipWithIndex.map{x =>
-      (x._1, "STR_I_%d".format(x._1), x._2,"STR_II_%d".format(x._2))
+    val testData = (0 to 10).reverse.zipWithIndex.map { x =>
+      (x._1, "STR_I_%d".format(x._1), x._2, "STR_II_%d".format(x._2))
     }.toArray
 
     val gpuRdd = sc.toGpuRDD[(Int, String, Int, String)](testData)
