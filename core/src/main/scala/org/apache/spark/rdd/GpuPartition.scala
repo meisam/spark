@@ -1,11 +1,11 @@
 package org.apache.spark.rdd
 
 import java.io.File
-import java.nio.{Buffer, ByteBuffer, ByteOrder, CharBuffer, DoubleBuffer, FloatBuffer, IntBuffer, LongBuffer, ShortBuffer}
 import java.nio.file.Files
+import java.nio.{Buffer, ByteBuffer, ByteOrder, CharBuffer, DoubleBuffer, FloatBuffer, IntBuffer, LongBuffer, ShortBuffer}
 
+import org.apache.spark.Logging
 import org.apache.spark.scheduler.OpenCLContext
-import org.apache.spark.{Logging, Partition}
 import org.jocl.CL._
 import org.jocl._
 
@@ -676,42 +676,34 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
   }
 
   def baseSize[V: TypeTag]: Int = {
-    implicitly[TypeTag[V]] match {
-      case TypeTag.Byte => Sizeof.cl_char
-      case TypeTag.Short => Sizeof.cl_short
-      case TypeTag.Char => Sizeof.cl_char2
-      case TypeTag.Int => Sizeof.cl_int
-      case TypeTag.Long => Sizeof.cl_long
-      case TypeTag.Float => Sizeof.cl_float
-      case TypeTag.Double => Sizeof.cl_double
-      case TypeTag.Boolean => Sizeof.cl_char
-      case ColumnarTypes.StringTypeTag => Sizeof.cl_char2 * MAX_STRING_SIZE
-      case _ => throw new NotImplementedError("Unknown type %s".format(implicitly[TypeTag[V]]))
+    val tt = implicitly[TypeTag[V]]
+    if (tt.tpe =:= TypeTag.Byte.tpe) {
+      Sizeof.cl_char
+    } else if (tt.tpe =:= TypeTag.Short.tpe) {
+      Sizeof.cl_short
+    } else if (tt.tpe =:= TypeTag.Char.tpe) {
+      Sizeof.cl_char2
+    } else if (tt.tpe =:= TypeTag.Int.tpe) {
+      Sizeof.cl_int
+    } else if (tt.tpe =:= TypeTag.Long.tpe) {
+      Sizeof.cl_long
+    } else if (tt.tpe =:= TypeTag.Float.tpe) {
+      Sizeof.cl_float
+    } else if (tt.tpe =:= TypeTag.Double.tpe) {
+      Sizeof.cl_double
+    } else if (tt.tpe =:= TypeTag.Boolean.tpe) {
+      Sizeof.cl_char
+    } else if (tt.tpe =:= ColumnarTypes.StringTypeTag.tpe) {
+      Sizeof.cl_char2 * MAX_STRING_SIZE
+    }
+    else {
+      throw new NotImplementedError("Unknown type %s".format(implicitly[TypeTag[V]]))
     }
   }
 
   def baseSize(ct: JavaType): Int = {
-    if (ct == TypeTag.Byte.tpe) {
-      Sizeof.cl_char
-    } else if (ct == TypeTag.Short.tpe) {
-      Sizeof.cl_short
-    } else if (ct == TypeTag.Char.tpe) {
-      Sizeof.cl_short
-    } else if (ct == TypeTag.Int.tpe) {
-      Sizeof.cl_int
-    } else if (ct == TypeTag.Long.tpe) {
-      Sizeof.cl_long
-    } else if (ct == TypeTag.Float.tpe) {
-      Sizeof.cl_float
-    } else if (ct == TypeTag.Double.tpe) {
-      Sizeof.cl_double
-    } else if (ct == TypeTag.Boolean.tpe) {
-      Sizeof.cl_char
-    } else if (ct == ColumnarTypes.StringTypeTag.tpe) {
-      Sizeof.cl_char * MAX_STRING_SIZE
-    } else {
-      throw new NotImplementedError("Unknown type %s".format(ct.toString()))
-    }
+    implicit val tt = javaTypeToTypeTag(ct)
+    baseSize(tt)
   }
 
   def typeNameString[V: TypeTag](): String = {
