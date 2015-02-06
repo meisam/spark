@@ -117,25 +117,12 @@ class GpuRDDSuit extends FunSuite with SharedSparkContext {
     }.toArray
 
     val gpuRdd = sc.toGpuRDD[(Int, String, Int, String)](testData)
-    val collectedData = gpuRdd.collect()(0)
-    assert(collectedData.size === testData.length)
-    testData.zipWithIndex.foreach { case (v, i) =>
-      val v1 = collectedData.intData(0).get(i)
-      val v2 = collectedData.stringData(0).get(i)
-      val v3 = collectedData.intData(1).get(i)
-      val v4 = collectedData.stringData(1).get(i)
-      if (i <= 10) {
-        assert(v1 === (10 - i), "values do not match at row %d".format(i))
-        assert(v2 === ("STR_I_" + (10 - i)), "at row %d".format(i))
-        assert(v3 === i, "values do not match at row %d".format(i))
-        assert(v4 === ("STR_II_" + i), "at row %d".format(i))
-      } else {
-        assert(v1 === 0, "values do not match")
-        assert(v2 === "", "values do not match at row %d".format(i))
-        assert(v3 === 0, "values do not match at row %d".format(i))
-        assert(v4 === "", "values do not match at row %d".format(i))
-      }
-    }
+    val collectedPartitions = gpuRdd.collect()
+
+    assert(collectedPartitions.size === 1)
+
+    validateResults(testData, collectedPartitions)
+
   }
 }
 
