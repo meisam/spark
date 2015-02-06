@@ -279,6 +279,8 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
   }
 
   def fill(iter: Iterator[T]): Unit = {
+    val zeroCharBuffer = Array.fill[Char](MAX_STRING_SIZE)(0.toChar)
+
     size = 0
     val values: Iterator[T] = iter.take(capacity)
     values.zipWithIndex.foreach {
@@ -304,8 +306,17 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
               charData(toTypeAwareColumnIndex(colIndex)).put(rowIndex, p.asInstanceOf[Char])
             } else if (columnTypes(colIndex) =:= ColumnarTypes.StringTypeTag.tpe) {
               val str = p.toString
-              str.getChars(0, Math.min(MAX_STRING_SIZE, str.length),
-                stringData(toTypeAwareColumnIndex(colIndex)).array, rowIndex * MAX_STRING_SIZE)
+              val offset = rowIndex * MAX_STRING_SIZE
+              val charCount = Math.min(MAX_STRING_SIZE, str.length)
+              val trailingExtraCharCount = MAX_STRING_SIZE - str.length
+              val destBuffer = stringData(toTypeAwareColumnIndex(colIndex))
+              str.getChars(0, charCount, reusedCharBuffer, 0)
+              destBuffer.position(offset)
+              destBuffer.put(reusedCharBuffer, 0, charCount)
+              //Fill rest of it with zeros
+              if (trailingExtraCharCount > 0) {
+                destBuffer.put(zeroCharBuffer, 0, trailingExtraCharCount)
+              }
             } else {
               throw new NotImplementedError("Unknown type %s".format(columnTypes(colIndex)))
             }
@@ -316,7 +327,10 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
 
   def getStringData(typeAwareColumnIndex: Int, rowIndex: Int): String = {
     val offset = rowIndex * MAX_STRING_SIZE
-    val str = new String(stringData(typeAwareColumnIndex).array(), offset, MAX_STRING_SIZE)
+    val sourceBuffer = stringData(typeAwareColumnIndex)
+    sourceBuffer.position(offset)
+    sourceBuffer.get(reusedCharBuffer)
+    val str = new String(reusedCharBuffer)
     str.trim()
   }
 
@@ -818,6 +832,10 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
   var localSize = 0
 
   var resCount = 0
+
+  // defined here to avoid frequent allocation and gc pressure.
+  private val reusedCharBuffer = new Array[Char](MAX_STRING_SIZE)
+
 }
 
 class ComparisonOperation extends Enumeration {
