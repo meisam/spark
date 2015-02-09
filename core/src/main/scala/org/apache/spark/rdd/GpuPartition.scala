@@ -1,7 +1,6 @@
 package org.apache.spark.rdd
 
 import java.io._
-import java.nio.channels.Channels
 import java.nio.file.Files
 import java.nio.{Buffer, ByteBuffer, ByteOrder, CharBuffer, DoubleBuffer, FloatBuffer, IntBuffer, LongBuffer, ShortBuffer}
 
@@ -11,18 +10,25 @@ import org.jocl.CL._
 import org.jocl._
 
 import scala.reflect.ClassTag
-import scala.reflect.api.JavaUniverse
+import scala.reflect.api.Universe
 import scala.reflect.runtime.universe.{TypeTag, typeOf}
 import scala.reflect.runtime.{universe => ru}
 
 class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity: Int)
   extends Serializable with Logging {
 
-  type JavaType = JavaUniverse#Type
+  type JavaType = Universe#Type
 
-  def columnTypes = typeOf[T] match {
-    case ru.TypeRef(tpe, sym, typeArgs) => typeArgs
-    case _ => throw new NotImplementedError("Unknown type %s".format(typeOf[T]))
+  @transient private var _columnTypes: Array[TypeTag[_]] = _
+
+  def columnTypes = {
+    if (_columnTypes == null) {
+      _columnTypes = (typeOf[T] match {
+        case ru.TypeRef(tpe, sym, typeArgs) => typeArgs
+        case _ => throw new NotImplementedError("Unknown type %s".format(typeOf[T]))
+      }).map(x => javaTypeToTypeTag(x)).toArray
+    }
+    _columnTypes
   }
 
   def MAX_STRING_SIZE: Int = 1 << 7
@@ -31,13 +37,18 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
 
   var size = 0
 
-  val columnOffsets = columnTypes.map(t => baseSize(t) * capacity).scan(0)(_ + _).toArray
+  @transient private var _columnOffsets: Array[Int] = _
 
-  val capacityInBytes = columnOffsets.last
+  def columnOffsets = {
+    if (_columnOffsets == null) {
+      _columnOffsets = columnTypes.map(t => baseSize(t) * capacity).scan(0)(_ + _).toArray
+    }
+    _columnOffsets
+  }
 
   def byteData = {
     if (_byteData == null) {
-      val colIndexes = columnTypes.zipWithIndex.filter(_._1 =:= TypeTag.Byte.tpe).map(_._2)
+      val colIndexes = columnTypes.zipWithIndex.filter(_._1.tpe =:= TypeTag.Byte.tpe).map(_._2)
       _byteData = new Array[ByteBuffer](colIndexes.length)
       _byteData.indices.foreach { i =>
         val offset = columnOffsets(i)
@@ -50,7 +61,7 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
 
   def shortData = {
     if (_shortData == null) {
-      val colIndexes = columnTypes.zipWithIndex.filter(_._1 =:= TypeTag.Short.tpe).map(_._2)
+      val colIndexes = columnTypes.zipWithIndex.filter(_._1.tpe =:= TypeTag.Short.tpe).map(_._2)
       _shortData = new Array[ShortBuffer](colIndexes.length)
       _shortData.indices.foreach { i =>
         val offset = columnOffsets(i)
@@ -63,7 +74,7 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
 
   def intData = {
     if (_intData == null) {
-      val colIndexes = columnTypes.zipWithIndex.filter(_._1 =:= TypeTag.Int.tpe).map(_._2)
+      val colIndexes = columnTypes.zipWithIndex.filter(_._1.tpe =:= TypeTag.Int.tpe).map(_._2)
       _intData = new Array[IntBuffer](colIndexes.length)
       _intData.indices.foreach { i =>
         val offset = columnOffsets(i)
@@ -76,7 +87,7 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
 
   def longData = {
     if (_longData == null) {
-      val colIndexes = columnTypes.zipWithIndex.filter(_._1 =:= TypeTag.Long.tpe).map(_._2)
+      val colIndexes = columnTypes.zipWithIndex.filter(_._1.tpe =:= TypeTag.Long.tpe).map(_._2)
       _longData = new Array[LongBuffer](colIndexes.length)
       _longData.indices.foreach { i =>
         val offset = columnOffsets(i)
@@ -89,7 +100,7 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
 
   def floatData = {
     if (_floatData == null) {
-      val colIndexes = columnTypes.zipWithIndex.filter(_._1 =:= TypeTag.Float.tpe).map(_._2)
+      val colIndexes = columnTypes.zipWithIndex.filter(_._1.tpe =:= TypeTag.Float.tpe).map(_._2)
       _floatData = new Array[FloatBuffer](colIndexes.length)
       _floatData.indices.foreach { i =>
         val offset = columnOffsets(i)
@@ -102,7 +113,7 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
 
   def doubleData = {
     if (_doubleData == null) {
-      val colIndexes = columnTypes.zipWithIndex.filter(_._1 =:= TypeTag.Double.tpe).map(_._2)
+      val colIndexes = columnTypes.zipWithIndex.filter(_._1.tpe =:= TypeTag.Double.tpe).map(_._2)
       _doubleData = new Array[DoubleBuffer](colIndexes.length)
       _doubleData.indices.foreach { i =>
         val offset = columnOffsets(i)
@@ -115,7 +126,7 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
 
   def booleanData = {
     if (_booleanData == null) {
-      val colIndexes = columnTypes.zipWithIndex.filter(_._1 =:= TypeTag.Boolean.tpe).map(_._2)
+      val colIndexes = columnTypes.zipWithIndex.filter(_._1.tpe =:= TypeTag.Boolean.tpe).map(_._2)
       _booleanData = new Array[ByteBuffer](colIndexes.length)
       _booleanData.indices.foreach { i =>
         val offset = columnOffsets(i)
@@ -128,7 +139,7 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
 
   def charData = {
     if (_charData == null) {
-      val colIndexes = columnTypes.zipWithIndex.filter(_._1 =:= TypeTag.Char.tpe).map(_._2)
+      val colIndexes = columnTypes.zipWithIndex.filter(_._1.tpe =:= TypeTag.Char.tpe).map(_._2)
       _charData = new Array[CharBuffer](colIndexes.length)
       _charData.indices.foreach { i =>
         val offset = columnOffsets(i)
@@ -141,7 +152,8 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
 
   def stringData = {
     if (_stringData == null) {
-      val colIndexes = columnTypes.zipWithIndex.filter(_._1 =:= ColumnarTypes.StringTypeTag.tpe).map(_._2)
+      val colIndexes = columnTypes.zipWithIndex.filter(_._1.tpe =:= ColumnarTypes.StringTypeTag.tpe)
+        .map(_._2)
       _stringData = new Array[CharBuffer](colIndexes.length)
       _stringData.indices.foreach { i =>
         val offset = columnOffsets(i)
@@ -225,39 +237,39 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
           f"remaining != blockSize ($remaining != $blockSize)"
         })
 
-        if (colType =:= TypeTag.Byte.tpe) {
+        if (colType.tpe =:= TypeTag.Byte.tpe) {
           val convertBuffer = new Array[Byte](totalTupleNum.toInt)
           restData.get(convertBuffer)
           byteData(toTypeAwareColumnIndex(colIndex)) = ByteBuffer.wrap(convertBuffer)
-        } else if (colType =:= TypeTag.Short.tpe) {
+        } else if (colType.tpe =:= TypeTag.Short.tpe) {
           val convertBuffer = new Array[Short](totalTupleNum.toInt)
           restData.asShortBuffer().get(convertBuffer)
           shortData(toTypeAwareColumnIndex(colIndex)) = ShortBuffer.wrap(convertBuffer)
-        } else if (colType =:= TypeTag.Int.tpe) {
+        } else if (colType.tpe =:= TypeTag.Int.tpe) {
           val convertBuffer = new Array[Int](totalTupleNum.toInt)
           restData.asIntBuffer().get(convertBuffer)
           intData(toTypeAwareColumnIndex(colIndex)) = IntBuffer.wrap(convertBuffer)
-        } else if (colType =:= TypeTag.Long.tpe) {
+        } else if (colType.tpe =:= TypeTag.Long.tpe) {
           val convertBuffer = new Array[Long](totalTupleNum.toInt)
           restData.asLongBuffer().get(convertBuffer)
           longData(toTypeAwareColumnIndex(colIndex)) = LongBuffer.wrap(convertBuffer)
-        } else if (colType =:= TypeTag.Float.tpe) {
+        } else if (colType.tpe =:= TypeTag.Float.tpe) {
           val convertBuffer = new Array[Float](totalTupleNum.toInt)
           restData.asFloatBuffer().get(convertBuffer)
           floatData(toTypeAwareColumnIndex(colIndex)) = FloatBuffer.wrap(convertBuffer)
-        } else if (colType =:= TypeTag.Double.tpe) {
+        } else if (colType.tpe =:= TypeTag.Double.tpe) {
           val convertBuffer = new Array[Double](totalTupleNum.toInt)
           restData.asDoubleBuffer().get(convertBuffer)
           doubleData(toTypeAwareColumnIndex(colIndex)) = DoubleBuffer.wrap(convertBuffer)
-        } else if (colType =:= TypeTag.Boolean.tpe) {
+        } else if (colType.tpe =:= TypeTag.Boolean.tpe) {
           val convertBuffer = new Array[Byte](totalTupleNum.toInt)
           restData.get(convertBuffer)
           booleanData(toTypeAwareColumnIndex(colIndex)) = ByteBuffer.wrap(convertBuffer)
-        } else if (colType =:= TypeTag.Char.tpe) {
+        } else if (colType.tpe =:= TypeTag.Char.tpe) {
           val convertBuffer = new Array[Char](totalTupleNum.toInt)
           restData.asCharBuffer().get(convertBuffer)
           charData(toTypeAwareColumnIndex(colIndex)) = CharBuffer.wrap(convertBuffer)
-        } else if (colType =:= ColumnarTypes.StringTypeTag.tpe) {
+        } else if (colType.tpe =:= ColumnarTypes.StringTypeTag.tpe) {
           val convertBuffer = new Array[Char](totalTupleNum.toInt * MAX_STRING_SIZE)
           restData.asCharBuffer().get(convertBuffer)
           stringData(toTypeAwareColumnIndex(colIndex)) = CharBuffer.wrap(convertBuffer)
@@ -287,23 +299,23 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
         size = rowIndex + 1
         v.productIterator.zipWithIndex.foreach {
           case (p, colIndex) =>
-            if (columnTypes(colIndex) =:= TypeTag.Byte.tpe) {
+            if (columnTypes(colIndex).tpe =:= TypeTag.Byte.tpe) {
               byteData(toTypeAwareColumnIndex(colIndex)).put(rowIndex, p.asInstanceOf[Byte])
-            } else if (columnTypes(colIndex) =:= TypeTag.Short.tpe) {
+            } else if (columnTypes(colIndex).tpe =:= TypeTag.Short.tpe) {
               shortData(toTypeAwareColumnIndex(colIndex)).put(rowIndex, p.asInstanceOf[Short])
-            } else if (columnTypes(colIndex) =:= TypeTag.Int.tpe) {
+            } else if (columnTypes(colIndex).tpe =:= TypeTag.Int.tpe) {
               intData(toTypeAwareColumnIndex(colIndex)).put(rowIndex, p.asInstanceOf[Int])
-            } else if (columnTypes(colIndex) =:= TypeTag.Long.tpe) {
+            } else if (columnTypes(colIndex).tpe =:= TypeTag.Long.tpe) {
               longData(toTypeAwareColumnIndex(colIndex)).put(rowIndex, p.asInstanceOf[Long])
-            } else if (columnTypes(colIndex) =:= TypeTag.Float.tpe) {
+            } else if (columnTypes(colIndex).tpe =:= TypeTag.Float.tpe) {
               floatData(toTypeAwareColumnIndex(colIndex)).put(rowIndex, p.asInstanceOf[Float])
-            } else if (columnTypes(colIndex) =:= TypeTag.Double.tpe) {
+            } else if (columnTypes(colIndex).tpe =:= TypeTag.Double.tpe) {
               doubleData(toTypeAwareColumnIndex(colIndex)).put(rowIndex, p.asInstanceOf[Double])
-            } else if (columnTypes(colIndex) =:= TypeTag.Boolean.tpe) {
+            } else if (columnTypes(colIndex).tpe =:= TypeTag.Boolean.tpe) {
               booleanData(toTypeAwareColumnIndex(colIndex)).put(rowIndex, if (p.asInstanceOf[Boolean]) 1 else 0)
-            } else if (columnTypes(colIndex) =:= TypeTag.Char.tpe) {
+            } else if (columnTypes(colIndex).tpe =:= TypeTag.Char.tpe) {
               charData(toTypeAwareColumnIndex(colIndex)).put(rowIndex, p.asInstanceOf[Char])
-            } else if (columnTypes(colIndex) =:= ColumnarTypes.StringTypeTag.tpe) {
+            } else if (columnTypes(colIndex).tpe =:= ColumnarTypes.StringTypeTag.tpe) {
               val str = p.toString
               val offset = rowIndex * MAX_STRING_SIZE
               val charCount = Math.min(MAX_STRING_SIZE, str.length)
@@ -351,23 +363,23 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
 
     val values = columnTypes.zipWithIndex.map({
       case (colType, colIndex) =>
-        if (colType =:= TypeTag.Byte.tpe) {
+        if (colType.tpe =:= TypeTag.Byte.tpe) {
           byteData(toTypeAwareColumnIndex(colIndex)).get(rowIndex)
-        } else if (colType =:= TypeTag.Short.tpe) {
+        } else if (colType.tpe =:= TypeTag.Short.tpe) {
           shortData(toTypeAwareColumnIndex(colIndex)).get(rowIndex)
-        } else if (colType =:= TypeTag.Int.tpe) {
+        } else if (colType.tpe =:= TypeTag.Int.tpe) {
           intData(toTypeAwareColumnIndex(colIndex)).get(rowIndex)
-        } else if (colType =:= TypeTag.Long.tpe) {
+        } else if (colType.tpe =:= TypeTag.Long.tpe) {
           longData(toTypeAwareColumnIndex(colIndex)).get(rowIndex)
-        } else if (colType =:= TypeTag.Float.tpe) {
+        } else if (colType.tpe =:= TypeTag.Float.tpe) {
           floatData(toTypeAwareColumnIndex(colIndex)).get(rowIndex)
-        } else if (colType =:= TypeTag.Double.tpe) {
+        } else if (colType.tpe =:= TypeTag.Double.tpe) {
           doubleData(toTypeAwareColumnIndex(colIndex)).get(rowIndex)
-        } else if (colType =:= TypeTag.Boolean.tpe) {
+        } else if (colType.tpe =:= TypeTag.Boolean.tpe) {
           booleanData(toTypeAwareColumnIndex(colIndex)).get(rowIndex) != 0
-        } else if (colType =:= TypeTag.Char.tpe) {
+        } else if (colType.tpe =:= TypeTag.Char.tpe) {
           charData(toTypeAwareColumnIndex(colIndex)).get(rowIndex)
-        } else if (colType =:= ColumnarTypes.StringTypeTag.tpe) {
+        } else if (colType.tpe =:= ColumnarTypes.StringTypeTag.tpe) {
           getStringData(toTypeAwareColumnIndex(colIndex), rowIndex)
         } else {
           throw new NotImplementedError("Unknown type %s".format(colType))
@@ -447,7 +459,7 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
   }
 
   def prescanArrayRecursive(outArray: cl_mem, inArray: cl_mem, numElements: Int, level: Int,
-    same: Int, g_scanBlockSums: Array[cl_mem]) {
+                            same: Int, g_scanBlockSums: Array[cl_mem]) {
 
     val blockSize: Int = BLOCK_SIZE
     val waitEvents = Array(new cl_event)
@@ -681,13 +693,6 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
     }
   }
 
-  def extractType[V: TypeTag]: JavaType = {
-    typeOf[V] match {
-      case ru.TypeRef(tpe, sym, typeArgs) => tpe
-      case _ => throw new NotImplementedError("Unknown type %s".format(typeOf[V]))
-    }
-  }
-
   def baseSize[V: TypeTag]: Int = {
     val tt = implicitly[TypeTag[V]]
     if (tt.tpe =:= TypeTag.Byte.tpe) {
@@ -714,11 +719,6 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
     }
   }
 
-  def baseSize(ct: JavaType): Int = {
-    implicit val tt = javaTypeToTypeTag(ct)
-    baseSize(tt)
-  }
-
   def typeNameString[V: TypeTag](): String = {
     typeOf[V].toString.toLowerCase
   }
@@ -730,11 +730,6 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
 
   protected def createReadBuffer[V: TypeTag](elementCount: Int): cl_mem = {
     val size = elementCount * baseSize[V]
-    clCreateBuffer(context.context, CL_MEM_READ_ONLY, size, null, null)
-  }
-
-  protected def createReadBuffer(elementCount: Int, columnType: JavaType): cl_mem = {
-    val size = elementCount * baseSize(columnType)
     clCreateBuffer(context.context, CL_MEM_READ_ONLY, size, null, null)
   }
 
@@ -818,10 +813,9 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
     }
   }
 
-  val POW_2_S: IndexedSeq[Long] = (0 to 100).map(_.toLong).map(1L << _)
-  val BLOCK_SIZE: Int = 256
-  val NUM_BANKS: Int = 16
-  val LOG_NUM_BANKS: Int = 4
+  def BLOCK_SIZE: Int = 256
+
+  def NUM_BANKS: Int = 16
 
   var g_numEltsAllocated: Int = 0
   var g_numLevelsAllocated: Int = 0
@@ -833,21 +827,37 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
   var resCount = 0
 
   // defined here to avoid frequent allocation and gc pressure.
-  private val reusedCharBuffer = new Array[Char](MAX_STRING_SIZE)
+  private var reusedCharBuffer = new Array[Char](MAX_STRING_SIZE)
 
   @throws(classOf[IOException])
   private def writeObject(out: ObjectOutputStream): Unit = {
-    out.writeObject(this)
-    _intData.foreach { buffer =>
-      buffer.flip()
-      (0 to this.size).foreach { i =>
+    out.writeInt(columnTypes.size)
+    columnOffsets.foreach { offset =>
+      out.writeInt(offset)
+
+    }
+    columnTypes.foreach { colType =>
+      val index = ColumnarTypes.getIndex(colType.tpe)
+      out.writeInt(index)
+    }
+    out.writeInt(this.size)
+    intData.foreach { buffer =>
+      buffer.rewind()
+      (0 until this.size).foreach { i =>
         out.writeInt(buffer.get())
       }
     }
 
-    _longData.foreach { buffer =>
-      buffer.flip()
-      (0 to this.size).foreach { i =>
+    longData.foreach { buffer =>
+      buffer.rewind()
+      (0 until this.size).foreach { i =>
+        out.writeLong(buffer.get())
+      }
+    }
+
+    stringData.foreach { buffer =>
+      buffer.rewind()
+      (0 until this.size * MAX_STRING_SIZE).foreach { i =>
         out.writeLong(buffer.get())
       }
     }
@@ -856,20 +866,35 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
 
   @scala.throws(classOf[IOException])
   private def readObject(in: ObjectInputStream): Unit = {
-    val other = in.read().asInstanceOf[GpuPartition[T]]
-    this.size = other.size
-    println(f"Buffer is being deserialized. The buffer size is ${size}")
-    intData
-    longData
-    _intData.foreach { buffer =>
-      buffer.flip()
-      (0 to this.size).foreach { i =>
+    reusedCharBuffer = new Array[Char](MAX_STRING_SIZE)
+    val columnCounts = in.readInt()
+
+    _columnOffsets = new Array[Int](columnCounts + 1)
+    _columnOffsets.indices.foreach { i =>
+      _columnOffsets(i) = in.readInt()
+    }
+    this._columnTypes = (0 until columnCounts).map { index =>
+      val typeIndex = in.readInt()
+      val columnType = ColumnarTypes(typeIndex)
+      javaTypeToTypeTag(columnType)
+    }.toArray
+
+    this.size = in.readInt()
+    intData.foreach { buffer =>
+      buffer.rewind()
+      (0 until this.size).foreach { i =>
         buffer.put(in.readInt())
       }
     }
-    _longData.foreach { buffer =>
-      buffer.flip()
-      (0 to this.size).foreach { i =>
+    longData.foreach { buffer =>
+      buffer.rewind()
+      (0 until this.size).foreach { i =>
+        buffer.put(in.readLong())
+      }
+    }
+    longData.foreach { buffer =>
+      buffer.rewind()
+      (0 until this.size * MAX_STRING_SIZE).foreach { i =>
         buffer.put(in.readLong())
       }
     }
@@ -911,7 +936,7 @@ object ColumnarTypes extends IndexedSeq[ru.Type] {
     StringTypeTag.tpe)
 
   def getIndex(t: ru.Type): Int = {
-    ALL_TYPES.indexOf(t)
+    ALL_TYPES.indexWhere(_ =:= t)
   }
 
   override def length: Int = ALL_TYPES.length

@@ -49,8 +49,7 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
 
     parentPartition.columnTypes.zipWithIndex.foreach {
       case (columnType, columnIndex) =>
-        implicit val columnTypeTag = javaTypeToTypeTag(columnType)
-        val column = parentPartition.getColumn(columnIndex)(columnTypeTag)
+        val column = parentPartition.getColumn(columnIndex)(columnType)
         hostToDeviceCopy[Byte](column, gpuContent, tupleCount * baseSize(columnType), cpuOffsets(columnIndex).toInt)
     }
 
@@ -58,7 +57,8 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
     hostToDeviceCopy[Long](pointer(cpuOffsets), gpuOffsets, cpuOffsets.length)
     debugGpuBuffer[Long](gpuOffsets, cpuOffsets.length, "gpuOffsets (before)")
 
-    val gbType: Array[Int] = gbColumnIndexes.map(i => columnTypes(i)).map(t => ColumnarTypes.getIndex(t)).toIterator.toArray
+    val gbType: Array[Int] = gbColumnIndexes.map(i => columnTypes(i)).map(t => ColumnarTypes
+      .getIndex(t.tpe)).toIterator.toArray
 
     val gpuGbType = createReadBuffer[Int](gbType.length)
     hostToDeviceCopy[Int](pointer(gbType), gpuGbType, gbType.length)
@@ -286,8 +286,7 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
 
     columnTypes.zipWithIndex.foreach {
       case (columnType, columnIndex) =>
-        implicit val columTypeTag = javaTypeToTypeTag(columnType)
-        val column = getColumn(toTypeAwareColumnIndex(columnIndex))(columTypeTag)
+        val column = getColumn(toTypeAwareColumnIndex(columnIndex))(columnType)
         deviceToHostCopy[Byte](gpuResult, column, gpuGbColNum * baseSize(columnType), resultOffsets(columnIndex))
     }
 

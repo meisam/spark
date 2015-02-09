@@ -163,16 +163,15 @@ U: TypeTag]
     if (joinResultCount > 0) {
       columnTypes.zipWithIndex.foreach {
         case (columnType, columnIndex) =>
-          implicit val columnTypeTag = javaTypeToTypeTag(columnType)
           val colSize = baseSize(columnType)
 
-          val gpu_result = createReadBuffer(joinResultCount, columnType)
+          val gpu_result = createReadBuffer(joinResultCount)(columnType)
   
           if (columnFromLeftPartition(columnIndex)) {
-            val leftColumn = leftPartition.getColumn(columnIndex)(columnTypeTag)
-            val gpu_fact = createReadWriteBuffer(leftPartition.size)(columnTypeTag)
-            hostToDeviceCopy(leftColumn, gpu_fact, leftPartition.size, 0)(columnTypeTag)
-            val javaTypeName = typeNameString()(columnTypeTag)
+            val leftColumn = leftPartition.getColumn(columnIndex)(columnType)
+            val gpu_fact = createReadWriteBuffer(leftPartition.size)(columnType)
+            hostToDeviceCopy(leftColumn, gpu_fact, leftPartition.size, 0)(columnType)
+            val javaTypeName = typeNameString()(columnType)
             val joinFactKernelName = f"join_fact_$javaTypeName"
             val joinFactKernel = clCreateKernel(context.program, joinFactKernelName, null)
             clSetKernelArg(joinFactKernel,0,Sizeof.cl_mem, Pointer.to(gpu_resPsum))
@@ -189,14 +188,14 @@ U: TypeTag]
             val rightColumnIndex = toRightTableIndex(columnIndex)
             if (rightColumnIndex != joinColIndexRight) {
             	rightPartition.columnTypes.zipWithIndex.map(_._2 + leftPartition.columnTypes.length)
-              val column = rightPartition.getColumn(rightColumnIndex)(columnTypeTag)
+              val column = rightPartition.getColumn(rightColumnIndex)(columnType)
               val sizeInBytes = joinResultCount * baseSize(columnType)
   
-              val gpu_fact = createReadWriteBuffer(sizeInBytes)(columnTypeTag)
-              hostToDeviceCopy(column, gpu_fact, rightPartition.size, 0)(columnTypeTag)
+              val gpu_fact = createReadWriteBuffer(sizeInBytes)(columnType)
+              hostToDeviceCopy(column, gpu_fact, rightPartition.size, 0)(columnType)
               
   
-              val javaTypeName = typeNameString()(columnTypeTag)
+              val javaTypeName = typeNameString()(columnType)
               val joinKernelName = f"join_dim_$javaTypeName"
               val joinDimKernel = clCreateKernel(context.program, joinKernelName, null)
               clSetKernelArg(joinDimKernel, 0, Sizeof.cl_mem, Pointer.to(gpu_resPsum))
@@ -211,8 +210,8 @@ U: TypeTag]
               clReleaseMemObject(gpu_fact)
             }
           }
-          val resultColumn = this.getColumn(columnIndex)(columnTypeTag)
-          deviceToHostCopy(gpu_result, resultColumn, joinResultCount, 0)(columnTypeTag)
+          val resultColumn = this.getColumn(columnIndex)(columnType)
+          deviceToHostCopy(gpu_result, resultColumn, joinResultCount, 0)(columnType)
 
           clReleaseMemObject(gpu_result)
       }
