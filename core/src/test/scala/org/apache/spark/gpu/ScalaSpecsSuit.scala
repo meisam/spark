@@ -17,17 +17,15 @@
 
 package org.apache.spark.gpu
 
+import java.nio.ByteBuffer
+
 import org.apache.spark.SharedSparkContext
+import org.apache.spark.rdd.{MathExp, MathOp, MathOperationType}
 import org.scalatest.FunSuite
+
 import scala.language.existentials
 import scala.reflect.runtime.universe.TypeTag
-import scala.reflect.runtime.{ universe => ru }
-import org.apache.spark.rdd.MathExp
-import java.io.ByteArrayOutputStream
-import java.io.ObjectOutputStream
-import java.nio.ByteBuffer
-import org.apache.spark.rdd.MathOp
-import org.apache.spark.rdd.MathOperationType
+import scala.reflect.runtime.{universe => ru}
 
 /**
  *
@@ -79,12 +77,15 @@ class ScalaSpecsSuit extends FunSuite with SharedSparkContext {
 
   test("Enumerations") {
     var count = 0;
-    def next = { count += 1; count }
+    def next = {
+      count += 1; count
+    }
     val x, y = next
-    println(f"x=$x, y=$y")
+    assert(x === 1)
+    assert(y === 2)
 
     val id = MathOp.DIVIDE.id
-    println(f"MathOp.DIVIDE.id= $id")
+    assert(MathOp.DIVIDE.id === 4)
   }
 
 }
