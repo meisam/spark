@@ -17,22 +17,12 @@
 
 package org.apache.spark.gpu
 
-import java.util.concurrent.CountDownLatch
-
-import org.apache.spark.SharedSparkContext
-import org.apache.spark.rdd.GpuFilteredPartitionIterator
-import org.apache.spark.scheduler.OpenCLContext
-import org.jocl.CL._
-import org.jocl.{Pointer, Sizeof}
-import org.scalatest.FunSuite
-
-import scala.collection.immutable.IndexedSeq
 import scala.language.existentials
 
 /**
  * A set of test to measure the performance of GPU
  */
-class GpuPerformanceTestsSuit extends FunSuite with SharedSparkContext {
+class GpuPerformanceTestsSuit extends GpuSuit {
 /*
   val openCLContext = new OpenCLContext
   val POW_2_S: IndexedSeq[Long] = (0 to 100).map(_.toLong).map(1L << _)

@@ -17,18 +17,16 @@
 
 package org.apache.spark.gpu
 
-import org.apache.spark.SharedSparkContext
-import org.apache.spark.deploy.worker.WorkerArguments
-import org.apache.spark.rdd.GpuPartitionIterator
-import org.scalatest.FunSuite
-import scala.language.existentials
 import org.apache.spark.SparkConf
+import org.apache.spark.deploy.worker.WorkerArguments
+
+import scala.language.existentials
 
 /**
  *
  */
 
-class GpuLayout extends FunSuite with SharedSparkContext {
+class GpuLayout extends GpuSuit {
   val DEFAULT_CAPACITY = (1 << 10)
 
   // This test does not work with the new design of GpuPartition.

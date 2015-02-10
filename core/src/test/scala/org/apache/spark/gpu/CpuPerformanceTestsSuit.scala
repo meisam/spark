@@ -17,15 +17,12 @@
 
 package org.apache.spark.gpu
 
-import org.apache.spark.SharedSparkContext
-import org.scalatest.FunSuite
-
 import scala.language.existentials
 
 /**
  * A set of test to measure the performance of GPU
  */
-class CpuPerformanceTestsSuit extends FunSuite with SharedSparkContext {
+class CpuPerformanceTestsSuit extends GpuSuit {
 
   ignore("selection with 10% selectivity on one CPU core") {
     val SIZE_OF_INTEGER = 4

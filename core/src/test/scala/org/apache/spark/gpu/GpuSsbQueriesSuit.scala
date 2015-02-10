@@ -106,7 +106,7 @@ import org.omg.PortableInterceptor.SYSTEM_EXCEPTION
 /**
  * A set of test cases that run SSB on Spark GPU
  */
-class GpuSsbQueriesSuit extends FunSuite with SharedSparkContext {
+class GpuSsbQueriesSuit extends GpuSuit {
 
   val DEFAULT_CAPACITY = (1 << 22)
 

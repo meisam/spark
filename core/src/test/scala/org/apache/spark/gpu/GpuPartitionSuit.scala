@@ -17,10 +17,8 @@
 
 package org.apache.spark.gpu
 
-import org.apache.spark.SharedSparkContext
 import org.apache.spark.rdd.GpuPartition
 import org.apache.spark.scheduler.OpenCLContext
-import org.scalatest.FunSuite
 
 import scala.collection.immutable.IndexedSeq
 import scala.language.existentials
@@ -28,7 +26,7 @@ import scala.language.existentials
 /**
  *
  */
-class GpuPartitionSuit extends FunSuite with SharedSparkContext {
+class GpuPartitionSuit extends GpuSuit {
 
   val DEFAULT_CAPACITY = (1 << 10)
   val openCLContext = new OpenCLContext

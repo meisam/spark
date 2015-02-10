@@ -19,9 +19,7 @@ package org.apache.spark.gpu
 
 import java.nio.ByteBuffer
 
-import org.apache.spark.SharedSparkContext
 import org.apache.spark.rdd.{MathExp, MathOp, MathOperationType}
-import org.scalatest.FunSuite
 
 import scala.language.existentials
 import scala.reflect.runtime.universe.TypeTag
@@ -30,7 +28,7 @@ import scala.reflect.runtime.{universe => ru}
 /**
  *
  */
-class ScalaSpecsSuit extends FunSuite with SharedSparkContext {
+class ScalaSpecsSuit extends GpuSuit {
 
   test("scanLeft test") {
     val testData = Array(1, 5, -4, 0, 1)
@@ -78,7 +76,8 @@ class ScalaSpecsSuit extends FunSuite with SharedSparkContext {
   test("Enumerations") {
     var count = 0;
     def next = {
-      count += 1; count
+      count += 1
+      count
     }
     val x, y = next
     assert(x === 1)

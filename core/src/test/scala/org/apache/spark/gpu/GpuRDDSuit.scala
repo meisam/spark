@@ -17,38 +17,14 @@
 
 package org.apache.spark.gpu
 
-import org.apache.spark.SharedSparkContext
 import org.apache.spark.rdd.GpuPartition
-import org.scalatest.FunSuite
 
 import scala.language.existentials
-import scala.reflect.ClassTag
-import scala.reflect.runtime.universe.TypeTag
 
 /**
  *
  */
-class GpuRDDSuit extends FunSuite with SharedSparkContext {
-
-  private def flattenResults[T <: Product : TypeTag : ClassTag](collectedPartitions: Array[GpuPartition[T]]): Array[T] = {
-
-    val collectedData: Array[T] = collectedPartitions.map { p =>
-      (0 until p.size).map(i => p(i))
-    }.flatten[T]
-    collectedData
-  }
-
-  def validateResults[T <: Product : TypeTag : ClassTag](testData: Array[T], collectedPartitions: Array[GpuPartition[T]]):
-  Unit = {
-    val collectedData = flattenResults[T](collectedPartitions)
-    testData.zip(collectedData).foreach {
-      case (vt, vc) =>
-        assert(vt === vc)
-    }
-
-    val totalResult = collectedPartitions.map(p => p.size).reduce(_ + _)
-    assert(totalResult === testData.length)
-  }
+class GpuRDDSuit extends GpuSuit {
 
   test("org.apache.spark.rdd.GpuRDD 1 partition") {
     val PARTITIONS_COUNT = 1

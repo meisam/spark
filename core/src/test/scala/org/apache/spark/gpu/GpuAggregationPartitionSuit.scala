@@ -17,23 +17,15 @@
 
 package org.apache.spark.gpu
 
-import org.apache.spark.SharedSparkContext
-import org.apache.spark.rdd.{ AggregationOperation, GpuAggregationPartition }
+import org.apache.spark.rdd.{AggregationExp, AggregationOperation, GpuAggregationPartition, GpuPartition, MathExp, MathOp, MathOperationType}
 import org.apache.spark.scheduler.OpenCLContext
-import org.scalatest.FunSuite
+
 import scala.language.existentials
-import scala.reflect.ClassTag
-import org.apache.spark.rdd.GpuPartition
-import java.io.ObjectInputStream
-import org.apache.spark.rdd.AggregationExp
-import org.apache.spark.rdd.MathExp
-import org.apache.spark.rdd.MathOp
-import org.apache.spark.rdd.MathOperationType
 
 /**
  *
  */
-class GpuAggregationPartitionSuit extends FunSuite with SharedSparkContext {
+class GpuAggregationPartitionSuit extends GpuSuit {
 
   val DEFAULT_CAPACITY = (1 << 10)
   val openCLContext = new OpenCLContext
