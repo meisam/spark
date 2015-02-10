@@ -26,6 +26,7 @@ import scala.Unit;
 import org.apache.spark.annotation.DeveloperApi;
 import org.apache.spark.executor.TaskMetrics;
 import org.apache.spark.util.TaskCompletionListener;
+import org.apache.spark.scheduler.OpenCLContext;
 
 /**
  * Contextual information about a task which can be read or mutated during
@@ -103,4 +104,6 @@ public abstract class TaskContext implements Serializable {
   /** ::DeveloperApi:: */
   @DeveloperApi
   public abstract TaskMetrics taskMetrics();
+
+  public abstract OpenCLContext getOpenCLContext();
 }
