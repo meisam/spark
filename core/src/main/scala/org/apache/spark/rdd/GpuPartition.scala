@@ -157,7 +157,7 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
       _stringData = new Array[CharBuffer](colIndexes.length)
       _stringData.indices.foreach { i =>
         val offset = columnOffsets(i)
-        val length = columnOffsets(i + 1) - offset // TODO?  * MAX_STRING_SIZE ?
+        val length = columnOffsets(i + 1) - offset
         _stringData(i) = ByteBuffer.allocateDirect(length).asCharBuffer()
       }
     }
@@ -858,7 +858,7 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
     stringData.foreach { buffer =>
       buffer.rewind()
       (0 until this.size * MAX_STRING_SIZE).foreach { i =>
-        out.writeLong(buffer.get())
+        out.writeChar(buffer.get())
       }
     }
 
@@ -892,10 +892,10 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
         buffer.put(in.readLong())
       }
     }
-    longData.foreach { buffer =>
+    stringData.foreach { buffer =>
       buffer.rewind()
       (0 until this.size * MAX_STRING_SIZE).foreach { i =>
-        buffer.put(in.readLong())
+        buffer.put(in.readChar())
       }
     }
   }
