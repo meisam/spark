@@ -17,16 +17,14 @@
 
 package org.apache.spark.gpu
 
-import org.apache.spark.SharedSparkContext
-import org.apache.spark.rdd.{GpuPartition, ComparisonOperation, GpuFilteredRDD}
-import org.scalatest.FunSuite
+import org.apache.spark.rdd.{ComparisonOperation, GpuFilteredRDD}
 
 import scala.language.existentials
 
 /**
  *
  */
-class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
+class GpuFilteredRDDSuit extends GpuSuit {
 
   val DEFAULT_CAPACITY = (1 << 10)
 
@@ -36,16 +34,11 @@ class GpuFilteredRDDSuit extends FunSuite with SharedSparkContext {
     val testData = (0 until TEST_DATA_SIZE).reverse.zipWithIndex.toArray
     val gpuRDD = sc.toGpuRDD[(Int, Int)](testData)
 
-    val expectedDatea = testData.filter(_._1 == 10)
+    val expectedData = testData.filter(_._1 == 10)
     val filteredData = new GpuFilteredRDD(gpuRDD, 0, ComparisonOperation.==, 10: Int,
       DEFAULT_CAPACITY)
-    val collectedData: GpuPartition[(Int, Int)] = filteredData.collect()(0)
-    assert(collectedData.size === expectedDatea.length)
-    expectedDatea.zipWithIndex.foreach {
-      case (v, i) =>
-        assert(v._1 === collectedData.intData(0).get(i))
-        assert(v._2 === collectedData.intData(1).get(i))
-    }
+    val collectedPartitions = filteredData.collect()
+    validateResults(expectedData, collectedPartitions)
   }
 
 }

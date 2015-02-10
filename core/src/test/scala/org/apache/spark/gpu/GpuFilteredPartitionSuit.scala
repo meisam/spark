@@ -17,19 +17,17 @@
 
 package org.apache.spark.gpu
 
-import org.apache.spark.SharedSparkContext
 import org.apache.spark.rdd.{ComparisonOperation, GpuFilteredPartition, GpuPartition}
 import org.apache.spark.scheduler.OpenCLContext
 import org.jocl.CL._
 import org.jocl.{Pointer, Sizeof}
-import org.scalatest.FunSuite
 
 import scala.language.existentials
 
 /**
  *
  */
-class GpuFilteredPartitionSuit extends FunSuite with SharedSparkContext {
+class GpuFilteredPartitionSuit extends GpuSuit {
 
   val DEFAULT_CAPACITY = (1 << 10)
   val openCLContext = new OpenCLContext

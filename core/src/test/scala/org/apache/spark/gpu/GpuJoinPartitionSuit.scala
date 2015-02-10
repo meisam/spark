@@ -17,19 +17,15 @@
 
 package org.apache.spark.gpu
 
-import scala.language.existentials
-import scala.reflect.runtime.universe
-
-import org.apache.spark.SharedSparkContext
-import org.apache.spark.rdd.GpuJoinPartition
-import org.apache.spark.rdd.GpuPartition
+import org.apache.spark.rdd.{GpuJoinPartition, GpuPartition}
 import org.apache.spark.scheduler.OpenCLContext
-import org.scalatest.FunSuite
+
+import scala.language.existentials
 
 /**
  *
  */
-class GpuJoinPartitionSuit extends FunSuite with SharedSparkContext {
+class GpuJoinPartitionSuit extends GpuSuit {
 
   val DEFAULT_CAPACITY = (1 << 10)
   val openCLContext = new OpenCLContext
