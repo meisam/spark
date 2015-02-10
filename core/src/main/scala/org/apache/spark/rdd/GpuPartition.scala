@@ -679,19 +679,29 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
   def getColumn[V: TypeTag](columnIndex: Int): Buffer = {
     val typeAwareColumnIndex = toTypeAwareColumnIndex(columnIndex)
 
-    implicitly[TypeTag[V]] match {
-      case TypeTag.Byte => byteData(typeAwareColumnIndex).asInstanceOf[Buffer]
-      case TypeTag.Short => shortData(typeAwareColumnIndex).asInstanceOf[Buffer]
-      case TypeTag.Char => charData(typeAwareColumnIndex).asInstanceOf[Buffer]
-      case TypeTag.Int => intData(typeAwareColumnIndex).asInstanceOf[Buffer]
-      case TypeTag.Long => longData(typeAwareColumnIndex).asInstanceOf[Buffer]
-      case TypeTag.Float => floatData(typeAwareColumnIndex).asInstanceOf[Buffer]
-      case TypeTag.Double => doubleData(typeAwareColumnIndex).asInstanceOf[Buffer]
-      case TypeTag.Boolean => booleanData(typeAwareColumnIndex).asInstanceOf[Buffer]
-      case ColumnarTypes.StringTypeTag => stringData(typeAwareColumnIndex).asInstanceOf[Buffer]
-      case _ => throw new NotImplementedError("Unknown type %s".format(implicitly[TypeTag[V]]))
+    val columnType = implicitly[TypeTag[V]].tpe
+    if (columnType =:= TypeTag.Byte.tpe) {
+      byteData(typeAwareColumnIndex).asInstanceOf[Buffer]
+    } else if (columnType =:= TypeTag.Short.tpe) {
+      shortData(typeAwareColumnIndex).asInstanceOf[Buffer]
+    } else if (columnType =:= TypeTag.Char.tpe) {
+      charData(typeAwareColumnIndex).asInstanceOf[Buffer]
+    } else if (columnType =:= TypeTag.Int.tpe) {
+      intData(typeAwareColumnIndex).asInstanceOf[Buffer]
+    } else if (columnType =:= TypeTag.Long.tpe) {
+      longData(typeAwareColumnIndex).asInstanceOf[Buffer]
+    } else if (columnType =:= TypeTag.Float.tpe) {
+      floatData(typeAwareColumnIndex).asInstanceOf[Buffer]
+    } else if (columnType =:= TypeTag.Double.tpe) {
+      doubleData(typeAwareColumnIndex).asInstanceOf[Buffer]
+    } else if (columnType =:= TypeTag.Boolean.tpe) {
+      booleanData(typeAwareColumnIndex).asInstanceOf[Buffer]
+    } else if (columnType =:= ColumnarTypes.StringTypeTag.tpe) {
+      stringData(typeAwareColumnIndex).asInstanceOf[Buffer]
+    } else {
+      throw new NotImplementedError("Unknown type %s".format(implicitly[TypeTag[V]]))
     }
-  }
+    }
 
   def baseSize[V: TypeTag]: Int = {
     val tt = implicitly[TypeTag[V]]
