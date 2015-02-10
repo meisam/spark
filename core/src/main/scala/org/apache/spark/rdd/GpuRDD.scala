@@ -86,18 +86,12 @@ T <: Product : TypeTag
     new InterruptibleIterator[GpuPartition[T]](context, partitionIterator)
   }
 
-  val __partitions = Array(new GpuPartition[T](openCLContext, capacity))
+  val __partitions = Array(new GpuPartition[T](null, capacity))
 
   /**
    * Implemented by subclasses to return the set of partitions in this RDD. This method will only
    * be called once, so it is safe to implement a time-consuming computation in it.
    */
   override def getPartitions: Array[Partition] = __partitions.asInstanceOf[Array[Partition]]
-
-  /**
-   * This field should be @transient because we want to initialize it after we send the task over
-   * the network.
-   */
-  @transient var openCLContext: OpenCLContext = null
 
 }

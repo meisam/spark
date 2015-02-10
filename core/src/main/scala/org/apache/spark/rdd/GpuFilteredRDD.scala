@@ -21,7 +21,7 @@ class GpuFilteredRDD[T <: Product : ClassTag : TypeTag, V: TypeTag]
 
     iter.zipWithIndex.map { case (parent, index) =>
       val partition = new GpuFilteredPartition[T, V](
-        null /*openCLContext*/ , index, colIndex, operation, value, chunkCapacity)
+        context.getOpenCLContext , index, colIndex, operation, value, chunkCapacity)
       partition.filter(parent)
       partition
     }

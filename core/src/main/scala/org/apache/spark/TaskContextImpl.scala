@@ -18,6 +18,7 @@
 package org.apache.spark
 
 import org.apache.spark.executor.TaskMetrics
+import org.apache.spark.scheduler.OpenCLContext
 import org.apache.spark.util.{TaskCompletionListener, TaskCompletionListenerException}
 
 import scala.collection.mutable.ArrayBuffer
@@ -92,5 +93,16 @@ private[spark] class TaskContextImpl(
   override def isRunningLocally(): Boolean = runningLocally
 
   override def isInterrupted(): Boolean = interrupted
+
+  private var openCLContext: OpenCLContext = _
+
+  override def getOpenCLContext: OpenCLContext = {
+
+    if (openCLContext == null) {
+      openCLContext = new OpenCLContext
+      openCLContext.initOpenCL("/org/apache/spark/gpu/kernel.cl")
+    }
+    openCLContext
+  }
 }
 
