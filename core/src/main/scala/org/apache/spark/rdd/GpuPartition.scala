@@ -819,11 +819,19 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
   def release {
   }
 
-  def debugGpuBuffer[V: TypeTag: ClassTag](buffer: cl_mem, size: Int, msg: String, quiet: Boolean = true) {
+  def debugGpuBuffer[V: TypeTag](buffer: cl_mem, size: Int, msg: String, quiet: Boolean
+  = false) {
     if (!quiet) {
-      val tempBuffer = new Array[V](size)
-      deviceToHostCopy[V](buffer, pointer[V](tempBuffer), size, 0)
-      println("%s = \n%s".format(msg, tempBuffer.mkString(" ,")))
+      if (typeOf[V] =:= ColumnarTypes.StringTypeTag.tpe) {
+      } else {
+        val mirror = ru.runtimeMirror(getClass.getClassLoader)
+        implicit val xClassTag = ClassTag[V](mirror.runtimeClass(typeOf[V]))
+
+        val tempBuffer =
+          Array.ofDim(size)(xClassTag)
+        deviceToHostCopy[V](buffer, pointer[V](tempBuffer), size, 0)
+        logInfo("%s = \n%s".format(msg, tempBuffer.mkString(" ,")))
+      }
     }
   }
 
@@ -841,7 +849,7 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
   var resCount = 0
 
   // defined here to avoid frequent allocation and gc pressure.
-  private var reusedCharBuffer = new Array[Char](MAX_STRING_SIZE)
+  private[rdd] var reusedCharBuffer = new Array[Char](MAX_STRING_SIZE)
 
   @throws(classOf[IOException])
   private def writeObject(out: ObjectOutputStream): Unit = {
@@ -912,6 +920,24 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
         buffer.put(in.readChar())
       }
     }
+  }
+
+  def toDebugString():String = {
+    val strBuffer = new StringBuffer()
+    strBuffer.append(f"Partition class name=${this.getClass}\n")
+    strBuffer.append(f"Partition size=${this.size}\n")
+
+    intData.zipWithIndex.foreach { case (intBuffer, i) =>
+      strBuffer.append(f"int buffer(${i}).limit = ${intBuffer.limit()}\n")
+      strBuffer.append(f"int buffer(${i}).data =\n")
+      intBuffer.position(0)
+      (0 until this.size).foreach{ j =>
+        strBuffer.append(intBuffer.get())
+        strBuffer.append(',')
+      }
+        strBuffer.append('\n')
+    }
+    strBuffer.toString
   }
 }
 

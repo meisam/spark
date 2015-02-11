@@ -1,7 +1,5 @@
 package org.apache.spark.rdd
 
-import java.io.{IOException, ObjectInputStream, ObjectOutputStream}
-
 import org.apache.spark.scheduler.OpenCLContext
 import org.jocl.CL._
 import org.jocl.{Pointer, Sizeof, cl_mem}
@@ -43,8 +41,8 @@ class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLCon
     clSetKernelArg(genScanKernel, 1, Sizeof.cl_long, Pointer.to(Array[Long](tupleNum)))
     // string types are represented as char* in C/OpenCL and should be treated differently
     if (typeOf[U] =:= ColumnarTypes.StringTypeTag.tpe) {
-      debugGpuBuffer[Char](gpuCol, tupleNum * MAX_STRING_SIZE , "gpuCol")
-    	val conditionValueBuffer = new Array[Char](MAX_STRING_SIZE)
+      debugGpuBuffer[Char](gpuCol, tupleNum * MAX_STRING_SIZE , "gpuCol before mem set to zero")
+      val conditionValueBuffer = new Array[Char](MAX_STRING_SIZE)
       val length = Math.min(value.toString().length(), MAX_STRING_SIZE)
       val stringBytes = value.toString().getChars(0, length, conditionValueBuffer, 0)
 
@@ -62,7 +60,7 @@ class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLCon
 
     clReleaseMemObject(gpuCol)
 
-    debugGpuBuffer[Int](gpuFilter, tupleNum, "gpuFilter")
+    debugGpuBuffer[Int](gpuFilter, tupleNum, "gpuFilter after mem set to zero")
 
     val countScanNumKernel = clCreateKernel(context.program, "countScanNum", null)
     clSetKernelArg(countScanNumKernel, 0, Sizeof.cl_mem, Pointer.to(gpuFilter))
@@ -70,8 +68,8 @@ class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLCon
     clSetKernelArg(countScanNumKernel, 2, Sizeof.cl_mem, Pointer.to(gpuCount))
     clEnqueueNDRangeKernel(context.queue, countScanNumKernel, 1, null, global_work_size, local_work_size, 0, null, null)
 
-    debugGpuBuffer[Int](gpuFilter, tupleNum, "gpuFilter")
-    debugGpuBuffer[Int](gpuCount, globalSize, "gpuCount")
+    debugGpuBuffer[Int](gpuFilter, tupleNum, "gpuFilter after countScanNum")
+    debugGpuBuffer[Int](gpuCount, globalSize, "gpuCount after countScanNum")
     scanImpl(gpuCount, globalSize, gpuPsum)
 
     val tmp1 = Array[Int](0)
