@@ -1,11 +1,12 @@
 package org.apache.spark.rdd
 
+import java.io.{IOException, ObjectInputStream, ObjectOutputStream}
+
 import org.apache.spark.scheduler.OpenCLContext
 import org.jocl.CL._
-import org.jocl.{ Pointer, Sizeof }
-import scala.reflect.ClassTag
-import scala.reflect.runtime.universe.{ TypeTag, typeOf }
-import org.jocl.cl_mem
+import org.jocl.{Pointer, Sizeof, cl_mem}
+
+import scala.reflect.runtime.universe.{TypeTag, typeOf}
 
 class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLContext,
                                                               idx:Int, columnIndex: Int,
