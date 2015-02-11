@@ -776,12 +776,7 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
     offset: Int): Unit = {
     val length = elementCount * baseSize[V]
     val scrBuffer = Pointer.to(src)
-    val startTime = System.nanoTime()
-    clEnqueueWriteBuffer(context.queue, dest, CL_TRUE, offset, length, scrBuffer, 0, null, null)
-    val endTime = System.nanoTime()
-    val copyToGpuTime = endTime - startTime
-    context.pciTransferTime += copyToGpuTime
-    context.pciTransferBytes += length
+    hostToDeviceCopy[V](scrBuffer, dest, elementCount, offset)
   }
 
   protected def deviceToHostCopy[V: TypeTag](src: cl_mem, dest: Pointer, elementCount: Long, offset: Long = 0): Unit = {
