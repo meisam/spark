@@ -45,20 +45,15 @@ class GpuFilteredPartitionSuit extends GpuSuit {
     val parentPartition = new GpuPartition[(Int, Int)](openCLContext, DEFAULT_CAPACITY)
     parentPartition.fill(testData.toIterator)
 
+    validateResults[(Int, Int)](testData.toArray, Array(parentPartition))
+
     val gpuPartition = new GpuFilteredPartition[(Int, Int), Int](openCLContext, 0,
       0, ComparisonOperation.==, 1000 + 1, DEFAULT_CAPACITY)
     gpuPartition.filter(parentPartition)
 
     val expectedData = testData.filter(_._1 == 1000 + 1)
 
-    assert(gpuPartition.size === expectedData.length)
-
-    expectedData.zipWithIndex.foreach {
-      case ((value1, value2), index) =>
-        assert(gpuPartition.intData(0).get(index) === value1, "values do not match")
-        assert(gpuPartition.intData(1).get(index) === value2, "values do not match")
-      case _ => fail("We should not be here")
-    }
+    validateResults(expectedData.toArray, Array[GpuPartition[(Int, Int)]](gpuPartition))
   }
 
   test("GpuFilteredPartition(Int, Int) == 0 match test") {
@@ -72,14 +67,7 @@ class GpuFilteredPartitionSuit extends GpuSuit {
     gpuPartition.filter(parentPartition)
     val expectedData = testData.filter(_._1 == 20000)
 
-    assert(gpuPartition.size === expectedData.length)
-
-    expectedData.zipWithIndex.foreach {
-      case ((value1, value2), index) =>
-        assert(gpuPartition.intData(0).get(index) === value1, "values do not match")
-        assert(gpuPartition.intData(1).get(index) === value2, "values do not match")
-      case _ => fail("We should not be here")
-    }
+    validateResults(expectedData.toArray, Array[GpuPartition[(Int, Int)]](gpuPartition))
   }
 
   test("GpuFilteredPartition(Int, Int) == many matches test") {
@@ -93,14 +81,7 @@ class GpuFilteredPartitionSuit extends GpuSuit {
     gpuPartition.filter(parentPartition)
     val expectedData = testData.filter(_._1 == 2)
 
-    assert(gpuPartition.size === expectedData.length)
-
-    expectedData.zipWithIndex.foreach {
-      case ((value1, value2), index) =>
-        assert(gpuPartition.intData(0).get(index) === value1, "values do not match")
-        assert(gpuPartition.intData(1).get(index) === value2, "values do not match")
-      case _ => fail("We should not be here")
-    }
+    validateResults(expectedData.toArray, Array[GpuPartition[(Int, Int)]](gpuPartition))
   }
 
   test("GpuFilteredPartition(Int, Int) >= test") {
@@ -115,14 +96,7 @@ class GpuFilteredPartitionSuit extends GpuSuit {
 
     val expectedData = testData.filter(_._1 >= 7)
 
-    assert(gpuPartition.size === expectedData.length)
-
-    expectedData.zipWithIndex.foreach {
-      case ((value1, value2), index) =>
-        assert(gpuPartition.intData(0).get(index) === value1, "values do not match")
-        assert(gpuPartition.intData(1).get(index) === value2, "values do not match")
-      case _ => fail("We should not be here")
-    }
+    validateResults(expectedData.toArray, Array[GpuPartition[(Int, Int)]](gpuPartition))
   }
 
   test("GpuFilteredPartition(Int, Int) <= test") {
@@ -137,13 +111,7 @@ class GpuFilteredPartitionSuit extends GpuSuit {
 
     val expectedData = testData.filter(_._1 <= 5)
 
-    assert(gpuPartition.size === expectedData.length)
-
-    expectedData.zipWithIndex.foreach {
-      case ((value1, value2), index) =>
-        assert(gpuPartition.intData(0).get(index) === value1, "values do not match")
-        assert(gpuPartition.intData(1).get(index) === value2, "values do not match")
-    }
+    validateResults(expectedData.toArray, Array[GpuPartition[(Int, Int)]](gpuPartition))
   }
 
   test("GpuFilteredPartition(Long, Boolean) <= test") {
@@ -163,13 +131,7 @@ class GpuFilteredPartitionSuit extends GpuSuit {
 
     val expectedData = testData.filter(_._1 <= START + 5)
 
-    assert(gpuPartition.size === expectedData.length)
-
-    expectedData.zipWithIndex.foreach {
-      case ((longValue, booleanValue), index) =>
-        assert(gpuPartition.longData(0).get(index) === longValue, "values do not match")
-        assert((gpuPartition.booleanData(0).get(index) != 0) === booleanValue, "values do not match")
-    }
+    validateResults[(Long, Boolean)](expectedData.toArray, Array(gpuPartition))
   }
 
   test("GpuFilteredPartition(Int, String) == test") {
@@ -189,13 +151,7 @@ class GpuFilteredPartitionSuit extends GpuSuit {
 
     val expectedData = testData.filter(_._2 == criterion)
 
-    assert(gpuPartition.size === expectedData.length)
-
-    expectedData.zipWithIndex.foreach {
-      case ((intValue, strValue), index) =>
-        assert(gpuPartition.intData(0).get(index) === intValue, "values do not match")
-        assert(gpuPartition.getStringData(0, index).equals(strValue), "values do not match")
-    }
+    validateResults[(Int, String)](expectedData.toArray, Array(gpuPartition))
   }
 
   test("kernel.genScanFilter_init_int_eq test") {
@@ -270,16 +226,20 @@ class GpuFilteredPartitionSuit extends GpuSuit {
     val parentPartition = new GpuPartition[(Int, Int)](openCLContext, DEFAULT_CAPACITY)
     parentPartition.fill(testData.toIterator)
 
-    assert(parentPartition.size === PARENT_SIZE, "Size of the parent parition is incorrect")
+    assert(parentPartition.size === PARENT_SIZE, "Size of the parent partition is incorrect")
 
-    val COMPARISSION_VALUE = 3
+    val COMPARISON_VALUE = 3
 
     val filteredPartition = new GpuFilteredPartition[(Int, Int), Int](openCLContext, 0,
-      1, ComparisonOperation.<, COMPARISSION_VALUE, DEFAULT_CAPACITY)
+      1, ComparisonOperation.<, COMPARISON_VALUE, DEFAULT_CAPACITY)
     filteredPartition.filter(parentPartition)
 
+    val expectedData = testData.filter(_._2 < COMPARISON_VALUE).toArray
+
+    validateResults[(Int, Int)](expectedData, Array(filteredPartition))
+
     (0 until filteredPartition.capacity).foreach(i =>
-      if (i < COMPARISSION_VALUE) {
+      if (i < COMPARISON_VALUE) {
         assert(filteredPartition.intData(0).get(i) === (10 - i), "values do not match")
         assert(filteredPartition.intData(1).get(i) === i, "indexes  do not match")
       } else {
