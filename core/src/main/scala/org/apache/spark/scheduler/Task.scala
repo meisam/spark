@@ -65,7 +65,6 @@ private[spark] abstract class Task[T](val stageId: Int, var partitionId: Int) ex
       kill(interruptThread = false)
     }
     try {
-      openCLContext.initOpenCL("/org/apache/spark/gpu/kernel.cl")
       runTask(context)
     } finally {
       context.markTaskCompleted()
@@ -113,7 +112,6 @@ private[spark] abstract class Task[T](val stageId: Int, var partitionId: Int) ex
     }
   }
 
-  val openCLContext = new OpenCLContext
 }
 
 /**
@@ -199,37 +197,39 @@ class OpenCLContext extends Serializable{
    * @param path
    */
   def initOpenCL(path: String) {
-    val platformIndex: Int = 0
-    val deviceType: Long = CL_DEVICE_TYPE_ALL
-    val deviceIndex: Int = 0
-    CL.setExceptionsEnabled(true)
-    val numPlatformsArray = new Array[Int](1) // TODO we only need one device at this time
-    clGetPlatformIDs(0, null, numPlatformsArray)
-    val numPlatforms: Int = numPlatformsArray(0)
-    val platforms = new Array[cl_platform_id](numPlatforms)
-    clGetPlatformIDs(platforms.length, platforms, null)
-    val platform: cl_platform_id = platforms(platformIndex)
-    val contextProperties: cl_context_properties = new cl_context_properties
-    contextProperties.addProperty(CL_CONTEXT_PLATFORM, platform)
-    val numDevicesArray = new Array[Int](1)
-    clGetDeviceIDs(platform, deviceType, 0, null, numDevicesArray)
-    val numDevices: Int = numDevicesArray(0)
-    val devices = new Array[cl_device_id](numDevices)
-    clGetDeviceIDs(platform, deviceType, numDevices, devices, null)
-    val device: cl_device_id = devices(deviceIndex)
-    context = clCreateContext(contextProperties, 1, Array[cl_device_id](device), null, null, null)
-    queue = clCreateCommandQueue(context, device, 0, null)
-    try {
-      val kernelFile: InputStream = getClass.getResourceAsStream(path)
-      programSource = new Scanner(kernelFile).useDelimiter("\\Z").next()
-    }
-    catch {
-      case e: FileNotFoundException => {
-        System.out.println("Kernel file not found.\n")
+    if (context == null) {
+      val platformIndex: Int = 0
+      val deviceType: Long = CL_DEVICE_TYPE_ALL
+      val deviceIndex: Int = 0
+      CL.setExceptionsEnabled(true)
+      val numPlatformsArray = new Array[Int](1) // TODO we only need one device at this time
+      clGetPlatformIDs(0, null, numPlatformsArray)
+      val numPlatforms: Int = numPlatformsArray(0)
+      val platforms = new Array[cl_platform_id](numPlatforms)
+      clGetPlatformIDs(platforms.length, platforms, null)
+      val platform: cl_platform_id = platforms(platformIndex)
+      val contextProperties: cl_context_properties = new cl_context_properties
+      contextProperties.addProperty(CL_CONTEXT_PLATFORM, platform)
+      val numDevicesArray = new Array[Int](1)
+      clGetDeviceIDs(platform, deviceType, 0, null, numDevicesArray)
+      val numDevices: Int = numDevicesArray(0)
+      val devices = new Array[cl_device_id](numDevices)
+      clGetDeviceIDs(platform, deviceType, numDevices, devices, null)
+      val device: cl_device_id = devices(deviceIndex)
+      context = clCreateContext(contextProperties, 1, Array[cl_device_id](device), null, null, null)
+      queue = clCreateCommandQueue(context, device, 0, null)
+      try {
+        val kernelFile: InputStream = getClass.getResourceAsStream(path)
+        programSource = new Scanner(kernelFile).useDelimiter("\\Z").next()
       }
+      catch {
+        case e: FileNotFoundException => {
+          System.out.println("Kernel file not found.\n")
+        }
+      }
+      program = clCreateProgramWithSource(context, 1, Array[String](programSource), null, null)
+      clBuildProgram(program, 0, null, null, null, null)
     }
-    program = clCreateProgramWithSource(context, 1, Array[String](programSource), null, null)
-    clBuildProgram(program, 0, null, null, null, null)
   }
   
   def close(): Unit = {
