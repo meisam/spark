@@ -24,12 +24,12 @@ import scala.language.existentials
  */
 class CpuPerformanceTestsSuit extends GpuSuit {
 
-  ignore("selection with 10% selectivity on one CPU core") {
+  test("selection with 10% selectivity on one CPU core") {
     val SIZE_OF_INTEGER = 4
-    (10 to 24).foreach { size =>
+    (10 to 26).foreach { size =>
       val TEST_DATA_SIZE = (1 << size) / SIZE_OF_INTEGER
       val selectivity = 10 //percent
-    val value = 1
+      val value = 1
 
       val testData = (0 until TEST_DATA_SIZE).map(x => if (x % 10 == 0) value else 0)
 
@@ -43,9 +43,10 @@ class CpuPerformanceTestsSuit extends GpuSuit {
 
       rdd.filter(_ == 1).count
 
-      (0 until iterations).foreach { x =>
+      val filteredRdd = rdd.filter(_ == 1)
+      for (x <- 0 to iterations){
         val startTime = System.nanoTime
-        rdd.filter(_ == 1).collect()
+        filteredRdd.collect()
         val endTime = System.nanoTime
         totalTime += endTime - startTime
       }
