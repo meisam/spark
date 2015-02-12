@@ -85,7 +85,7 @@ class GpuAggregationPartitionSuit extends GpuSuit {
     }
   }
 
-  ignore("Aggregation sum(Int, Long)  size test") {
+  test("Aggregation sum(Int, Long)  size test") {
     val testData: IndexedSeq[(Int, Long)] = Array((11, 3L), (11, 1L), (11, 4L), (12, 6L), (12, 5L))
 
     val partition = new GpuPartition[(Int, Long)](openCLContext, DEFAULT_CAPACITY)
@@ -120,14 +120,7 @@ class GpuAggregationPartitionSuit extends GpuSuit {
 
     assert(aggregationPartition.size === expectedData.length)
 
-    println("1st column %s".format(aggregationPartition.intData(0).array.zipWithIndex.filter(_._1 != 0).mkString(",")))
-    println("2nd column %s".format(aggregationPartition.intData(1).array.zipWithIndex.filter(_._1 != 0).mkString(",")))
-    expectedData.zipWithIndex.foreach {
-      case ((gbVal, aggValue), index) =>
-        assert(aggregationPartition.intData(0).get(index) === gbVal, "values do not match")
-        assert(aggregationPartition.intData(1).get(index) === aggValue, "values do not match")
-      case _ => fail("We should not be here")
-    }
+    validateResults[(Int, Int)](expectedData, Array(aggregationPartition))
   }
 
   test("Aggregation MIN(Int, Float)  match test") {
@@ -145,14 +138,7 @@ class GpuAggregationPartitionSuit extends GpuSuit {
     aggregationPartition.aggregate()
     val expectedData = Array((12, 5.0f), (11, 1.0f))
 
-    assert(aggregationPartition.size === expectedData.length)
-
-    expectedData.zipWithIndex.foreach {
-      case ((gbVal, aggValue), index) =>
-        assert(aggregationPartition.intData(0).get(index) === gbVal, "values do not match")
-        assert(aggregationPartition.floatData(0).get(index) === aggValue, "values do not match")
-      case _ => fail("We should not be here")
-    }
+    validateResults[(Int, Float)](expectedData, Array(aggregationPartition))
   }
 
   test("Aggregation MAX(Int, Float)  match test") {
@@ -170,14 +156,7 @@ class GpuAggregationPartitionSuit extends GpuSuit {
     aggregationPartition.aggregate()
     val expectedData = Array((12, 6.0f), (11, 4.0f))
 
-    assert(aggregationPartition.size === expectedData.length)
-
-    expectedData.zipWithIndex.foreach {
-      case ((gbVal, aggValue), index) =>
-        assert(aggregationPartition.intData(0).get(index) === gbVal, "values do not match")
-        assert(aggregationPartition.floatData(0).get(index) === aggValue, "values do not match")
-      case _ => fail("We should not be here")
-    }
+    validateResults[(Int, Float)](expectedData, Array(aggregationPartition))
   }
 
 }

@@ -19,6 +19,7 @@ package org.apache.spark.gpu
 
 import org.apache.spark.SparkConf
 import org.apache.spark.deploy.worker.WorkerArguments
+import org.apache.spark.rdd.GpuPartitionIterator
 
 import scala.language.existentials
 
@@ -27,26 +28,18 @@ import scala.language.existentials
  */
 
 class GpuLayout extends GpuSuit {
-  val DEFAULT_CAPACITY = (1 << 10)
+  val DEFAULT_CAPACITY = (1 << 5)
 
   // This test does not work with the new design of GpuPartition.
-  ignore("org.apache.spark.rdd.GpuPartitionIterator test") {
-/*
-    val testData = (0 to 10).reverse.zipWithIndex.toIterator
+  test("org.apache.spark.rdd.GpuPartitionIterator test") {
 
-    val chunkItr = new GpuPartitionIterator(testData, DEFAULT_CAPACITY)
+    val testData = (0 to 1000).reverse.zipWithIndex.toIterator
 
-    chunkItr.zipWithIndex.foreach {
-      case ((v1, v2), i) =>
-        if (i <= 10) {
-          assert(v1 === (10 - i), "values do not match")
-          assert(v2 === i, "indexes  do not match")
-        } else {
-          assert(v1 === 0, "values do not match")
-          assert(v2 === 0, "values do not match")
-        }
-    }
-    */
+    val partitionItr = new GpuPartitionIterator(testData, DEFAULT_CAPACITY)
+
+    val partitions = partitionItr.toArray
+
+    validateResults[(Int, Int)](testData.toArray, partitions)
   }
 
   test("org.apache.spark.deploy.worker.WorkerArguments.inferDefaultGpu test") {
