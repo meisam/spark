@@ -17,43 +17,43 @@
 
 package org.apache.spark
 
-import scala.language.implicitConversions
-
 import java.io._
 import java.net.URI
-import java.util.{Arrays, Properties, UUID}
-import java.util.concurrent.atomic.AtomicInteger
 import java.util.UUID.randomUUID
-import scala.collection.{Map, Set}
-import scala.collection.JavaConversions._
-import scala.collection.generic.Growable
-import scala.collection.mutable.HashMap
-import scala.reflect.{ClassTag, classTag}
-import scala.reflect.runtime.universe.TypeTag
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.{Arrays, Properties, UUID}
+
+import akka.actor.Props
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.{ArrayWritable, BooleanWritable, BytesWritable, DoubleWritable, FloatWritable, IntWritable, LongWritable, NullWritable, Text, Writable}
 import org.apache.hadoop.mapred.{FileInputFormat, InputFormat, JobConf, SequenceFileInputFormat, TextInputFormat}
-import org.apache.hadoop.mapreduce.{InputFormat => NewInputFormat, Job => NewHadoopJob}
 import org.apache.hadoop.mapreduce.lib.input.{FileInputFormat => NewFileInputFormat}
+import org.apache.hadoop.mapreduce.{InputFormat => NewInputFormat, Job => NewHadoopJob}
 import org.apache.mesos.MesosNativeLibrary
-import akka.actor.Props
-
 import org.apache.spark.annotation.{DeveloperApi, Experimental}
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.deploy.{LocalSparkCluster, SparkHadoopUtil}
 import org.apache.spark.executor.TriggerThreadDump
-import org.apache.spark.input.{StreamInputFormat, PortableDataStream, WholeTextFileInputFormat, FixedLengthBinaryInputFormat}
+import org.apache.spark.input.{FixedLengthBinaryInputFormat, PortableDataStream, StreamInputFormat, WholeTextFileInputFormat}
 import org.apache.spark.partial.{ApproximateEvaluator, PartialResult}
 import org.apache.spark.rdd._
 import org.apache.spark.scheduler._
-import org.apache.spark.scheduler.cluster.{CoarseGrainedSchedulerBackend, SparkDeploySchedulerBackend, SimrSchedulerBackend}
 import org.apache.spark.scheduler.cluster.mesos.{CoarseMesosSchedulerBackend, MesosSchedulerBackend}
+import org.apache.spark.scheduler.cluster.{CoarseGrainedSchedulerBackend, SimrSchedulerBackend, SparkDeploySchedulerBackend}
 import org.apache.spark.scheduler.local.LocalBackend
 import org.apache.spark.storage._
-import org.apache.spark.ui.{SparkUI, ConsoleProgressBar}
 import org.apache.spark.ui.jobs.JobProgressListener
+import org.apache.spark.ui.{ConsoleProgressBar, SparkUI}
 import org.apache.spark.util._
+
+import scala.collection.JavaConversions._
+import scala.collection.generic.Growable
+import scala.collection.mutable.HashMap
+import scala.collection.{Map, Set}
+import scala.language.implicitConversions
+import scala.reflect.runtime.universe.TypeTag
+import scala.reflect.{ClassTag, classTag}
 
 /**
  * Main entry point for Spark functionality. A SparkContext represents the connection to a Spark
@@ -1513,10 +1513,10 @@ class SparkContext(config: SparkConf) extends Logging {
   // NOTE: this must be placed at the end of the SparkContext constructor.
   SparkContext.setActiveContext(this, allowMultipleContexts)
 
-  def fillFromFiles[T <: Product : TypeTag](paths: Array[String]): Unit = {
-    val defaultCapacity = 1000
-    new ColumnarFileGpuRDD[T](this, paths, defaultCapacity)
-}
+  def fromColumnarFiles[T <: Product : TypeTag](paths: Array[String], capacity: Int = (1 << 20)
+    , partitionCount:Int = defaultParallelism): RDD[GpuPartition[TT]] = {
+      new ColumnarFileGpuRDD[TT](this, paths,capacity, partitionCount)
+  }
 }
 
 /**
