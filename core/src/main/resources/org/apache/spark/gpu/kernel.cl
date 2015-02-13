@@ -2,6 +2,7 @@ typedef unsigned char boolean;
 
 #define HSIZE 131072
 #define MAX_SRING_SIZE ( (1 << 7) * 2)
+#define SHARED_SIZE_LIMIT (1024)
 
 // The order of these definitions should be the same as the order in the counterpart scala files
 // The scala definitions are in GpuPartiotion
@@ -752,3 +753,311 @@ __kernel void agg_cal(__global char * content, __global long *colOffset, int col
     }
 }
 
+//////////////////////////////////////////////////////////////////////////
+
+//        functions required for sorting
+
+//////////////////////////////////////////////////////////////////////////
+
+
+int gpu_strcmp_local(__local char *s1, __local char *s2, int len) {
+    int res = 0;
+
+    for(int i=0;i < len;i++) {
+        if(s1[i]<s2[i]) {
+            res = -1;
+            break;
+        } else if(s1[i]>s2[i]) {
+            res = 1;
+            break;
+        }
+    }
+    return res;
+
+}
+
+int gpu_strcmp_private(__private char *s1, __global char *s2, int len) {
+    int res = 0;
+
+    for(int i=0;i < len;i++) {
+        if(s1[i]<s2[i]) {
+            res = -1;
+            break;
+        } else if(s1[i]>s2[i]) {
+            res = 1;
+            break;
+        }
+    }
+    return res;
+
+}
+
+void Comparator(
+        __local char * keyA,
+        __local int *valA,
+        __local char * keyB,
+        __local int *valB,
+        int keySize,
+        int dir
+)
+{
+    int t;
+    char buf[32];
+
+    if ((gpu_strcmp_local(keyA,keyB,keySize) == 1) == dir)
+    {
+        for(int i=0;i<keySize;i++)
+        buf[i] = keyA[i];
+        for(int i=0;i<keySize;i++)
+        keyA[i] = keyB[i];
+        for(int i=0;i<keySize;i++)
+        keyB[i] = buf[i];
+        t = *valA;
+        *valA = *valB;
+        *valB = t;
+    }
+}
+
+inline void ComparatorInt(
+        __local int *keyA, __local int *valA, __local int *keyB, __local int *valB, int dir)
+{
+    int t;
+
+    if ((*keyA > *keyB) == dir)
+    {
+        t = *keyA;
+        *keyA = *keyB;
+        *keyB = t;
+        t = *valA;
+        *valA = *valB;
+        *valB = t;
+    }
+}
+
+inline void ComparatorFloat(
+        __local float *keyA, __local int *valA,__local float *keyB,__local int *valB,int dir)
+{
+    float t1;
+    int t2;
+
+    if ((*keyA > *keyB) == dir)
+    {
+        t1 = *keyA;
+        *keyA = *keyB;
+        *keyB = t1;
+        t2 = *valA;
+        *valA = *valB;
+        *valB = t2;
+    }
+}
+
+__kernel void set_key_string(__global char *key, int tupleNum) {
+
+    size_t stride = get_global_size(0);
+    size_t tid = get_global_id(0);
+
+    for(int i=tid;i<tupleNum;i+=stride) {
+        key[i] = CHAR_MAX;
+    }
+
+}
+
+__kernel void set_key_int(__global int *key, int tupleNum) {
+
+    size_t stride = get_global_size(0);
+    size_t tid = get_global_id(0);
+
+    for(int i=tid;i<tupleNum;i+=stride) {
+        key[i] = INT_MAX;
+    }
+
+}
+
+__kernel void set_key_float(__global float *key, int tupleNum) {
+
+    size_t stride = get_global_size(0);
+    size_t tid = get_global_id(0);
+
+    for(int i=tid;i<tupleNum;i+=stride) {
+        key[i] = FLT_MAX;
+    }
+}
+
+__kernel void sort_key_string(__global char * key, int tupleNum, int keySize, __global char *result, __global int * resPos, int dir, __local char * bufKey, __local int* bufVal) {
+    size_t lid = get_local_id(0);
+    size_t bid = get_group_id(0);
+
+    size_t lsize = get_local_size(0);
+
+    int gid = bid * SHARED_SIZE_LIMIT + lid;
+
+    for(int i=0;i<keySize;i++) {
+        bufKey[lid*keySize + i] = key[gid+keySize + i];
+    }
+    bufVal[lid] = gid;
+
+    for(int i=0;i<keySize;i++) {
+        bufKey[i + (lid+lsize)*keySize] = key[i+(gid+lsize)*keySize];
+    }
+    bufVal[lid+lsize] = gid+ lsize;
+
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    for (int size = 2; size < tupleNum && size < SHARED_SIZE_LIMIT; size <<= 1) {
+        int ddd = dir ^ ((lid & (size / 2)) != 0);
+
+        for (int stride = size / 2; stride > 0; stride >>= 1) {
+            barrier(CLK_LOCAL_MEM_FENCE);
+            int pos = 2 * lid - (lid & (stride - 1));
+            Comparator(
+                    bufKey+pos*keySize, &bufVal[pos + 0],
+                    bufKey+(pos+stride)*keySize, &bufVal[pos + stride],
+                    keySize,
+                    ddd
+            );
+        }
+    }
+
+    for (int stride = lsize; stride > 0; stride >>= 1) {
+        barrier(CLK_LOCAL_MEM_FENCE);
+        int pos = 2 * lid - (lid & (stride - 1));
+        Comparator(
+                bufKey+pos*keySize, &bufVal[pos + 0],
+                bufKey+(pos+stride)*keySize, &bufVal[pos + stride],
+                keySize,
+                dir
+        );
+    }
+
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    for(int i=0;i<keySize;i++)
+    result[i+ gid*keySize] = bufKey[lid*keySize + i];
+
+    resPos[gid] = bufVal[lid];
+
+    for(int i=0;i<keySize;i++)
+    result[i + (gid+lsize)*keySize] = bufKey[i+ (lid+lsize)*keySize];
+
+    resPos[gid+lsize] = bufVal[lid+lsize];
+
+}
+
+__kernel void sort_key_int(__global int * key, int tupleNum, __global int *result, __global int *pos,int dir, __local int* bufKey, __local int* bufVal) {
+    size_t lid = get_local_id(0);
+    size_t bid = get_group_id(0);
+    size_t lsize = get_local_size(0);
+
+    int gid = bid * SHARED_SIZE_LIMIT + lid;
+
+    bufKey[lid] = key[gid];
+    bufVal[lid] = gid;
+    bufKey[lid + lsize] = key[gid + lsize];
+    bufVal[lid+lsize] = gid+ lsize;
+
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    for (int size = 2; size < tupleNum && size < SHARED_SIZE_LIMIT; size <<= 1) {
+        int ddd = dir ^ ((lid & (size / 2)) != 0);
+
+        for (int stride = size / 2; stride > 0; stride >>= 1) {
+            barrier(CLK_LOCAL_MEM_FENCE);
+            int pos = 2 * lid - (lid & (stride - 1));
+            ComparatorInt(
+                    &bufKey[pos + 0], &bufVal[pos + 0],
+                    &bufKey[pos + stride], &bufVal[pos + stride],
+                    ddd
+            );
+        }
+    }
+
+    for (int stride = lsize; stride > 0; stride >>= 1)
+    {
+        barrier(CLK_LOCAL_MEM_FENCE);
+        int pos = 2 * lid - (lid & (stride - 1));
+        ComparatorInt(
+                &bufKey[pos + 0], &bufVal[pos + 0],
+                &bufKey[pos + stride], &bufVal[pos + stride],
+                dir
+        );
+    }
+
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    result[gid] = bufKey[lid];
+    pos[gid] = bufVal[lid];
+    result[gid + lsize] = bufKey[lid + lsize];
+    pos[gid+lsize] = bufVal[lid+lsize];
+
+}
+
+__kernel void sort_key_float(__global float * key, int tupleNum, __global float *result, __global int *pos,int dir, __local float * bufKey, __local int* bufVal) {
+    size_t lid = get_local_id(0);
+    size_t bid = get_group_id(0);
+    size_t lsize = get_local_size(0);
+
+    int gid = bid * SHARED_SIZE_LIMIT + lid;
+
+    bufKey[lid] = key[gid];
+    bufVal[lid] = gid;
+    bufKey[lid + lsize] = key[gid + lsize];
+    bufVal[lid+lsize] = gid+ lsize;
+
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    for (int size = 2; size < tupleNum && size < SHARED_SIZE_LIMIT; size <<= 1) {
+        int ddd = dir ^ ((lid & (size / 2)) != 0);
+
+        for (int stride = size / 2; stride > 0; stride >>= 1) {
+            barrier(CLK_LOCAL_MEM_FENCE);
+            int pos = 2 * lid - (lid & (stride - 1));
+            ComparatorFloat(
+                    &bufKey[pos + 0], &bufVal[pos + 0],
+                    &bufKey[pos + stride], &bufVal[pos + stride],
+                    ddd
+            );
+        }
+    }
+
+    {
+        for (int stride = bid; stride > 0; stride >>= 1) {
+            barrier(CLK_LOCAL_MEM_FENCE);
+            int pos = 2 * lid - (lid & (stride - 1));
+            ComparatorFloat(
+                    &bufKey[pos + 0], &bufVal[pos + 0],
+                    &bufKey[pos + stride], &bufVal[pos + stride],
+                    dir
+            );
+        }
+    }
+
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    result[gid] = bufKey[lid];
+    pos[gid] = bufVal[lid];
+    result[gid + bid] = bufKey[lid + bid];
+    pos[gid+bid] = bufVal[lid+bid];
+
+}
+
+__kernel void sec_sort_key_int(__global int *key, __global int *psum, __global int *count ,int tupleNum, __global int *inputPos, __global int* outputPos) {
+    int tid = get_group_id(0);
+    int start = psum[tid];
+    int end = start + count[tid] - 1;
+
+    for(int i=start; i< end-1; i++) {
+        int min = key[i];
+        int tmp = tmp;
+        int pos = i;
+        for(int j=i+1;j<end;j++) {
+            if(min > key[j]) {
+                min = key[j];
+                pos = j;
+            }
+        }
+        key[pos] = tmp;
+        outputPos[i] = inputPos[pos];
+        inputPos[pos] = inputPos[i];
+    }
+    outputPos[end-1] = inputPos[end-1];
+}
