@@ -18,7 +18,7 @@
 package org.apache.spark.gpu
 
 import org.apache.spark.rdd.{AggregationExp, AggregationOperation, GpuAggregationPartition, GpuPartition, MathExp, MathOp, MathOperationType}
-import org.apache.spark.scheduler.OpenCLContext
+import org.apache.spark.scheduler.{OpenCLContextSingletone, OpenCLContext}
 
 import scala.language.existentials
 
@@ -26,9 +26,6 @@ import scala.language.existentials
  *
  */
 class GpuAggregationPartitionSuit extends GpuSuit {
-
-  val DEFAULT_CAPACITY = (1 << 10)
-  val openCLContext = new OpenCLContext
 
   val times2MathExo = new MathExp(MathOp.NOOP, 1, null, null, MathOperationType.column, 1)
   val col0 = new MathExp(MathOp.NOOP, 1, null, null, MathOperationType.column, 0)

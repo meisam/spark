@@ -28,9 +28,6 @@ import scala.language.existentials
  */
 class GpuPartitionSuit extends GpuSuit {
 
-  val DEFAULT_CAPACITY = (1 << 10)
-  val openCLContext = new OpenCLContext
-
   override def beforeAll() {
     super.beforeAll()
     //    setLogLevel(LogLevel.LOG_TRACE)

@@ -8,9 +8,6 @@ import org.apache.spark.scheduler.OpenCLContext
  */
 class GpuSortPartitionSuit extends GpuSuit {
 
-  val DEFAULT_CAPACITY = (1 << 5)
-  val openCLContext = new OpenCLContext
-
   val times2MathExo = new MathExp(MathOp.NOOP, 1, null, null, MathOperationType.column, 1)
   val col0 = new MathExp(MathOp.NOOP, 1, null, null, MathOperationType.column, 0)
   val col1 = new MathExp(MathOp.NOOP, 1, null, null, MathOperationType.column, 1)
