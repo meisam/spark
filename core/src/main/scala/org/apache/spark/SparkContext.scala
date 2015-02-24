@@ -1765,8 +1765,8 @@ class SparkContext(config: SparkConf) extends Logging with ExecutorAllocationCli
   SparkContext.setActiveContext(this, allowMultipleContexts)
 
   def fromColumnarFiles[T <: Product : TypeTag](paths: Array[String], capacity: Int = (1 << 20)
-    , partitionCount:Int = defaultParallelism): RDD[GpuPartition[TT]] = {
-      new ColumnarFileGpuRDD[TT](this, paths,capacity, partitionCount)
+    , partitionCount:Int = defaultParallelism): RDD[GpuPartition[T]] = {
+      new ColumnarFileGpuRDD[T](this, paths,capacity, partitionCount)
   }
 }
 
