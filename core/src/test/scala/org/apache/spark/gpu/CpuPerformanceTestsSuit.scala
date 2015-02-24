@@ -26,7 +26,7 @@ class CpuPerformanceTestsSuit extends GpuSuit {
 
   test("selection with 10% selectivity on one CPU core") {
     val SIZE_OF_INTEGER = 4
-    (10 to 26).foreach { size =>
+    (10 to 32).foreach { size =>
       val TEST_DATA_SIZE = (1 << size) / SIZE_OF_INTEGER
       val selectivity = 10 //percent
       val value = 1
