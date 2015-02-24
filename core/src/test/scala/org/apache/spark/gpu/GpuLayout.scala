@@ -28,18 +28,19 @@ import scala.language.existentials
  */
 
 class GpuLayout extends GpuSuit {
-  val DEFAULT_CAPACITY = (1 << 5)
+
+  override val DEFAULT_CAPACITY = (1 << 5)
 
   // This test does not work with the new design of GpuPartition.
   test("org.apache.spark.rdd.GpuPartitionIterator test") {
 
-    val testData = (0 to 1000).reverse.zipWithIndex.toIterator
+    val testData = (0 to 1000).reverse.zipWithIndex.toArray
 
-    val partitionItr = new GpuPartitionIterator(testData, DEFAULT_CAPACITY)
+    val partitionItr = new GpuPartitionIterator(testData.toIterator, DEFAULT_CAPACITY)
 
     val partitions = partitionItr.toArray
 
-    validateResults[(Int, Int)](testData.toArray, partitions)
+    validateResults[(Int, Int)](testData, partitions)
   }
 
   test("org.apache.spark.deploy.worker.WorkerArguments.inferDefaultGpu test") {

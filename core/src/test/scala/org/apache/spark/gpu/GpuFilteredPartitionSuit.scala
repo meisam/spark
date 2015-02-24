@@ -29,8 +29,6 @@ import scala.language.existentials
  */
 class GpuFilteredPartitionSuit extends GpuSuit {
 
-  val DEFAULT_CAPACITY = (1 << 10)
-  val openCLContext = new OpenCLContext
   val POW_2_S: IndexedSeq[Long] = (0 to 100).map(_.toLong).map(1L << _)
 
   override def beforeAll() {

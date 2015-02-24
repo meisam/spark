@@ -18,7 +18,7 @@
 package org.apache.spark.gpu
 
 import org.apache.spark.rdd.{GpuJoinPartition, GpuPartition}
-import org.apache.spark.scheduler.OpenCLContext
+import org.apache.spark.scheduler.{OpenCLContextSingletone, OpenCLContext}
 
 import scala.language.existentials
 
@@ -26,9 +26,6 @@ import scala.language.existentials
  *
  */
 class GpuJoinPartitionSuit extends GpuSuit {
-
-  val DEFAULT_CAPACITY = (1 << 10)
-  val openCLContext = new OpenCLContext
 
   override def beforeAll() {
     super.beforeAll()

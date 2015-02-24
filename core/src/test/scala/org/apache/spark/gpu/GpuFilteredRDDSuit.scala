@@ -26,8 +26,6 @@ import scala.language.existentials
  */
 class GpuFilteredRDDSuit extends GpuSuit {
 
-  val DEFAULT_CAPACITY = (1 << 10)
-
   test("Filtered Partition (Int, Int)") {
     val PARTITIONS_COUNT = 1
     val TEST_DATA_SIZE = 3 + (1 << 4)
