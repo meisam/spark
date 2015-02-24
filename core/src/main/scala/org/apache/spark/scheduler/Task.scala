@@ -26,7 +26,7 @@ import org.jocl._
 
 import scala.collection.mutable.HashMap
 
-import org.apache.spark.{TaskContextHelper, TaskContextImpl, TaskContext}
+import org.apache.spark.{TaskContextHelper, TaskContextImpl, TaskContext, Logging}
 import org.apache.spark.executor.TaskMetrics
 import org.apache.spark.serializer.SerializerInstance
 import org.apache.spark.util.ByteBufferInputStream
@@ -181,14 +181,14 @@ private[spark] object Task {
   }
 }
 
-class OpenCLContext extends Serializable{
+class OpenCLContext extends Serializable with Logging{
 
   /**
    * This method should be called after the task is sent to workers because all the fields in this
    * class are @transient and will be lost when serialized.
    * @param path
    */
-  def initOpenCL(path: String) {
+  def initOpenCL(path: String): OpenCLContext = {
     if (context == null) {
       val platformIndex: Int = 0
       val deviceType: Long = CL_DEVICE_TYPE_ALL
@@ -222,6 +222,7 @@ class OpenCLContext extends Serializable{
       program = clCreateProgramWithSource(context, 1, Array[String](programSource), null, null)
       clBuildProgram(program, 0, null, null, null, null)
     }
+    this
   }
   
   def close(): Unit = {
@@ -242,3 +243,11 @@ class OpenCLContext extends Serializable{
   var diskReadTime = 0L
 }
 
+object OpenCLContextSingletone extends Serializable with Logging {
+  lazy val openClContext = {
+    logInfo("Going to initialize OpenCLContextSingletone ")
+    val _context = new OpenCLContext
+  _context
+  }
+
+}
