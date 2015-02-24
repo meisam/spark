@@ -1,6 +1,7 @@
 package org.apache.spark.rdd
 
 import java.io._
+import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.{Buffer, ByteBuffer, ByteOrder, CharBuffer, DoubleBuffer, FloatBuffer, IntBuffer, LongBuffer, ShortBuffer}
 
@@ -192,10 +193,30 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
     this.globalSize = localSize * math.min(1 + (size - 1) / localSize, BLOCK_SIZE)
   }
 
-  def fillFromFiles(paths: Array[String]): Unit = {
+  def getSizeFromFile(path: String): Int = {
+    val channel = FileChannel.open(new File(path).toPath(), java.nio.file.StandardOpenOption.READ)
+    val HEADER_SIZE = 4096
+    val byteBuffer = ByteBuffer.allocate(HEADER_SIZE)
+    byteBuffer.order(ByteOrder.nativeOrder())
+    channel.read(byteBuffer)
+    val totalTupleNum = byteBuffer.getLong(0)
+    channel.close()
+    logInfo(f"total elements ${totalTupleNum}")
+    totalTupleNum.toInt
+  }
+
+  /**
+   * Reads columnar data into this partition starting from the given index. It reads until the
+   * capacity is reached or all data is read.
+   *
+   * @param paths paths to columnar files to read
+   * @param fromIndex the index of first element to read
+   */
+  def fillFromFiles(paths: Array[String], fromIndex: Int = 0): Unit = {
     assert(paths.length == columnTypes.size, {
       " %d file paths but only %d columns".format(paths.length, columnTypes.size)
     })
+
     columnTypes.zip(paths).zipWithIndex.foreach({
       case ((colType, path), colIndex) =>
 
@@ -241,40 +262,43 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
           f"remaining != blockSize ($remaining != $blockSize)"
         })
 
+        val startPosition = fromIndex *  baseSize(colType)
+        val tuplesToRead = Math.min(capacity, totalTupleNum-fromIndex)
+        restData.position()
         if (colType.tpe =:= TypeTag.Byte.tpe) {
-          val convertBuffer = new Array[Byte](totalTupleNum.toInt)
+          val convertBuffer = new Array[Byte](tuplesToRead.toInt)
           restData.get(convertBuffer)
           byteData(toTypeAwareColumnIndex(colIndex)) = ByteBuffer.wrap(convertBuffer)
         } else if (colType.tpe =:= TypeTag.Short.tpe) {
-          val convertBuffer = new Array[Short](totalTupleNum.toInt)
+          val convertBuffer = new Array[Short](tuplesToRead.toInt)
           restData.asShortBuffer().get(convertBuffer)
           shortData(toTypeAwareColumnIndex(colIndex)) = ShortBuffer.wrap(convertBuffer)
         } else if (colType.tpe =:= TypeTag.Int.tpe) {
-          val convertBuffer = new Array[Int](totalTupleNum.toInt)
+          val convertBuffer = new Array[Int](tuplesToRead.toInt)
           restData.asIntBuffer().get(convertBuffer)
           intData(toTypeAwareColumnIndex(colIndex)) = IntBuffer.wrap(convertBuffer)
         } else if (colType.tpe =:= TypeTag.Long.tpe) {
-          val convertBuffer = new Array[Long](totalTupleNum.toInt)
+          val convertBuffer = new Array[Long](tuplesToRead.toInt)
           restData.asLongBuffer().get(convertBuffer)
           longData(toTypeAwareColumnIndex(colIndex)) = LongBuffer.wrap(convertBuffer)
         } else if (colType.tpe =:= TypeTag.Float.tpe) {
-          val convertBuffer = new Array[Float](totalTupleNum.toInt)
+          val convertBuffer = new Array[Float](tuplesToRead.toInt)
           restData.asFloatBuffer().get(convertBuffer)
           floatData(toTypeAwareColumnIndex(colIndex)) = FloatBuffer.wrap(convertBuffer)
         } else if (colType.tpe =:= TypeTag.Double.tpe) {
-          val convertBuffer = new Array[Double](totalTupleNum.toInt)
+          val convertBuffer = new Array[Double](tuplesToRead.toInt)
           restData.asDoubleBuffer().get(convertBuffer)
           doubleData(toTypeAwareColumnIndex(colIndex)) = DoubleBuffer.wrap(convertBuffer)
         } else if (colType.tpe =:= TypeTag.Boolean.tpe) {
-          val convertBuffer = new Array[Byte](totalTupleNum.toInt)
+          val convertBuffer = new Array[Byte](tuplesToRead.toInt)
           restData.get(convertBuffer)
           booleanData(toTypeAwareColumnIndex(colIndex)) = ByteBuffer.wrap(convertBuffer)
         } else if (colType.tpe =:= TypeTag.Char.tpe) {
-          val convertBuffer = new Array[Char](totalTupleNum.toInt)
+          val convertBuffer = new Array[Char](tuplesToRead.toInt)
           restData.asCharBuffer().get(convertBuffer)
           charData(toTypeAwareColumnIndex(colIndex)) = CharBuffer.wrap(convertBuffer)
         } else if (colType.tpe =:= ColumnarTypes.StringTypeTag.tpe) {
-          val convertBuffer = new Array[Char](totalTupleNum.toInt * MAX_STRING_SIZE)
+          val convertBuffer = new Array[Char](tuplesToRead.toInt * MAX_STRING_SIZE)
           restData.asCharBuffer().get(convertBuffer)
           stringData(toTypeAwareColumnIndex(colIndex)) = CharBuffer.wrap(convertBuffer)
         } else {
@@ -285,7 +309,7 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
 
         val diskReadTime = endDiskReadTime - startDiskReadTime
 
-        this.size = totalTupleNum.toInt
+        this.size = tuplesToRead.toInt
         inferBestWorkGroupSize
 
         context.diskReadTime += diskReadTime
@@ -815,17 +839,19 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
   }
 
   def debugGpuBuffer[V: TypeTag](buffer: cl_mem, size: Int, msg: String, quiet: Boolean
-  = false) {
+  = true) {
     if (!quiet) {
       if (typeOf[V] =:= ColumnarTypes.StringTypeTag.tpe) {
+        val tempBuffer = Array.ofDim[Char](size*MAX_STRING_SIZE)
+        deviceToHostCopy[Char](buffer, pointer[Char](tempBuffer), size*MAX_STRING_SIZE, 0)
+        logInfo(s"""${msg} = ${tempBuffer.mkString(" ,")}""")
       } else {
         val mirror = ru.runtimeMirror(getClass.getClassLoader)
         implicit val xClassTag = ClassTag[V](mirror.runtimeClass(typeOf[V]))
 
-        val tempBuffer =
-          Array.ofDim(size)(xClassTag)
+        val tempBuffer = Array.ofDim(size)(xClassTag)
         deviceToHostCopy[V](buffer, pointer[V](tempBuffer), size, 0)
-        logInfo("%s = \n%s".format(msg, tempBuffer.mkString(" ,")))
+        logInfo(s"""${msg} = ${tempBuffer.mkString(" ,")}""")
       }
     }
   }
