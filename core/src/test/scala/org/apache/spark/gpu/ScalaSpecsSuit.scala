@@ -87,5 +87,24 @@ class ScalaSpecsSuit extends GpuSuit {
     assert(MathOp.DIVIDE.id === 4)
   }
 
+  test("alignment") {
+
+    def align(offset: Int): Long = {
+      offset + (if(offset %4 == 0) 0 else 4 - (offset % 4))
+    }
+
+    val columnOffsets = Array(1, 3 ,6, 8, 15)
+    val allignedOffsets = columnOffsets.map(offset => align(offset)).scan(0L)(_ + _)
+      .toArray
+
+    val expectedResults = Array(0L, 4L, 8L, 16L, 24L, 40L)
+
+    expectedResults.zip(allignedOffsets).foreach{case (ve, va) =>
+      assert (ve === va, "values do not match")
+
+    }
+
+  }
+
 }
 
