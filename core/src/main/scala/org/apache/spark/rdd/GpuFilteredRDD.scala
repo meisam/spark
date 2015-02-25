@@ -12,8 +12,8 @@ import scala.reflect.runtime.{universe => ru}
  */
 class GpuFilteredRDD[T <: Product : ClassTag : TypeTag, V: TypeTag]
 (prev: GpuRDD[T], colIndex: Int, operation: ComparisonOperation.Value, value: V,
- chunkCapacity: Int)
-  extends RDD[GpuPartition[T]](prev) {
+ chunkCapacity: Int, numPartitions: Int)
+  extends GpuRDD[T](prev, chunkCapacity, numPartitions: Int) {
 
   override def compute(split: Partition, context: TaskContext): Iterator[GpuPartition[T]]
   = {

@@ -59,12 +59,10 @@ class InMemoryGpuRDD[ T <: Product : TypeTag ](
 /**
  *
  */
-class ColumnarFileGpuRDD[
-T <: Product : TypeTag
-](
-   @transient private var sc: SparkContext,
+class ColumnarFileGpuRDD[ T <: Product : TypeTag ](
+   @transient private var _sc: SparkContext,
    paths: Array[String], capacity: Int, numPartitions: Int)
-  extends RDD[GpuPartition[T]](sc, Nil) {
+  extends GpuRDD[T](_sc, capacity, numPartitions) {
 
   val rddId = sc.newRddId()
 
