@@ -570,9 +570,8 @@ class SparkContext(config: SparkConf) extends Logging with ExecutorAllocationCli
   }
 
   def toGpuRDD[TT<: Product: TypeTag: ClassTag]( data:Array[TT], chunkCapacity: Int = (1 << 20),
-                                                 numPartitions: Int = defaultParallelism)
-  = {
-    new GpuRDD[TT](this, data, chunkCapacity, numPartitions)
+           numPartitions: Int = defaultParallelism): GpuRDD[TT]  = {
+    new InMemoryGpuRDD[TT](this, data, chunkCapacity, numPartitions)
   }
 
   /** Distribute a local Scala collection to form an RDD.
