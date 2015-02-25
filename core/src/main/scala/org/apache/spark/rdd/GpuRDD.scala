@@ -84,26 +84,27 @@ class ColumnarFileGpuRDD[ T <: Product : TypeTag ](
 
     var fromIndex = 0
 
-    val itr = new NextIterator[GpuPartition[T]] {/**
-     * Method for subclasses to implement to provide the next element.
-     *
-     * If no next element is available, the subclass should set `finished`
-     * to `true` and may return any value (it will be ignored).
-     *
-     * This convention is required because `null` may be a valid value,
-     * and using `Option` seems like it might create unnecessary Some/None
-     * instances, given some iterators might be called in a tight loop.
-     *
-     * @return U, or set 'finished' when done
-     */
-    override protected def getNext(): GpuPartition[T] = {
-      gpuPartition.size = 0
-      gpuPartition.fillFromFiles(paths, fromIndex)
-      fromIndex = fromIndex + capacity
-      finished = (fromIndex >= elementsCount)
-      logInfo(f"Finished partitioning data? ${finished} ${fromIndex}/${elementsCount} elements")
-      gpuPartition
-    }
+    val itr = new NextIterator[GpuPartition[T]] {
+      /**
+       * Method for subclasses to implement to provide the next element.
+       *
+       * If no next element is available, the subclass should set `finished`
+       * to `true` and may return any value (it will be ignored).
+       *
+       * This convention is required because `null` may be a valid value,
+       * and using `Option` seems like it might create unnecessary Some/None
+       * instances, given some iterators might be called in a tight loop.
+       *
+       * @return U, or set 'finished' when done
+       */
+      override protected def getNext(): GpuPartition[T] = {
+        gpuPartition.size = 0
+        gpuPartition.fillFromFiles(paths, fromIndex)
+        fromIndex = fromIndex + capacity
+        finished = (fromIndex >= elementsCount)
+        logInfo(f"Finished partitioning data? ${finished} ${fromIndex}/${elementsCount} elements")
+        gpuPartition
+      }
 
       /**
        * Method for subclasses to implement when all elements have been successfully
