@@ -25,13 +25,20 @@ import scala.reflect.runtime.universe.{TypeTag, typeTag}
 import scala.reflect.runtime.{universe => ru}
 
 
-class GpuRDD[
-T <: Product : TypeTag
-](
-   @transient private var sc: SparkContext,
-   @transient data: Array[T], capacity: Int, numPartitions: Int)
-  extends RDD[GpuPartition[T]](sc, Nil) {
+abstract class GpuRDD[ T <: Product : TypeTag ](
+   @transient private[rdd] var sc: SparkContext,
+   capacity: Int, numPartitions: Int, dps: Seq[Dependency[_]] = Nil)
+  extends RDD[GpuPartition[T]](sc, dps) {
 
+  def this(@transient parent: RDD[_], capacity: Int, numPartitions: Int) = {
+    this(parent.context, capacity, numPartitions, List(new OneToOneDependency(parent)))
+  }
+}
+
+class InMemoryGpuRDD[ T <: Product : TypeTag ](
+   @transient private var _sc: SparkContext,
+   @transient data: Array[T], capacity: Int, numPartitions: Int)
+  extends GpuRDD[T](_sc, capacity, numPartitions) {
   /**
    * Implemented by subclasses to return the set of partitions in this RDD. This method will only
    * be called once, so it is safe to implement a time-consuming computation in it.
