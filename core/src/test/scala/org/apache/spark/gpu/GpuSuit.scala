@@ -17,6 +17,8 @@ class GpuSuit extends FunSuite with SharedSparkContext {
 
   val DEFAULT_CAPACITY = (1 << 10)
 
+  val NUMBER_OF_PARTITIONS = 1
+
   val openCLContext = OpenCLContextSingletone.openClContext
 
   protected def flattenResults[T <: Product : TypeTag : ClassTag](collectedPartitions:

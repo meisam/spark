@@ -34,7 +34,8 @@ class GpuFilteredRDDSuit extends GpuSuit {
 
     val expectedData = testData.filter(_._1 == 10)
     val filteredData = new GpuFilteredRDD(gpuRDD, 0, ComparisonOperation.==, 10: Int,
-      DEFAULT_CAPACITY)
+      DEFAULT_CAPACITY, NUMBER_OF_PARTITIONS)
+
     val collectedPartitions = filteredData.collect()
     validateResults(expectedData, collectedPartitions)
   }
