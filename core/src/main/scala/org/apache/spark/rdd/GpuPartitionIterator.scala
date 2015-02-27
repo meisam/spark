@@ -7,7 +7,7 @@ import scala.reflect.runtime.universe.{TypeTag, typeOf}
 import scala.reflect.runtime.{universe => ru}
 
 class GpuPartitionIterator[T <: Product : TypeTag]
-(itr: Iterator[T], capacity: Int = 1 << 20)
+(itr: Iterator[T], capacity: Int)
   extends Serializable with Iterator[GpuPartition[T]] with Logging{
 
   implicit val ct = ClassTag[T](ru.runtimeMirror(getClass.getClassLoader).runtimeClass(typeOf[T]))
