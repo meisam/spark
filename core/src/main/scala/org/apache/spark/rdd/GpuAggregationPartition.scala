@@ -1,21 +1,16 @@
 package org.apache.spark.rdd
 
+import java.nio.{ByteBuffer, ByteOrder}
+
 import org.apache.spark.scheduler.OpenCLContext
 import org.jocl.CL._
-import org.jocl.{ Pointer, Sizeof }
-import scala.reflect.api.JavaUniverse
-import scala.reflect.runtime.universe.TypeTag
-import java.io.IOException
-import java.io.ObjectInputStream
-import java.io.ObjectOutputStream
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
-import org.jocl.cl_mem
-import scala.reflect.ClassTag
+import org.jocl.{Pointer, Sizeof}
 
-class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
-  context: OpenCLContext, parentPartition: GpuPartition[TP],
-  aggregations: Array[AggregationExp], capacity: Int)
+import scala.reflect.runtime.universe.TypeTag
+
+class GpuAggregationPartition[T <: Product : TypeTag, TP <: Product : TypeTag](
+                                                                                context: OpenCLContext, parentPartition: GpuPartition[TP],
+                                                                                aggregations: Array[AggregationExp], capacity: Int)
   extends GpuPartition[T](context, capacity) {
 
   def aggregate(): Unit = {
@@ -27,21 +22,26 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
       offset + (if (offset % 4 == 0) 0 else 4 - (offset % 4))
     }
 
-    val gbColumnIndexes = aggregations.filter(agg => agg.aggFunc == AggregationOperation.groupBy).map { agg =>
-      {
-        assert(agg != null, { "agg is null" })
-        assert(agg.mathExp != null, { "agg.mathExp is null" })
-        assert(agg.mathExp.op == MathOp.NOOP, { "agg.mathExp operation should be NOOP" })
-        agg.mathExp.opValue
-      }
+    val gbColumnIndexes = aggregations.filter(agg => agg.aggFunc == AggregationOperation.groupBy).map { agg => {
+      assert(agg != null, {
+        "agg is null"
+      })
+      assert(agg.mathExp != null, {
+        "agg.mathExp is null"
+      })
+      assert(agg.mathExp.op == MathOp.NOOP, {
+        "agg.mathExp operation should be NOOP"
+      })
+      agg.mathExp.opValue
+    }
     }
 
     val tupleCount = parentPartition.size
 
     val cpuOffsets: Array[Long] = parentPartition.columnTypes.map(baseSize(_) * tupleCount).scanLeft(0L)(
-      {
-        case (sum: Long, x: Int) => align(x).toLong + sum
-      }).toArray[Long]
+    {
+      case (sum: Long, x: Int) => align(x).toLong + sum
+    }).toArray[Long]
 
     val totalSize = cpuOffsets.last.toInt
 
@@ -65,7 +65,7 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
 
     val gpuGbSize = createReadBuffer[Int](gbColumnIndexes.length)
     val groupBySize: Array[Int] = gbColumnIndexes.map(columnTypes(_)).map(baseSize(_))
-      .scanLeft(0: Int)({ case (sum, x) => sum + align(x) }).splitAt(1)._2.toArray
+      .scanLeft(0: Int)({ case (sum, x) => sum + align(x)}).splitAt(1)._2.toArray
 
     hostToDeviceCopy[Int](pointer(groupBySize), gpuGbSize, gbColumnIndexes.length)
 
@@ -106,10 +106,6 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
       pointer(Array[Long](parentPartition.size)))
     clSetKernelArg(buildGroupByKeyKernel, 7, Sizeof.cl_mem, Pointer.to(gpuGbKey))
     clSetKernelArg(buildGroupByKeyKernel, 8, Sizeof.cl_mem, Pointer.to(gpu_hashNum))
-
-//    println("global_work_size = %s".format(global_work_size.mkString(",")))
-//    println("local_work_size = %s".format(local_work_size.mkString(",")))
-//    println(f"total size = $totalSize")
 
     clEnqueueNDRangeKernel(context.queue, buildGroupByKeyKernel, 1, null, global_work_size,
       local_work_size, 0, null, null)
@@ -198,9 +194,9 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
     hostToDeviceCopy[Int](Pointer.to(cpuFuncs), gpuFunc, columnTypes.length)
 
     val resultOffsets: Array[Long] = columnTypes.map(baseSize(_) * this.size).scanLeft(0L)(
-      {
-        case (sum: Long, x: Int) => align(x).toLong + sum
-      }).toArray[Long]
+    {
+      case (sum: Long, x: Int) => align(x).toLong + sum
+    }).toArray[Long]
 
     val resultTotalSize = resultOffsets.last.toInt
 
@@ -255,7 +251,6 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
     clSetKernelArg(agggregationKernel, 11, Sizeof.cl_mem, Pointer.to(gpuResOffset))
     clSetKernelArg(agggregationKernel, 12, Sizeof.cl_mem, Pointer.to(gpuFunc))
 
-//    println("MathExp.size * columnTypes.length = %d".format(MathExp.size * columnTypes.length))
     debugGpuBuffer[Byte](gpuContent, totalSize, "gpuContent (before agg_cal)")
     debugGpuBuffer[Long](gpuOffsets, cpuOffsets.length, "gpuOffsets (before agg_cal)")
     debugGpuBuffer[Byte](gpuGbExp, MathExp.size * columnTypes.length, "gpuGbExp (before agg_cal)")
@@ -268,8 +263,6 @@ class GpuAggregationPartition[T <: Product: TypeTag, TP <: Product: TypeTag](
     debugGpuBuffer[Long](gpuResOffset, columnTypes.length, "gpuResOffset (before agg_cal)")
     debugGpuBuffer[Int](gpuFunc, columnTypes.length, "gpuFunc (before agg_cal)")
 
-//    println("aggregations = %s".format(aggregations.mkString(" ...\n,... ")))
-//    println("cpuFuncs = %s".format(cpuFuncs.mkString(",")))
 
     debugGpuBuffer[Byte](gpuResult, resultTotalSize, "gpuResult (byte) (before agg_cal)")
     debugGpuBuffer[Int](gpuResult, resultTotalSize / 4, "gpuResult (int) (before agg_cal)")
@@ -321,11 +314,6 @@ object MathOperationType extends Enumeration {
   val column = Value("COLUMN")
   val const = Value("CONST")
 }
-class AggregationExp(val aggFunc: AggregationOperation.Value, val mathExp: MathExp) {
-  override def toString() = {
-    f"function = $aggFunc, mathExp = [$mathExp]"
-  }
-}
 
 object MathOp extends Enumeration {
   type MathOp = Value
@@ -337,7 +325,15 @@ object MathOp extends Enumeration {
   val DIVIDE = Value("DIVIDE")
 }
 
-class MathExp(val op: MathOp.Value, opNum: Int, val leftExp: MathExp, val rightExp: MathExp, val opType: MathOperationType.Value, val opValue: Int) {
+class AggregationExp(val aggFunc: AggregationOperation.Value, val mathExp: MathExp) extends
+Serializable {
+  override def toString() = {
+    f"function = $aggFunc, mathExp = [$mathExp]"
+  }
+}
+
+class MathExp(val op: MathOp.Value, opNum: Int, val leftExp: MathExp, val rightExp: MathExp,
+              val opType: MathOperationType.Value, val opValue: Int) extends Serializable{
 
   def writeTo(out: ByteBuffer): Unit = {
     out.order(ByteOrder.LITTLE_ENDIAN)
