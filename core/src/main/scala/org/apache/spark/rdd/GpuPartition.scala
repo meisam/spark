@@ -32,7 +32,7 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
     _columnTypes
   }
 
-  def MAX_STRING_SIZE: Int = 1 << 7
+  def MAX_STRING_SIZE: Int = 25
 
   def HASH_SIZE = 131072
 
@@ -231,9 +231,16 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
           f"tuplesInBlock != totalTupleNum ($tuplesInBlock != $totalTupleNum )"
         })
 
-        val blockSize = columnData.getLong()
-        assert(blockSize == totalTupleNum * baseSize(colType), {
-          f"blockSize != totalTupleNum * sizeof($colType) ($blockSize != $totalTupleNum * sizeof($colType))"
+        val blockSize: Long = columnData.getLong()
+        val baseSizeInFile : Long=
+        if (colType.tpe =:= typeOf[String]) {
+          blockSize / totalTupleNum
+        } else {
+          baseSize(colType)
+        }
+
+        assert(blockSize == totalTupleNum * baseSizeInFile, {
+          f"blockSize != totalTupleNum * baseSize($colType) ($blockSize != $totalTupleNum * ${baseSizeInFile})"
         })
 
         val blockTotal = columnData.getInt()
@@ -298,9 +305,9 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
           restData.asCharBuffer().get(convertBuffer)
           charData(toTypeAwareColumnIndex(colIndex)) = CharBuffer.wrap(convertBuffer)
         } else if (colType.tpe =:= ColumnarTypes.StringTypeTag.tpe) {
-          val convertBuffer = new Array[Char](tuplesToRead.toInt * MAX_STRING_SIZE)
-          restData.asCharBuffer().get(convertBuffer)
-          stringData(toTypeAwareColumnIndex(colIndex)) = CharBuffer.wrap(convertBuffer)
+          val convertBuffer = new Array[Byte](tuplesToRead.toInt * baseSizeInFile.toInt)
+          restData.get(convertBuffer)
+          stringData(toTypeAwareColumnIndex(colIndex)) = ByteBuffer.wrap(convertBuffer).asCharBuffer()
         } else {
           throw new NotImplementedError("Unknown type %s".format(colType))
         }
@@ -750,7 +757,7 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
     } else if (tt.tpe =:= TypeTag.Boolean.tpe) {
       Sizeof.cl_char
     } else if (tt.tpe =:= ColumnarTypes.StringTypeTag.tpe) {
-      Sizeof.cl_char2 * MAX_STRING_SIZE
+      Sizeof.cl_char * MAX_STRING_SIZE
     }
     else {
       throw new NotImplementedError("Unknown type %s".format(implicitly[TypeTag[V]]))
