@@ -689,6 +689,8 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
       Pointer.to(values.asInstanceOf[Array[Char]])
     } else if (typeOf[T] =:= typeOf[Char]) {
       Pointer.to(values.asInstanceOf[Array[Char]])
+    } else if (typeOf[T] =:= typeOf[Boolean]) {
+      Pointer.to(values.asInstanceOf[Array[Boolean]].map{ v => if (v) 1 else 0})
     } else if (typeOf[T] =:= ColumnarTypes.StringTypeTag.tpe) {
       Pointer.to(values.asInstanceOf[Array[Char]])
     } else {
