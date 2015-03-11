@@ -138,6 +138,21 @@ declare_cl_memset(char)
 
 #define IEEE_NAN (0x7fffffff)
 
+int gpu_strcmp(__global char *s1, __global char *s2, int len) {
+    int res = 0;
+
+    for(int i=0;i < len;i++) {
+        if(s1[i]<s2[i]) {
+            res = -1;
+            break;
+        } else if(s1[i]>s2[i]) {
+            res = 1;
+            break;
+        }
+    }
+    return res;
+}
+
 __kernel void cl_memset_nan(__global int * ar, int num, int offset) {
     size_t stride = get_global_size(0);
     size_t start = get_global_id(0) + offset;
@@ -883,7 +898,7 @@ __kernel void set_key_float(__global float *key, int tupleNum) {
     }
 }
 
-__kernel void sort_key_string(__global char * key, int tupleNum, int keySize, __global char *result, __global int * resPos, int dir, __local char * bufKey, __local int* bufVal) {
+__kernel void sort_key_string(__global char * key, int tupleNum, __global char *result, __global int * resPos, int dir, __local char * bufKey, __local int* bufVal, int keySize) {
     size_t lid = get_local_id(0);
     size_t bid = get_group_id(0);
 
@@ -1060,4 +1075,161 @@ __kernel void sec_sort_key_int(__global int *key, __global int *psum, __global i
         inputPos[pos] = inputPos[i];
     }
     outputPos[end-1] = inputPos[end-1];
+}
+__kernel void count_unique_keys_int(__global int *key, int tupleNum, __global int * result) {
+    int i = 0;
+    int res = 1;
+    for(i=0; i<tupleNum -1; i++) {
+        if(key[i+1] != key[i])
+        res ++;
+    }
+    *result = res;
+}
+
+__kernel void count_unique_keys_float(__global float *key, int tupleNum, __global int * result) {
+    int i = 0;
+    int res = 1;
+    for(i=0;i<tupleNum -1;i++) {
+        if(key[i+1] != key[i]) {
+            res ++;
+        }
+    }
+    *result = res;
+}
+
+__kernel void count_unique_keys_string(__global char *key, int tupleNum, __global int * result, int keySize) {
+    int i = 0;
+    int res = 1;
+    for (i=0; i<tupleNum -1; i++) {
+        int j = 0;
+        for (j=0; j < keySize; ++j) {
+            if(gpu_strcmp(key+i*keySize, key+(i+1)*keySize,keySize) != 0) {
+                res ++;
+            }
+        }
+        *result = res;
+    }
+}
+
+__kernel void count_key_num_string(__global char *key, int tupleNum, __global int * count, int keySize) {
+    int pos = 0, i = 0;
+    int lcount = 1;
+    for(i = 0;i <tupleNum -1; i ++) {
+        if(i == tupleNum -2) {
+            if(gpu_strcmp(key+i*keySize, key+(i+1)*keySize,keySize)!=0) {
+                count[pos] = lcount;
+                count[pos+1] = 1;
+            } else {
+                count[pos] = lcount +1;
+            }
+        } else {
+            if(gpu_strcmp(key+i*keySize, key+(i+1)*keySize,keySize)!=0) {
+                count[pos] = lcount;
+                lcount = 1;
+                pos ++;
+            } else {
+                lcount ++;
+            }
+        }
+    }
+}
+
+__kernel void count_key_num_int(__global int *key, int tupleNum, __global int * count) {
+    int pos = 0, i = 0;
+    int lcount = 1;
+    for(i = 0;i <tupleNum -1; i ++) {
+        if(i == tupleNum -2) {
+            if(key[i] != key[i+1]) {
+                count[pos] = lcount;
+                count[pos+1] = 1;
+            } else {
+                count[pos] = lcount +1;
+            }
+        } else {
+            if(key[i] != key[i+1]) {
+                count[pos] = lcount;
+                lcount = 1;
+                pos ++;
+            } else {
+                lcount ++;
+            }
+        }
+    }
+}
+
+__kernel void count_key_num_float(__global float *key, int tupleNum, __global int * count) {
+    int pos = 0, i = 0;
+    int lcount = 1;
+    for(i = 0;i <tupleNum -1; i ++) {
+        if(i == tupleNum -2) {
+            if(key[i] != key[i+1]) {
+                count[pos] = lcount;
+                count[pos+1] = 1;
+            } else {
+                count[pos] = lcount +1;
+            }
+        } else {
+            if(key[i] != key[i+1]) {
+                count[pos] = lcount;
+                lcount = 1;
+                pos ++;
+            } else {
+                lcount ++;
+            }
+        }
+    }
+}
+
+
+__kernel void gather_col_string(__global int * keyPos, __global char* col, int newNum, int tupleNum, __global char*result, int keySize) {
+    size_t stride = get_global_size(0);
+    size_t index = get_global_id(0);
+
+    for(int i=index;i<newNum;i+=stride) {
+        int pos = keyPos[i];
+        if(pos<tupleNum) {
+            for(int k=0;k<keySize;k++) {
+                result[i*keySize] = col[pos*keySize + k];
+            }
+        }
+    }
+}
+
+__kernel void gather_col_int(__global int * keyPos, __global int* col, int newNum, int tupleNum, __global int *result) {
+    size_t stride = get_global_size(0);
+    size_t index = get_global_id(0);
+
+    for(int i=index;i<newNum;i+=stride) {
+        int pos = keyPos[i];
+        if(pos<tupleNum) {
+            result[i] = col[pos];
+        }
+    }
+}
+
+__kernel void gather_col_float(__global int * keyPos, __global float* col, int newNum, int tupleNum, __global float *result) {
+    size_t stride = get_global_size(0);
+    size_t index = get_global_id(0);
+
+    for(int i=index;i<newNum;i+=stride) {
+        int pos = keyPos[i];
+        if(pos<tupleNum) {
+            result[i] = col[pos];
+        }
+    }
+}
+
+__kernel void gather_result(__global int * keyPos, __global char * col, int newNum, int tupleNum, __global int *size, int colNum, __global char *result, __global long * offset, __global long * resOffset) {
+    size_t stride = get_global_size(0);
+    size_t tid = get_global_id(0);
+
+    for(int j=0;j<colNum;j++) {
+        for(size_t i=tid;i<tupleNum;i+=stride) {
+            int pos = keyPos[i];
+            if(pos<tupleNum) {
+                for(int k=0;k<size[j];k++)
+                result[resOffset[j]+i*size[j]+k] = col[offset[j]+pos*size[j]+k];
+            }
+        }
+    }
 }
