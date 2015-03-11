@@ -851,9 +851,10 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
   = true) {
     if (!quiet) {
       if (typeOf[V] =:= ColumnarTypes.StringTypeTag.tpe) {
-        val tempBuffer = Array.ofDim[Char](size*MAX_STRING_SIZE)
-        deviceToHostCopy[Char](buffer, pointer[Char](tempBuffer), size*MAX_STRING_SIZE, 0)
-        logInfo(s"""${msg} = ${tempBuffer.mkString(" ,")}""")
+        val tempBuffer = Array.ofDim[Byte](size*MAX_STRING_SIZE)
+        deviceToHostCopy[Byte](buffer, pointer[Byte](tempBuffer), size*MAX_STRING_SIZE, 0)
+        logInfo(s"""${msg} (RAW)= ${tempBuffer.mkString(" ,")}""")
+        logInfo(s"""${msg} (CHR)= ${tempBuffer.map(i => i.toChar).mkString}""")
       } else {
         val mirror = ru.runtimeMirror(getClass.getClassLoader)
         implicit val xClassTag = ClassTag[V](mirror.runtimeClass(typeOf[V]))
