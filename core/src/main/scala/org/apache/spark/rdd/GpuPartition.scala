@@ -911,7 +911,7 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
     stringData.foreach { buffer =>
       buffer.rewind()
       (0 until this.size * MAX_STRING_SIZE).foreach { i =>
-        out.writeChar(buffer.get())
+        out.writeByte(buffer.get())
       }
     }
 
