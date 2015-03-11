@@ -44,15 +44,15 @@ class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLCon
       clSetKernelArg(genScanKernel, 0, Sizeof.cl_mem, Pointer.to(gpuCol))
       clSetKernelArg(genScanKernel, 1, Sizeof.cl_long, Pointer.to(Array[Long](tupleNum)))
       // string types are represented as char* in C/OpenCL and should be treated differently
-      if (typeOf[U] =:= ColumnarTypes.StringTypeTag.tpe) {
-        debugGpuBuffer[Char](gpuCol, tupleNum * MAX_STRING_SIZE, "gpuCol before mem set to zero")
-        val conditionValueBuffer = new Array[Char](MAX_STRING_SIZE)
+      if (typeOf[U] =:= typeOf[String]) {
+        debugGpuBuffer[U](gpuCol, tupleNum, "gpuCol before mem set to zero")
+        val conditionValueBuffer = new Array[Byte](MAX_STRING_SIZE)
         val length = Math.min(value.toString().length(), MAX_STRING_SIZE)
-        val stringBytes = value.toString().getChars(0, length, conditionValueBuffer, 0)
+        val stringBytes = value.toString().getBytes(0, length, conditionValueBuffer, 0)
 
-        val conditionValue = createReadBuffer[Char](MAX_STRING_SIZE)
-        hostToDeviceCopy[Char](Pointer.to(conditionValueBuffer), conditionValue, MAX_STRING_SIZE)
-        debugGpuBuffer[Byte](conditionValue, MAX_STRING_SIZE, "conditionValue")
+        val conditionValue = createReadBuffer[Byte](MAX_STRING_SIZE)
+        hostToDeviceCopy[Byte](Pointer.to(conditionValueBuffer), conditionValue, MAX_STRING_SIZE)
+        debugGpuBuffer[String](conditionValue, 1, "conditionValue")
         clSetKernelArg(genScanKernel, 2, Sizeof.cl_mem, Pointer.to(conditionValue))
       } else {
         clSetKernelArg(genScanKernel, 2, baseSize[U], pointer(toArray(value)))
@@ -64,7 +64,7 @@ class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLCon
 
       clReleaseMemObject(gpuCol)
 
-      debugGpuBuffer[Int](gpuFilter, tupleNum, "gpuFilter after mem set to zero")
+      debugGpuBuffer[Int](gpuFilter, tupleNum, "gpuFilter after genScanFilter_init_")
 
       val countScanNumKernel = clCreateKernel(context.program, "countScanNum", null)
       clSetKernelArg(countScanNumKernel, 0, Sizeof.cl_mem, Pointer.to(gpuFilter))
@@ -149,7 +149,11 @@ class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLCon
     clSetKernelArg(kernel, 5, Sizeof.cl_mem, Pointer.to(gpuFilter))
     clSetKernelArg(kernel, 6, Sizeof.cl_mem, Pointer.to(result))
 
+    debugGpuBuffer[V](result, outSize, "result before scan_other")
+
     clEnqueueNDRangeKernel(context.queue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
+
+    debugGpuBuffer[V](result, outSize, "result after scan_other")
 
     val resultColData = this.getColumn[V](columnIndex)
     assert(resultColData != null)
