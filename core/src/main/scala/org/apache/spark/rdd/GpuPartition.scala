@@ -159,11 +159,11 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
     if (_stringData == null) {
       val colIndexes = columnTypes.zipWithIndex.filter(_._1.tpe =:= ColumnarTypes.StringTypeTag.tpe)
         .map(_._2)
-      _stringData = new Array[CharBuffer](colIndexes.length)
+      _stringData = new Array[ByteBuffer](colIndexes.length)
       _stringData.indices.foreach { i =>
         val offset = columnOffsets(i)
         val length = columnOffsets(i + 1) - offset
-        _stringData(i) = allocateBuffer(length).asCharBuffer()
+        _stringData(i) = allocateBuffer(length)
       }
     }
     _stringData
@@ -186,7 +186,7 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
 
   @transient var _charData: Array[CharBuffer] = null
 
-  @transient var _stringData: Array[CharBuffer] = null
+  @transient var _stringData: Array[ByteBuffer] = null
 
   def inferBestWorkGroupSize(): Unit = {
     this.localSize = if (size == 0) 1 else math.min(BLOCK_SIZE, size)
@@ -307,7 +307,7 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
         } else if (colType.tpe =:= ColumnarTypes.StringTypeTag.tpe) {
           val convertBuffer = new Array[Byte](tuplesToRead.toInt * baseSizeInFile.toInt)
           restData.get(convertBuffer)
-          stringData(toTypeAwareColumnIndex(colIndex)) = ByteBuffer.wrap(convertBuffer).asCharBuffer()
+          stringData(toTypeAwareColumnIndex(colIndex)) = ByteBuffer.wrap(convertBuffer)
         } else {
           throw new NotImplementedError("Unknown type %s".format(colType))
         }
@@ -325,7 +325,7 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
   }
 
   def fill(iter: Iterator[T]): Unit = {
-    val zeroCharBuffer = Array.fill[Char](MAX_STRING_SIZE)(0.toChar)
+    val zeroCharBuffer = Array.fill[Byte](MAX_STRING_SIZE)(0.toByte)
 
     size = 0
     val values: Iterator[T] = iter.take(capacity)
@@ -356,7 +356,7 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
               val charCount = Math.min(MAX_STRING_SIZE, str.length)
               val trailingExtraCharCount = MAX_STRING_SIZE - str.length
               val destBuffer = stringData(toTypeAwareColumnIndex(colIndex))
-              str.getChars(0, charCount, reusedCharBuffer, 0)
+              str.getBytes(0, charCount, reusedCharBuffer, 0)
               destBuffer.position(offset)
               destBuffer.put(reusedCharBuffer, 0, charCount)
               //Fill rest of it with zeros
@@ -880,7 +880,7 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
   var resCount = 0
 
   // defined here to avoid frequent allocation and gc pressure.
-  private[rdd] var reusedCharBuffer = new Array[Char](MAX_STRING_SIZE)
+  private[rdd] var reusedCharBuffer = new Array[Byte](MAX_STRING_SIZE)
 
   @throws(classOf[IOException])
   private def writeObject(out: ObjectOutputStream): Unit = {
@@ -919,7 +919,7 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
 
   @scala.throws(classOf[IOException])
   private def readObject(in: ObjectInputStream): Unit = {
-    reusedCharBuffer = new Array[Char](MAX_STRING_SIZE)
+    reusedCharBuffer = new Array[Byte](MAX_STRING_SIZE)
     val columnCounts = in.readInt()
 
     _columnOffsets = new Array[Int](columnCounts + 1)
@@ -948,7 +948,7 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
     stringData.foreach { buffer =>
       buffer.rewind()
       (0 until this.size * MAX_STRING_SIZE).foreach { i =>
-        buffer.put(in.readChar())
+        buffer.put(in.readByte())
       }
     }
   }
