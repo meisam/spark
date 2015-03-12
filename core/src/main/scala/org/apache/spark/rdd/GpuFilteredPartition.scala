@@ -12,6 +12,7 @@ class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLCon
   extends GpuPartition[T](context, capacity) {
 
   def filter(parent: GpuPartition[T]) = {
+    val startFilterTime = System.nanoTime()
 
     if (parent.size == 0) {
       this.size = 0
@@ -117,6 +118,10 @@ class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLCon
         case (_, index) => project[String](index, this.size, gpuFilter, gpuPsum, parent)
       })
 
+      val endFilterTime = System.nanoTime()
+
+      logInfo(f"filter time = ${endFilterTime - startFilterTime}%,d")
+
       clReleaseMemObject(gpuFilter)
       clReleaseMemObject(gpuPsum)
 
@@ -125,6 +130,7 @@ class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLCon
   }
 
   def project[V: TypeTag](columnIndex: Int, outSize: Int, gpuFilter: cl_mem, gpuPsum: cl_mem, parent: GpuPartition[T]) {
+    val startTime = System.nanoTime()
     if (outSize == 0)
       return
     val colData = parent.getColumn[V](columnIndex)
@@ -161,6 +167,8 @@ class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLCon
 
     releaseCol(result)
     releaseCol(scanCol)
+    val endTime = System.nanoTime()
+    logInfo(f"projection time = ${endTime - startTime}%,d")
   }
 
 }

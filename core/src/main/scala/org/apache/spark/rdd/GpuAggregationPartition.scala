@@ -14,6 +14,7 @@ class GpuAggregationPartition[T <: Product : TypeTag, TP <: Product : TypeTag](
   extends GpuPartition[T](context, capacity) {
 
   def aggregate(): Unit = {
+    val startTime = System.nanoTime()
     parentPartition.inferBestWorkGroupSize
     this.globalSize = parentPartition.globalSize
     this.localSize = parentPartition.localSize
@@ -60,6 +61,7 @@ class GpuAggregationPartition[T <: Product : TypeTag, TP <: Product : TypeTag](
     val gbType: Array[Int] = gbColumnIndexes.map(i => columnTypes(i)).map(t => ColumnarTypes
       .getIndex(t.tpe)).toIterator.toArray
 
+    println(f"gbType.length = ${gbType.length}")
     val gpuGbType = createReadBuffer[Int](gbType.length)
     hostToDeviceCopy[Int](pointer(gbType), gpuGbType, gbType.length)
 
@@ -295,6 +297,9 @@ class GpuAggregationPartition[T <: Product : TypeTag, TP <: Product : TypeTag](
 
     clReleaseMemObject(gpuGbCount)
     clReleaseMemObject(gpu_hashNum)
+    val endTime =  System.nanoTime()
+    logInfo(f"aggregation time = ${endTime - startTime}%,d")
+
   }
 
 }

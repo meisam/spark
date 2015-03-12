@@ -12,6 +12,7 @@ class GpuSortPartition[T <: Product : TypeTag]
 Array[SortDirection.Value], capacity: Int) extends GpuPartition[T](context, capacity) {
 
   def sort(): Unit = {
+    val startTime = System.nanoTime()
     /*
 
         struct timespec start,end;
@@ -810,6 +811,8 @@ Array[SortDirection.Value], capacity: Int) extends GpuPartition[T](context, capa
 
     return res;
  */
+    val endTime =  System.nanoTime()
+    logInfo(f"sort time = ${endTime - startTime}%,d")
   }
 
 

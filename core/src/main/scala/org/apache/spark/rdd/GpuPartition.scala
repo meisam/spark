@@ -213,6 +213,7 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
    * @param fromIndex the index of first element to read
    */
   def fillFromFiles(paths: Array[String], fromIndex: Int = 0): Unit = {
+    val startTime = System.nanoTime()
     assert(paths.length == columnTypes.size, {
       " %d file paths but only %d columns".format(paths.length, columnTypes.size)
     })
@@ -322,6 +323,9 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
         context.diskReadTime += diskReadTime
 
     })
+    val endTime =  System.nanoTime()
+    logInfo(f"load from disk time= ${endTime - startTime}%,d")
+
   }
 
   def fill(iter: Iterator[T]): Unit = {
