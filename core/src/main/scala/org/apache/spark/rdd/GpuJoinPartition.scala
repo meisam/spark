@@ -226,8 +226,11 @@ U: TypeTag]
   def join(): Int = {
     this.globalSize = leftPartition.globalSize
     this.localSize = leftPartition.localSize
-    buildHashTable
-
+    val startTime = System.nanoTime()
+    val result = buildHashTable
+    val endTime =  System.nanoTime()
+    logInfo(f"join time = ${endTime - startTime}%,d")
+    result
   }
 
 }
