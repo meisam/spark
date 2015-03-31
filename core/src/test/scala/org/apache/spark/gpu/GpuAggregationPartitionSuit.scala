@@ -28,6 +28,7 @@ import scala.language.existentials
 class GpuAggregationPartitionSuit extends GpuSuit {
 
   val times2MathExo = new MathExp(MathOp.NOOP, 1, null, null, MathOperationType.column, 1)
+  val const100Pi = new MathExp(MathOp.NOOP, 1, null, null, MathOperationType.const, 314)
   val col0 = new MathExp(MathOp.NOOP, 1, null, null, MathOperationType.column, 0)
   val col1 = new MathExp(MathOp.NOOP, 1, null, null, MathOperationType.column, 1)
   val countMathExp = new MathExp(MathOp.PLUS, 1, times2MathExo, null, MathOperationType.const, 15)
@@ -155,5 +156,35 @@ class GpuAggregationPartitionSuit extends GpuSuit {
 
     validateResults[(Int, Float)](expectedData, Array(aggregationPartition))
   }
+
+  test("Aggregation sum(_, Int) all test") {
+    val testData: IndexedSeq[(Int, Int)] = Array((111, 3), (111, 1), (111, 4), (112, 6), (112, 5))
+
+    val partition = new GpuPartition[(Int, Int)](openCLContext, DEFAULT_CAPACITY)
+
+    partition.fill(testData.toIterator)
+
+    val aggregationPartition = new GpuAggregationPartition[(Int, Float), (Int, Int)](openCLContext, partition,
+      Array(new AggregationExp(AggregationOperation.groupBy, const100Pi) // group by all of them
+        , new AggregationExp(AggregationOperation.sum, col1)) // sum col 1
+      , DEFAULT_CAPACITY)
+
+    aggregationPartition.aggregate()
+    val expectedData: Array[(Int, Float)] = Array((const100Pi.opValue, 19f))
+
+    (0 until aggregationPartition.size).foreach{ i=>
+      val t: (Int, Float) = aggregationPartition(i)
+      println(f"tuple(${i}) = ${t}")
+    }
+    assert(aggregationPartition.size === expectedData.length)
+
+    expectedData.zipWithIndex.foreach {
+      case ((gbVal, aggValue), index) =>
+        assert(aggregationPartition.intData(0).get(index) === gbVal, "values do not match")
+        assert(aggregationPartition.floatData(0).get(index) === aggValue, "values do not match")
+      case _ => fail("We should not be here")
+    }
+  }
+
 
 }
