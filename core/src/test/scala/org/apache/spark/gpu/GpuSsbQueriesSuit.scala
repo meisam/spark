@@ -164,7 +164,7 @@ class GpuSsbQueriesSuit extends GpuSuit {
     val const1 = new MathExp(MathOp.NOOP, 1, null, null, MathOperationType.const, -1)
 
 
-    val priceAggregation = new AggregationExp(AggregationOperation.sum, col0)
+    val priceAggregation = new AggregationExp(AggregationOperation.sum, const1)
     val discountAggregation = new AggregationExp(AggregationOperation.sum, col1)
 
     val aggregateRdd = new GpuAggregationRDD[(Float, Float), (Float, Int, Int, Int, Int)](
