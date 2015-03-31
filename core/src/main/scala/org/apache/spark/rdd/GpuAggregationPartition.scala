@@ -6,7 +6,7 @@ import org.apache.spark.scheduler.OpenCLContext
 import org.jocl.CL._
 import org.jocl.{Pointer, Sizeof}
 
-import scala.reflect.runtime.universe.TypeTag
+import scala.reflect.runtime.universe.{TypeTag, typeOf}
 
 class GpuAggregationPartition[T <: Product : TypeTag, TP <: Product : TypeTag](
                                                                                 context: OpenCLContext, parentPartition: GpuPartition[TP],
@@ -33,7 +33,11 @@ class GpuAggregationPartition[T <: Product : TypeTag, TP <: Product : TypeTag](
       assert(agg.mathExp.op == MathOp.NOOP, {
         "agg.mathExp operation should be NOOP"
       })
-      agg.mathExp.opValue
+      if (agg.mathExp.opType == MathOperationType.column) {
+        agg.mathExp.opValue
+      } else {
+        -1
+      }
     }
     }
 
@@ -58,16 +62,24 @@ class GpuAggregationPartition[T <: Product : TypeTag, TP <: Product : TypeTag](
     hostToDeviceCopy[Long](pointer(cpuOffsets), gpuOffsets, cpuOffsets.length)
     debugGpuBuffer[Long](gpuOffsets, cpuOffsets.length, "gpuOffsets (before)")
 
-    val gbType: Array[Int] = gbColumnIndexes.map(i => columnTypes(i)).map(t => ColumnarTypes
-      .getIndex(t.tpe)).toIterator.toArray
+    val gbType: Array[Int] = gbColumnIndexes.map{
+      i =>
+        if (i == -1) implicitly[TypeTag[Int]] else columnTypes(i)
+    }.map(t => ColumnarTypes.getIndex(t.tpe))
 
     println(f"gbType.length = ${gbType.length}")
+    assert(gbType.length > 0, f"There should be at least one group by column but there is ${gbType.length}")
     val gpuGbType = createReadBuffer[Int](gbType.length)
     hostToDeviceCopy[Int](pointer(gbType), gpuGbType, gbType.length)
 
     val gpuGbSize = createReadBuffer[Int](gbColumnIndexes.length)
-    val groupBySize: Array[Int] = gbColumnIndexes.map(columnTypes(_)).map(baseSize(_))
-      .scanLeft(0: Int)({ case (sum, x) => sum + align(x)}).splitAt(1)._2.toArray
+    val groupBySize: Array[Int] = gbColumnIndexes.map{i =>
+      if (i == -1) {
+        baseSize[Int]
+      } else {
+        baseSize(columnTypes(i))
+      }
+    }.scanLeft(0: Int)({ case (sum, x) => sum + align(x)}).splitAt(1)._2.toArray
 
     hostToDeviceCopy[Int](pointer(groupBySize), gpuGbSize, gbColumnIndexes.length)
 
