@@ -69,7 +69,6 @@ class GpuRDDSuit extends GpuSuit {
     val testData = (0 until TEST_DATA_SIZE).reverse.zipWithIndex.toArray
     val gpuRDD = sc.toGpuRDD[(Int, Int)](testData) // FIXME.map(_._1)
     val collectedPartitions = gpuRDD.collect()
-    val expectedData = testData.map(x => x.productElement(0).asInstanceOf[Int])
     assert(collectedPartitions.size === PARTITIONS_COUNT)
     validateResults(testData, collectedPartitions)
   }
@@ -80,19 +79,19 @@ class GpuRDDSuit extends GpuSuit {
 
     val testData = (0 to 10).reverse.zipWithIndex.toArray
 
-    val gpuRdd = sc.toGpuRDD[(Int, Int)](testData)
-    val collectedPartitions = gpuRdd.collect()
-    val expectedData = testData.map(x => x.productElement(0).asInstanceOf[Int])
+    val gpuRdd = sc.toGpuRDD[(Int, Int)](testData, DEFAULT_CAPACITY, PARTITIONS_COUNT)
+    val collectedPartitions: Array[GpuPartition[(Int, Int)]] = gpuRdd.collect()
     assert(collectedPartitions.size === PARTITIONS_COUNT)
-    validateResults(testData, collectedPartitions)
+    validateResults[(Int, Int)](testData, collectedPartitions)
   }
 
   test("GpuRDD(Int, String, Int, String) test") {
+    val PARTITIONS_COUNT = 1
     val testData = (0 to 10).reverse.zipWithIndex.map { x =>
       (x._1, "STR_I_%d".format(x._1), x._2, "STR_II_%d".format(x._2))
     }.toArray
 
-    val gpuRdd = sc.toGpuRDD[(Int, String, Int, String)](testData)
+    val gpuRdd = sc.toGpuRDD[(Int, String, Int, String)](testData, DEFAULT_CAPACITY, PARTITIONS_COUNT)
     val collectedPartitions = gpuRdd.collect()
 
     assert(collectedPartitions.size === 1)
