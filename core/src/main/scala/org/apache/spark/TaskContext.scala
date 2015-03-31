@@ -21,6 +21,7 @@ import java.io.Serializable
 
 import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.executor.TaskMetrics
+import org.apache.spark.scheduler.OpenCLContext
 import org.apache.spark.util.TaskCompletionListener
 
 
@@ -133,4 +134,7 @@ abstract class TaskContext extends Serializable {
   /** ::DeveloperApi:: */
   @DeveloperApi
   def taskMetrics(): TaskMetrics
+
+  def getOpenCLContext(): OpenCLContext
+
 }
