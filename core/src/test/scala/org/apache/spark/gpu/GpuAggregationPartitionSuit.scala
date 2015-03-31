@@ -67,7 +67,7 @@ class GpuAggregationPartitionSuit extends GpuSuit {
 
     val aggregationPartition = new GpuAggregationPartition[(Int, Float), (Int, Int)](openCLContext, partition,
       Array(new AggregationExp(AggregationOperation.groupBy, col0) // group by col 0
-      , new AggregationExp(AggregationOperation.sum, col1)) // COUNT col 1
+      , new AggregationExp(AggregationOperation.sum, col1)) // sum col 1
       , DEFAULT_CAPACITY)
 
     aggregationPartition.aggregate()
