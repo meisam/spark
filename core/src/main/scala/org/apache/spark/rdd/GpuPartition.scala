@@ -237,17 +237,21 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
       case ((colType, path), colIndex) =>
 
         val startDiskReadTime = System.nanoTime()
+        val inStream = new FileInputStream(new File(path))
+        val HEADER_SIZE = 0x1000 //  = 4096 decimal
+        val columnHeaderData = new Array[Byte](HEADER_SIZE)
+        val readBytesCount = inStream.read(columnHeaderData)
+        assert(readBytesCount == HEADER_SIZE, f"expected ${HEADER_SIZE} bytes but ${readBytesCount}")
+        val columnHeaderBuffer = ByteBuffer.wrap(columnHeaderData)
+        columnHeaderBuffer.order(ByteOrder.LITTLE_ENDIAN)
+        val totalTupleNum = columnHeaderBuffer.getLong()
 
-        val columnData = ByteBuffer.wrap(Files.readAllBytes(new File(path).toPath()))
-        columnData.order(ByteOrder.LITTLE_ENDIAN)
-        val totalTupleNum = columnData.getLong()
-
-        val tuplesInBlock = columnData.getLong()
+        val tuplesInBlock = columnHeaderBuffer.getLong()
         assert(tuplesInBlock == totalTupleNum, {
           f"tuplesInBlock != totalTupleNum ($tuplesInBlock != $totalTupleNum )"
         })
 
-        val blockSize: Long = columnData.getLong()
+        val blockSize: Long = columnHeaderBuffer.getLong()
         val baseSizeInFile : Long=
         if (isStringType(colType)) {
           blockSize / totalTupleNum
@@ -259,71 +263,60 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
           f"blockSize != totalTupleNum * baseSize($colType) ($blockSize != $totalTupleNum * ${baseSizeInFile})"
         })
 
-        val blockTotal = columnData.getInt()
+        val blockTotal = columnHeaderBuffer.getInt()
         assert(blockTotal == 1, {
           f"blockTotal != 1 ($blockTotal != 1)"
         })
 
-        val blockId = columnData.getInt()
+        val blockId = columnHeaderBuffer.getInt()
         assert(blockId == 0, {
           f"blockId != 0 ($blockId!= 0)"
         })
 
-        val format = columnData.getInt()
+        val format = columnHeaderBuffer.getInt()
         assert(format == 3, {
           f"format != 3 ($format != 3)"
         })
 
-        val paddingLength = 4060
-        columnData.position(columnData.position + paddingLength)
-        assert(columnData.position == 0x1000)
+        val startPosition: Int = fromIndex *  baseSize(colType)
+        val tuplesToRead: Long = Math.min(capacity, totalTupleNum-fromIndex)
+        val bytesToRead: Long = tuplesToRead * baseSize(colType)
 
-        val restData = columnData.slice()
-        restData.order(ByteOrder.LITTLE_ENDIAN)
-        val remaining = restData.remaining()
-        assert(remaining == blockSize, {
-          f"remaining != blockSize ($remaining != $blockSize)"
-        })
+        logInfo(f"baseSize for col($colIndex)= ${baseSize(colType)}")
 
-        val startPosition = fromIndex *  baseSize(colType)
-        val tuplesToRead = Math.min(capacity, totalTupleNum-fromIndex)
-        restData.position()
+        val channel = inStream.getChannel
+        channel.position(HEADER_SIZE + startPosition)
+        logInfo(f"channel[size,position]=${(channel.size, channel.position)}")
+        val offset = HEADER_SIZE + startPosition
+        logInfo(f"offset = ${offset},  bytesToRead=${bytesToRead}")
+        val allocatedBuffer: Buffer = getColumn(colIndex)(colType)
+        val buffer = extractUnderlyingBuffer(allocatedBuffer)
+        logInfo(f"columnType=${colType}, colIndex=${colIndex}, buffer=${buffer}")
+        logInfo(f"${Thread.currentThread.getName}:${Thread.currentThread().getId} on CREATION " +
+          f"buffer[${buffer.hashCode()}].(cap, pos, rem)=${(buffer.capacity, buffer.position, buffer.remaining)}")
+
+        val bytesCount = channel.read(buffer, offset)
+        buffer.position(0)
+//        assert(bytesCount == Math.min(capacity, bytesToRead.toInt), f"${bytesCount} != ${bytesToRead}")
+
         if (colType.tpe =:= TypeTag.Byte.tpe) {
-          val convertBuffer = new Array[Byte](tuplesToRead.toInt)
-          restData.get(convertBuffer)
-          byteData(toTypeAwareColumnIndex(colIndex)) = ByteBuffer.wrap(convertBuffer)
+          byteData(toTypeAwareColumnIndex(colIndex)) = buffer
         } else if (colType.tpe =:= TypeTag.Short.tpe) {
-          val convertBuffer = new Array[Short](tuplesToRead.toInt)
-          restData.asShortBuffer().get(convertBuffer)
-          shortData(toTypeAwareColumnIndex(colIndex)) = ShortBuffer.wrap(convertBuffer)
+          shortData(toTypeAwareColumnIndex(colIndex)) = buffer.asShortBuffer
         } else if (colType.tpe =:= TypeTag.Int.tpe) {
-          val convertBuffer = new Array[Int](tuplesToRead.toInt)
-          restData.asIntBuffer().get(convertBuffer)
-          intData(toTypeAwareColumnIndex(colIndex)) = IntBuffer.wrap(convertBuffer)
+          intData(toTypeAwareColumnIndex(colIndex)) = buffer.asIntBuffer
         } else if (colType.tpe =:= TypeTag.Long.tpe) {
-          val convertBuffer = new Array[Long](tuplesToRead.toInt)
-          restData.asLongBuffer().get(convertBuffer)
-          longData(toTypeAwareColumnIndex(colIndex)) = LongBuffer.wrap(convertBuffer)
+          longData(toTypeAwareColumnIndex(colIndex)) = buffer.asLongBuffer
         } else if (colType.tpe =:= TypeTag.Float.tpe) {
-          val convertBuffer = new Array[Float](tuplesToRead.toInt)
-          restData.asFloatBuffer().get(convertBuffer)
-          floatData(toTypeAwareColumnIndex(colIndex)) = FloatBuffer.wrap(convertBuffer)
+          floatData(toTypeAwareColumnIndex(colIndex)) = buffer.asFloatBuffer
         } else if (colType.tpe =:= TypeTag.Double.tpe) {
-          val convertBuffer = new Array[Double](tuplesToRead.toInt)
-          restData.asDoubleBuffer().get(convertBuffer)
-          doubleData(toTypeAwareColumnIndex(colIndex)) = DoubleBuffer.wrap(convertBuffer)
+          doubleData(toTypeAwareColumnIndex(colIndex)) = buffer.asDoubleBuffer
         } else if (colType.tpe =:= TypeTag.Boolean.tpe) {
-          val convertBuffer = new Array[Byte](tuplesToRead.toInt)
-          restData.get(convertBuffer)
-          booleanData(toTypeAwareColumnIndex(colIndex)) = ByteBuffer.wrap(convertBuffer)
+          booleanData(toTypeAwareColumnIndex(colIndex)) = buffer
         } else if (colType.tpe =:= TypeTag.Char.tpe) {
-          val convertBuffer = new Array[Char](tuplesToRead.toInt)
-          restData.asCharBuffer().get(convertBuffer)
-          charData(toTypeAwareColumnIndex(colIndex)) = CharBuffer.wrap(convertBuffer)
+          charData(toTypeAwareColumnIndex(colIndex)) = buffer.asCharBuffer
         } else if (isStringType(colType)) {
-          val convertBuffer = new Array[Byte](tuplesToRead.toInt * baseSizeInFile.toInt)
-          restData.get(convertBuffer)
-          stringData(toTypeAwareColumnIndex(colIndex)) = ByteBuffer.wrap(convertBuffer)
+          stringData(toTypeAwareColumnIndex(colIndex)) = buffer
         } else {
           throw new NotImplementedError("Unknown type %s".format(colType))
         }
@@ -333,6 +326,7 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
         val diskReadTime = endDiskReadTime - startDiskReadTime
 
         this.size = tuplesToRead.toInt
+        logInfo(f"Size of partition from disk is ${size}")
         inferBestWorkGroupSize
 
         context.diskReadTime += diskReadTime
@@ -761,7 +755,7 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
     } else {
       throw new NotImplementedError("Unknown type %s".format(implicitly[TypeTag[V]]))
     }
-    }
+  }
 
   /**
    * TODO: This is a dirty hack because =:= typeOf[String] does not work
