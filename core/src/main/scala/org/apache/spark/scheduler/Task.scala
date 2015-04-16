@@ -249,6 +249,12 @@ class OpenCLContext extends Serializable with Logging{
   var pciTransferTime = 0L
   var pciTransferBytes = 0L
   var diskReadTime = 0L
+
+  def resetMetrics: Unit = {
+    pciTransferTime = 0L
+    pciTransferBytes = 0L
+    diskReadTime = 0L
+  }
 }
 
 object OpenCLContextSingletone extends Serializable with Logging {
