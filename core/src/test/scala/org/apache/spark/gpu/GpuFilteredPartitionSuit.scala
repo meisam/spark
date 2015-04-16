@@ -143,7 +143,7 @@ class GpuFilteredPartitionSuit extends GpuSuit {
     parentPartition.fill(testData.toIterator)
 
     val gpuPartition = new GpuFilteredPartition[(Int, String), String](openCLContext, 0,
-      0, ComparisonOperation.==, criterion, DEFAULT_CAPACITY)
+      1, ComparisonOperation.==, criterion, DEFAULT_CAPACITY)
 
     gpuPartition.filter(parentPartition)
 

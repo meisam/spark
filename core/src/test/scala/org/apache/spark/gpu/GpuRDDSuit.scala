@@ -17,7 +17,7 @@
 
 package org.apache.spark.gpu
 
-import org.apache.spark.rdd.GpuPartition
+import org.apache.spark.rdd.{ComparisonOperation, GpuFilteredRDD, GpuPartition}
 
 import scala.language.existentials
 

@@ -60,7 +60,7 @@ class GpuSortPartitionSuit extends GpuSuit {
     validateResults[(Int, Int)](expectedData, Array(sortPartition))
   }
 
-  test("GpuSortPartitionSuit (Float, Float)") {
+  ignore("GpuSortPartitionSuit (Float, Float)") {
     val testData: IndexedSeq[(Float, Float)] = Array((11, 1), (12, 1), (11, 2), (12, 2), (11, 3))
       .map {
       case (v1, v2) => (v1.toFloat, v2.toFloat)

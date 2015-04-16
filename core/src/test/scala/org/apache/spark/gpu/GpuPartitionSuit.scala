@@ -17,6 +17,8 @@
 
 package org.apache.spark.gpu
 
+import java.nio.{FloatBuffer, IntBuffer}
+
 import org.apache.spark.rdd.GpuPartition
 import org.apache.spark.scheduler.OpenCLContext
 
@@ -89,6 +91,30 @@ class GpuPartitionSuit extends GpuSuit {
         assert(chunk.getStringData(1, i) === "", "values do not match at row %d".format(i))
       }
     )
+  }
+
+  test("org.apache.spark.rdd.GpuPartition.getColumn test") {
+    val testData: IndexedSeq[(Int, Int, Int, Float, Float)] = (0 to 10).map(
+      x => (x, 10 * x, 100 * x, 0.1f * x, 0.01f * x))
+
+    val chunk = new GpuPartition[(Int, Int, Int, Float, Float)](openCLContext, DEFAULT_CAPACITY)
+
+    val typeAwareIndices = chunk.columnTypes.indices.map(chunk.toTypeAwareColumnIndex(_))
+
+    val expectedResults = Seq(0,1,2,0,1)
+
+    expectedResults.zip(typeAwareIndices).zipWithIndex.foreach{ case ((actual, expected), index) =>
+      assert(actual === expected, f"$actual != $expected at index=$index")
+    }
+
+    chunk.fill(testData.toIterator)
+    assert(chunk.getColumn[Int](0).isInstanceOf[IntBuffer])
+    assert(chunk.getColumn[Int](1).isInstanceOf[IntBuffer])
+    assert(chunk.getColumn[Int](2).isInstanceOf[IntBuffer])
+    assert(chunk.getColumn[Float](3).isInstanceOf[FloatBuffer])
+    assert(chunk.getColumn[Float](4).isInstanceOf[FloatBuffer])
+    assert(chunk.getColumn[Float](3) === chunk.getColumn[Float](0, true))
+    assert(chunk.getColumn[Float](4) === chunk.getColumn[Float](1, true))
   }
 
 }
