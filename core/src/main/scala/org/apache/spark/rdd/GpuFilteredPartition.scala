@@ -11,11 +11,12 @@ class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLCon
   operation: ComparisonOperation.Value, value: U, capacity: Int)
   extends GpuPartition[T](context, capacity) {
 
-  def filter(parent: GpuPartition[T]) = {
+  def filter(parent: GpuPartition[T]): Int = {
     val startFilterTime = System.nanoTime()
 
     if (parent.size == 0) {
       this.size = 0
+      this.size
     } else {
 
       val tupleNum = parent.size

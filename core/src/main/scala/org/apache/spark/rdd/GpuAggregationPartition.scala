@@ -13,7 +13,7 @@ class GpuAggregationPartition[T <: Product : TypeTag, TP <: Product : TypeTag](
                                                                                 aggregations: Array[AggregationExp], capacity: Int)
   extends GpuPartition[T](context, capacity) {
 
-  def aggregate(): Unit = {
+  def aggregate(): Int = {
     val startTime = System.nanoTime()
     parentPartition.inferBestWorkGroupSize
     this.globalSize = parentPartition.globalSize
@@ -311,7 +311,7 @@ class GpuAggregationPartition[T <: Product : TypeTag, TP <: Product : TypeTag](
     clReleaseMemObject(gpu_hashNum)
     val endTime =  System.nanoTime()
     logInfo(f"aggregation time = ${endTime - startTime}%,d")
-
+    this.size
   }
 
 }

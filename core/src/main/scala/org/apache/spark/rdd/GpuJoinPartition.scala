@@ -227,10 +227,10 @@ U: TypeTag]
     this.globalSize = leftPartition.globalSize
     this.localSize = leftPartition.localSize
     val startTime = System.nanoTime()
-    val result = buildHashTable
+    buildHashTable
     val endTime =  System.nanoTime()
     logInfo(f"join time = ${endTime - startTime}%,d")
-    result
+    this.size
   }
 
 }
