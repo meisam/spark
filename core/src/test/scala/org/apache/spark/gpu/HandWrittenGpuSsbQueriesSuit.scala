@@ -386,12 +386,12 @@ class HandWrittenGpuSsbQueriesSuit extends GpuSuit {
       filteredYearDatesPartition.filter(filteredDatesPartition)
     }
 
+    /*____________________________________price,dscnt,date, qty_________________________________*/
     val lineOrderPaths = Array(
       "/home/fathi/workspace/gpudb/database/SSB/scale-10/LINEORDER9",
       "/home/fathi/workspace/gpudb/database/SSB/scale-10/LINEORDER11",
       "/home/fathi/workspace/gpudb/database/SSB/scale-10/LINEORDER5",
       "/home/fathi/workspace/gpudb/database/SSB/scale-10/LINEORDER8")
-    //            /*____________________________________price,dscnt,date, qty_________________________________*/
     val loRaw = new GpuPartition[(Int, Int, Int, Int)](openCLContext, DEFAULT_CAPACITY)
 
     measureTime("lineorder load") {
@@ -428,7 +428,7 @@ class HandWrittenGpuSsbQueriesSuit extends GpuSuit {
 
     val joinPartition = new GpuJoinPartition[
       (Int, Int, Int, Int, Int, Int), (Int, Int, Int, Int), (Int, Int, Int), Int](openCLContext,
-      loFilterDiscount2, filteredYearDatesPartition, 301, 0, 1 << 14)
+      loFilterDiscount2, filteredYearDatesPartition, 2, 0, 1 << 14)
 
     measureTime("join"){
       joinPartition.join()
