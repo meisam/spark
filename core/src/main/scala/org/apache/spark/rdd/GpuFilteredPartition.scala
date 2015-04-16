@@ -135,7 +135,7 @@ class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLCon
     val startTime = System.nanoTime()
     if (outSize == 0)
       return
-    val colData = parent.getColumn[V](columnIndex)
+    val colData = parent.getColumn[V](columnIndex, true)
     val global_work_size = Array[Long](globalSize)
     val local_work_size = Array[Long](localSize)
     val scanCol: cl_mem = createReadWriteBuffer[V](parent.size)
@@ -163,7 +163,7 @@ class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLCon
 
     debugGpuBuffer[V](result, outSize, "result after scan_other")
 
-    val resultColData = this.getColumn[V](columnIndex)
+    val resultColData = this.getColumn[V](columnIndex, true)
     assert(resultColData != null)
     deviceToHostCopy[V](result, resultColData, outSize, 0)
 

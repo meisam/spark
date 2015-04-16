@@ -411,7 +411,7 @@ Array[SortDirection.Value], capacity: Int) extends GpuPartition[T](context, capa
       logInfo(f"column(${colIndex}) ${colType}(${typedColIndex}) size = ${colSizeInBytes}%,d bytes")
       logInfo(f"(${colIndex}) offset = ${offset}%,d out of ${this.columnOffsets.last}%,d")
 
-      val column = parent.getColumn(typedColIndex)(colType)
+      val column = parent.getColumn(colIndex)(colType)
       hostToDeviceCopy[Byte](column, gpuContent, colSizeInBytes, offset)
     }
     debugGpuBuffer[Byte](gpuContent, this.columnOffsets.last, "gpuContent after copying data")

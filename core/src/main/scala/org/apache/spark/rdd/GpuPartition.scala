@@ -730,8 +730,14 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
     })
   }
 
-  def getColumn[V: TypeTag](columnIndex: Int): Buffer = {
-    val typeAwareColumnIndex = toTypeAwareColumnIndex(columnIndex)
+  def getColumn[V: TypeTag](columnIndex: Int, typeAwareIndex: Boolean = false): Buffer = {
+    val typeAwareColumnIndex = if (typeAwareIndex) {
+      columnIndex
+    } else {
+      assert((typeOf[V] =:= columnTypes(columnIndex).tpe) || (isStringType[V])
+        , f"${typeOf[V]}, ${columnTypes(columnIndex).tpe} col($columnIndex) awar = $typeAwareIndex")
+      toTypeAwareColumnIndex(columnIndex)
+    }
 
     val columnType = implicitly[TypeTag[V]].tpe
     if (columnType =:= TypeTag.Byte.tpe) {

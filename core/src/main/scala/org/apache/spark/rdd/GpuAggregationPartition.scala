@@ -297,7 +297,7 @@ class GpuAggregationPartition[T <: Product : TypeTag, TP <: Product : TypeTag](
 
     columnTypes.zipWithIndex.foreach {
       case (columnType, columnIndex) =>
-        val column = getColumn(toTypeAwareColumnIndex(columnIndex))(columnType)
+        val column = getColumn(columnIndex)(columnType)
         deviceToHostCopy[Byte](gpuResult, column, this.size * baseSize(columnType), resultOffsets(columnIndex))
     }
 
