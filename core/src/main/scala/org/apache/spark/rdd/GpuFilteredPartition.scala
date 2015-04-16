@@ -127,6 +127,7 @@ class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLCon
       clReleaseMemObject(gpuPsum)
 
       release
+      this.size
     }
   }
 

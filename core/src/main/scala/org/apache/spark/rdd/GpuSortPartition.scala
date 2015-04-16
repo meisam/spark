@@ -11,7 +11,7 @@ class GpuSortPartition[T <: Product : TypeTag]
 (context: OpenCLContext, parent: GpuPartition[T], sortColumnIndexes: Array[Int], sortDirections:
 Array[SortDirection.Value], capacity: Int) extends GpuPartition[T](context, capacity) {
 
-  def sort(): Unit = {
+  def sort(): Int = {
     val startTime = System.nanoTime()
     /*
 
@@ -813,6 +813,7 @@ Array[SortDirection.Value], capacity: Int) extends GpuPartition[T](context, capa
  */
     val endTime =  System.nanoTime()
     logInfo(f"sort time = ${endTime - startTime}%,d")
+    this.size
   }
 
 
