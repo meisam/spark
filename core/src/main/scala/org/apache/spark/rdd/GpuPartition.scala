@@ -912,6 +912,8 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
 
   @throws(classOf[IOException])
   private def writeObject(out: ObjectOutputStream): Unit = {
+    val outChannel = Channels.newChannel(out)
+
     out.writeInt(columnTypes.size)
     columnOffsets.foreach { offset =>
       out.writeInt(offset)
@@ -919,9 +921,34 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
     }
     columnTypes.foreach { colType =>
       val index = ColumnarTypes.getIndex(colType.tpe)
+
       out.writeInt(index)
     }
+
     out.writeInt(this.size)
+    logInfo(f"serialized size=${this.size}")
+
+    byteData.foreach { buffer =>
+      buffer.rewind()
+      (0 until this.size).foreach { i =>
+        out.writeByte(buffer.get())
+      }
+    }
+
+    shortData.foreach { buffer =>
+      buffer.rewind()
+      (0 until this.size).foreach { i =>
+        out.writeShort(buffer.get())
+      }
+    }
+
+    charData.foreach { buffer =>
+      buffer.rewind()
+      (0 until this.size).foreach { i =>
+        out.writeChar(buffer.get())
+      }
+    }
+
     intData.foreach { buffer =>
       buffer.rewind()
       (0 until this.size).foreach { i =>
@@ -933,6 +960,27 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
       buffer.rewind()
       (0 until this.size).foreach { i =>
         out.writeLong(buffer.get())
+      }
+    }
+
+    floatData.foreach { buffer =>
+      buffer.rewind()
+      (0 until this.size).foreach { i =>
+        out.writeFloat(buffer.get())
+      }
+    }
+
+    doubleData.foreach { buffer =>
+      buffer.rewind()
+      (0 until this.size).foreach { i =>
+        out.writeDouble(buffer.get())
+      }
+    }
+
+    booleanData.foreach { buffer =>
+      buffer.rewind()
+      (0 until this.size).foreach { i =>
+        out.writeByte(buffer.get())
       }
     }
 
@@ -961,6 +1009,26 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
     }.toArray
 
     this.size = in.readInt()
+    logInfo(f"deserialized size=${this.size}")
+
+    byteData.foreach { buffer =>
+      buffer.rewind()
+      (0 until this.size).foreach { i =>
+        buffer.put(in.readByte())
+      }
+    }
+    shortData.foreach { buffer =>
+      buffer.rewind()
+      (0 until this.size).foreach { i =>
+        buffer.put(in.readShort())
+      }
+    }
+    charData.foreach { buffer =>
+      buffer.rewind()
+      (0 until this.size).foreach { i =>
+        buffer.put(in.readChar())
+      }
+    }
     intData.foreach { buffer =>
       buffer.rewind()
       (0 until this.size).foreach { i =>
@@ -971,6 +1039,24 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
       buffer.rewind()
       (0 until this.size).foreach { i =>
         buffer.put(in.readLong())
+      }
+    }
+    floatData.foreach { buffer =>
+      buffer.rewind()
+      (0 until this.size).foreach { i =>
+        buffer.put(in.readFloat())
+      }
+    }
+    doubleData.foreach { buffer =>
+      buffer.rewind()
+      (0 until this.size).foreach { i =>
+        buffer.put(in.readDouble())
+      }
+    }
+    booleanData.foreach { buffer =>
+      buffer.rewind()
+      (0 until this.size).foreach { i =>
+        buffer.put(in.readByte())
       }
     }
     stringData.foreach { buffer =>
