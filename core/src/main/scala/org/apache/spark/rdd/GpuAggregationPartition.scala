@@ -67,7 +67,7 @@ class GpuAggregationPartition[T <: Product : TypeTag, TP <: Product : TypeTag](
         if (i == -1) implicitly[TypeTag[Int]] else columnTypes(i)
     }.map(t => ColumnarTypes.getIndex(t.tpe))
 
-    println(f"gbType.length = ${gbType.length}")
+    logInfo(f"gbType.length = ${gbType.length}")
     assert(gbType.length > 0, f"There should be at least one group by column but there is ${gbType.length}")
     val gpuGbType = createReadBuffer[Int](gbType.length)
     hostToDeviceCopy[Int](pointer(gbType), gpuGbType, gbType.length)
@@ -291,6 +291,10 @@ class GpuAggregationPartition[T <: Product : TypeTag, TP <: Product : TypeTag](
     clReleaseMemObject(gpuGbKey);
     clReleaseMemObject(gpu_psum);
 
+    debugGpuBuffer[Byte](gpuResult, resultTotalSize, "gpuresults[Byte]")
+    debugGpuBuffer[Int](gpuResult, resultTotalSize/4, "gpuresults[Int]")
+    debugGpuBuffer[Float](gpuResult, resultTotalSize/4, "gpuresults[Float]")
+
     columnTypes.zipWithIndex.foreach {
       case (columnType, columnIndex) =>
         val column = getColumn(toTypeAwareColumnIndex(columnIndex))(columnType)
@@ -298,11 +302,11 @@ class GpuAggregationPartition[T <: Product : TypeTag, TP <: Product : TypeTag](
     }
 
     clFinish(context.queue)
-    clReleaseMemObject(gpuContent);
-    clReleaseMemObject(gpuResult);
-    clReleaseMemObject(gpuResOffset);
-    clReleaseMemObject(gpuGbExp);
-    clReleaseMemObject(gpuFunc);
+    clReleaseMemObject(gpuContent)
+    clReleaseMemObject(gpuResult)
+    clReleaseMemObject(gpuResOffset)
+    clReleaseMemObject(gpuGbExp)
+    clReleaseMemObject(gpuFunc)
     clReleaseMemObject(gpuGbType)
     clReleaseMemObject(gpuGbSize)
     clReleaseMemObject(gpuGbIndex)
