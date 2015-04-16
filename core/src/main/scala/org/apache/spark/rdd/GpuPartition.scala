@@ -1107,8 +1107,6 @@ object DataPosition extends Enumeration {
 
 object ColumnarTypes extends IndexedSeq[ru.Type] {
 
-  val StringTypeTag = ru.typeTag[String]
-
   private val ALL_TYPES: IndexedSeq[ru.Type] = IndexedSeq(
     TypeTag.Byte.tpe,
     TypeTag.Short.tpe,
@@ -1118,7 +1116,7 @@ object ColumnarTypes extends IndexedSeq[ru.Type] {
     TypeTag.Double.tpe,
     TypeTag.Boolean.tpe,
     TypeTag.Char.tpe,
-    StringTypeTag.tpe)
+    typeOf[String])
 
   def getIndex(t: ru.Type): Int = {
     ALL_TYPES.indexWhere(_ =:= t)
