@@ -252,10 +252,16 @@ class OpenCLContext extends Serializable with Logging{
 }
 
 object OpenCLContextSingletone extends Serializable with Logging {
-  lazy val openClContext = {
-    logInfo("Going to initialize OpenCLContextSingletone ")
-    val _context = new OpenCLContext
-  _context
+  @volatile var _openClContext: OpenCLContext = _
+
+  def openClContext: OpenCLContext = {
+    this.synchronized{
+      if (_openClContext == null) {
+      logInfo("Going to initialize OpenCLContextSingletone ")
+      _openClContext = new OpenCLContext
+      }
+      _openClContext
+    }
   }
 
 }
