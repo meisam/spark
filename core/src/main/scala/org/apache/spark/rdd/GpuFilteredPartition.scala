@@ -20,7 +20,7 @@ class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLCon
     } else {
 
       val tupleNum = parent.size
-      val gpuCol = if (typeOf[U] =:= ColumnarTypes.StringTypeTag.tpe) {
+      val gpuCol = if (isStringType[U]) {
         createReadWriteBuffer[Byte](tupleNum * baseSize[U])
       } else {
         createReadWriteBuffer[U](tupleNum)
@@ -46,8 +46,8 @@ class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLCon
       clSetKernelArg(genScanKernel, 0, Sizeof.cl_mem, Pointer.to(gpuCol))
       clSetKernelArg(genScanKernel, 1, Sizeof.cl_long, Pointer.to(Array[Long](tupleNum)))
       // string types are represented as char* in C/OpenCL and should be treated differently
-      if (typeOf[U] =:= typeOf[String]) {
-        debugGpuBuffer[U](gpuCol, tupleNum, "gpuCol before mem set to zero")
+      if (isStringType[U]) {
+        debugGpuBuffer[String](gpuCol, tupleNum, "gpuCol before mem set to zero")
         val conditionValueBuffer = new Array[Byte](MAX_STRING_SIZE)
         val length = Math.min(value.toString().length(), MAX_STRING_SIZE)
         val stringBytes = value.toString().getBytes(0, length, conditionValueBuffer, 0)
@@ -156,7 +156,7 @@ class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLCon
     clSetKernelArg(kernel, 5, Sizeof.cl_mem, Pointer.to(gpuFilter))
     clSetKernelArg(kernel, 6, Sizeof.cl_mem, Pointer.to(result))
 
-    debugGpuBuffer[V](result, outSize, "result before scan_other")
+    debugGpuBuffer[V](resulst, outSize, "result before scan_other")
 
     clEnqueueNDRangeKernel(context.queue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
 

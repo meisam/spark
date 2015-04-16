@@ -172,10 +172,6 @@ class GpuAggregationPartitionSuit extends GpuSuit {
     aggregationPartition.aggregate()
     val expectedData: Array[(Int, Float)] = Array((const100Pi.opValue, 19f))
 
-    (0 until aggregationPartition.size).foreach{ i=>
-      val t: (Int, Float) = aggregationPartition(i)
-      println(f"tuple(${i}) = ${t}")
-    }
     assert(aggregationPartition.size === expectedData.length)
 
     expectedData.zipWithIndex.foreach {

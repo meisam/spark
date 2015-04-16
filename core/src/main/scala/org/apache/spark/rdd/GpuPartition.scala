@@ -157,8 +157,9 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
 
   def stringData = {
     if (_stringData == null) {
-      val colIndexes = columnTypes.zipWithIndex.filter(_._1.tpe =:= ColumnarTypes.StringTypeTag.tpe)
-        .map(_._2)
+      val colIndexes = columnTypes.zipWithIndex.filter { case (tp, index) =>
+        isStringType(tp)
+      }.map{case (tp, index) => index}
       _stringData = new Array[ByteBuffer](colIndexes.length)
       _stringData.indices.foreach { i =>
         val offset = columnOffsets(i)
@@ -234,7 +235,7 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
 
         val blockSize: Long = columnData.getLong()
         val baseSizeInFile : Long=
-        if (colType.tpe =:= typeOf[String]) {
+        if (isStringType(colType)) {
           blockSize / totalTupleNum
         } else {
           baseSize(colType)
@@ -305,7 +306,7 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
           val convertBuffer = new Array[Char](tuplesToRead.toInt)
           restData.asCharBuffer().get(convertBuffer)
           charData(toTypeAwareColumnIndex(colIndex)) = CharBuffer.wrap(convertBuffer)
-        } else if (colType.tpe =:= ColumnarTypes.StringTypeTag.tpe) {
+        } else if (isStringType(colType)) {
           val convertBuffer = new Array[Byte](tuplesToRead.toInt * baseSizeInFile.toInt)
           restData.get(convertBuffer)
           stringData(toTypeAwareColumnIndex(colIndex)) = ByteBuffer.wrap(convertBuffer)
@@ -355,7 +356,7 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
               booleanData(toTypeAwareColumnIndex(colIndex)).put(rowIndex, if (p.asInstanceOf[Boolean]) 1 else 0)
             } else if (columnTypes(colIndex).tpe =:= TypeTag.Char.tpe) {
               charData(toTypeAwareColumnIndex(colIndex)).put(rowIndex, p.asInstanceOf[Char])
-            } else if (columnTypes(colIndex).tpe =:= ColumnarTypes.StringTypeTag.tpe) {
+            } else if (isStringType(columnTypes(colIndex))) {
               val str = p.toString
               val offset = rowIndex * MAX_STRING_SIZE
               val charCount = Math.min(MAX_STRING_SIZE, str.length)
@@ -419,7 +420,7 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
           booleanData(toTypeAwareColumnIndex(colIndex)).get(rowIndex) != 0
         } else if (colType.tpe =:= TypeTag.Char.tpe) {
           charData(toTypeAwareColumnIndex(colIndex)).get(rowIndex)
-        } else if (colType.tpe =:= ColumnarTypes.StringTypeTag.tpe) {
+        } else if (isStringType(colType)) {
           getStringData(toTypeAwareColumnIndex(colIndex), rowIndex)
         } else {
           throw new NotImplementedError("Unknown type %s".format(colType))
@@ -696,7 +697,7 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
       Pointer.to(values.asInstanceOf[Array[Char]])
     } else if (typeOf[T] =:= typeOf[Boolean]) {
       Pointer.to(values.asInstanceOf[Array[Boolean]].map{ v => if (v) 1 else 0})
-    } else if (typeOf[T] =:= ColumnarTypes.StringTypeTag.tpe) {
+    } else if (isStringType[T]) {
       Pointer.to(values.asInstanceOf[Array[Char]])
     } else {
       throw new NotImplementedError("Cannot create a pointer to an array of %s.".format(
@@ -738,12 +739,21 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
       doubleData(typeAwareColumnIndex).asInstanceOf[Buffer]
     } else if (columnType =:= TypeTag.Boolean.tpe) {
       booleanData(typeAwareColumnIndex).asInstanceOf[Buffer]
-    } else if (columnType =:= ColumnarTypes.StringTypeTag.tpe) {
+    } else if (isStringType[V]) {
       stringData(typeAwareColumnIndex).asInstanceOf[Buffer]
     } else {
       throw new NotImplementedError("Unknown type %s".format(implicitly[TypeTag[V]]))
     }
     }
+
+  /**
+   * TODO: This is a dirty hack because =:= typeOf[String] does not work
+   * @tparam V
+   * @return
+   */
+  def isStringType[V: TypeTag]: Boolean = {
+    typeOf[V].toString.contains("String")
+  }
 
   def baseSize[V: TypeTag]: Int = {
     val tt = implicitly[TypeTag[V]]
@@ -763,7 +773,7 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
       Sizeof.cl_double
     } else if (tt.tpe =:= TypeTag.Boolean.tpe) {
       Sizeof.cl_char
-    } else if (tt.tpe =:= ColumnarTypes.StringTypeTag.tpe) {
+    } else if (isStringType[V]) {
       Sizeof.cl_char * MAX_STRING_SIZE
     }
     else {
