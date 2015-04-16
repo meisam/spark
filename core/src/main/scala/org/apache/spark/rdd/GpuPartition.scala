@@ -854,18 +854,20 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
   def debugGpuBuffer[V: TypeTag](buffer: cl_mem, size: Int, msg: String, quiet: Boolean
   = true) {
     if (!quiet) {
-      if (typeOf[V] =:= ColumnarTypes.StringTypeTag.tpe) {
-        val tempBuffer = Array.ofDim[Byte](size*MAX_STRING_SIZE)
-        deviceToHostCopy[Byte](buffer, pointer[Byte](tempBuffer), size*MAX_STRING_SIZE, 0)
-        logInfo(s"""${msg} (RAW)= ${tempBuffer.mkString(" ,")}""")
-        logInfo(s"""${msg} (CHR)= ${tempBuffer.map(i => i.toChar).mkString}""")
+      val MAX_LENGTH = 100
+      val usedSize = Math.min(size, MAX_LENGTH)
+      if (isStringType[V]) {
+        val tempBuffer = Array.ofDim[Byte](usedSize*MAX_STRING_SIZE)
+        deviceToHostCopy[Byte](buffer, pointer[Byte](tempBuffer), usedSize*MAX_STRING_SIZE, 0)
+        logInfo(s"${msg} (RAW)= ${tempBuffer.mkString(" ,")}")
+        logInfo(s"${msg} (CHR)= ${tempBuffer.map(i => i.toChar).mkString}")
       } else {
         val mirror = ru.runtimeMirror(getClass.getClassLoader)
         implicit val xClassTag = ClassTag[V](mirror.runtimeClass(typeOf[V]))
 
-        val tempBuffer = Array.ofDim(size)(xClassTag)
-        deviceToHostCopy[V](buffer, pointer[V](tempBuffer), size, 0)
-        logInfo(s"""${msg} = ${tempBuffer.mkString(" ,")}""")
+        val tempBuffer = Array.ofDim(usedSize)(xClassTag)
+        deviceToHostCopy[V](buffer, pointer[V](tempBuffer), usedSize, 0)
+        logInfo(s"${msg} = ${tempBuffer.mkString(" ,")}")
       }
     }
   }
