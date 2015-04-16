@@ -712,8 +712,7 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
     } else if (isStringType[T]) {
       Pointer.to(values.asInstanceOf[Array[Byte]])
     } else {
-      throw new NotImplementedError("Cannot create a pointer to an array of %s.".format(
-        typeOf[T].toString))
+      throw new NotImplementedError(f"Cannot create a pointer to an array of ${typeOf[T]}")
     }
   }
 
