@@ -69,7 +69,7 @@ __kernel void genScanFilter_##assign_name##_##column_type##_##operation_name    
 
 #define genScanFilter_string(assign_name,assign_operation, operation_name, operation)        \
 __kernel void genScanFilter_##assign_name##_string_##operation_name                          \
-(__global char *col, long tupleNum, __global char *where, __global int * filter)              \
+(__global char *col, long tupleNum, __global char *where, __global int * filter)             \
 {                                                                                            \
     size_t stride = get_global_size(0);                                                      \
     size_t tid = get_global_id(0);                                                           \
@@ -77,7 +77,11 @@ __kernel void genScanFilter_##assign_name##_string_##operation_name             
         for(size_t i = tid; i<tupleNum;i+=stride){                                           \
                 int con = 1;                                                                 \
                 for(int k = 0; k < MAX_SRING_SIZE; k++) {                                    \
-                    con = con && (col[i * MAX_SRING_SIZE + k] operation where[k]);           \
+                    if (where[k] == 0) {                                                     \
+                      break;                                                                 \
+                    } else {                                                                 \
+                        con = con && (col[i * MAX_SRING_SIZE + k] operation where[k]);       \
+                    }                                                                        \
                 }                                                                            \
                 filter[i] assign_operation con;                                              \
         }                                                                                    \
