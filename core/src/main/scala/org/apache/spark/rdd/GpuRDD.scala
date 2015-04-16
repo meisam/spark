@@ -27,7 +27,7 @@ import scala.reflect.runtime.{universe => ru}
 
 abstract class GpuRDD[ T <: Product : TypeTag ](
    @transient private[rdd] var sc: SparkContext,
-   capacity: Int, numPartitions: Int, dps: Seq[Dependency[_]] = Nil)
+   capacity: Int, numPartitions: Int, dps: Seq[Dependency[_]])
   extends RDD[GpuPartition[T]](sc, dps) {
 
   def this(@transient parent: RDD[_], capacity: Int, numPartitions: Int) = {
@@ -38,7 +38,7 @@ abstract class GpuRDD[ T <: Product : TypeTag ](
 class InMemoryGpuRDD[ T <: Product : TypeTag ](
    @transient private var _sc: SparkContext,
    @transient data: Array[T], capacity: Int, numPartitions: Int)
-  extends GpuRDD[T](_sc, capacity, numPartitions) {
+  extends GpuRDD[T](_sc, capacity, numPartitions, Nil) {
   /**
    * Implemented by subclasses to return the set of partitions in this RDD. This method will only
    * be called once, so it is safe to implement a time-consuming computation in it.
@@ -62,7 +62,7 @@ class InMemoryGpuRDD[ T <: Product : TypeTag ](
 class ColumnarFileGpuRDD[ T <: Product : TypeTag ](
    @transient private var _sc: SparkContext,
    paths: Array[String], capacity: Int, numPartitions: Int)
-  extends GpuRDD[T](_sc, capacity, numPartitions) {
+  extends GpuRDD[T](_sc, capacity, numPartitions, Nil) {
 
   val rddId = sc.newRddId()
 
@@ -73,18 +73,14 @@ class ColumnarFileGpuRDD[ T <: Product : TypeTag ](
   override def compute(partition: Partition, context: TaskContext): Iterator[GpuPartition[T]] = {
 
     val partitionDescriptor = partition.asInstanceOf[ParquetPartitionDescriptor]
-    val sliceId = partitionDescriptor.index
-    val sliceCount = partitionDescriptor.sliceCount
+
     val paths = partitionDescriptor.paths
 
-    val gpuPartition = new GpuPartition[T](context.getOpenCLContext, capacity)
-    val elementsCount = gpuPartition.getSizeFromFile(paths.head)
-
-    val partitionCount = Math.ceil(elementsCount / capacity)
-
-    var fromIndex = 0
-
     val itr = new NextIterator[GpuPartition[T]] {
+      val partitionId = partitionDescriptor.partitionId
+      @volatile var fromIndex = partitionId * capacity
+
+      finished = false
       /**
        * Method for subclasses to implement to provide the next element.
        *
@@ -98,14 +94,23 @@ class ColumnarFileGpuRDD[ T <: Product : TypeTag ](
        * @return U, or set 'finished' when done
        */
       override protected def getNext(): GpuPartition[T] = {
-        gpuPartition.size = 0
-        gpuPartition.fillFromFiles(paths, fromIndex)
-        fromIndex = fromIndex + capacity
+        val gpuPartition = new GpuPartition[T](context.getOpenCLContext, capacity)
+        val elementsCount = gpuPartition.getSizeFromFile(paths.head)
         finished = (fromIndex >= elementsCount)
-        logInfo(f"Finished partitioning data? ${finished} ${fromIndex}/${elementsCount} elements")
-        gpuPartition
+        if (finished) {
+          fromIndex = partitionId * capacity
+          null
+        } else {
+          gpuPartition.size = 0
+          logInfo(f"reading [${fromIndex}, ${fromIndex + capacity}] for RDD${partitionDescriptor.rddId}[${partitionId}]")
+          gpuPartition.fillFromFiles(paths, fromIndex)
+          fromIndex = fromIndex + capacity
+          logInfo(f"Finished partitioning data? ${finished} ${fromIndex}/${elementsCount} elements " +
+            f"capacity=${capacity}")
+          logInfo(f"gpuPartition.size=${gpuPartition.size}")
+          gpuPartition
+        }
       }
-
       /**
        * Method for subclasses to implement when all elements have been successfully
        * iterated, and the iteration is done.
@@ -121,7 +126,6 @@ class ColumnarFileGpuRDD[ T <: Product : TypeTag ](
 
       }
     }
-
     new InterruptibleIterator[GpuPartition[T]](context, itr)
   }
 
@@ -138,10 +142,13 @@ class ColumnarFileGpuRDD[ T <: Product : TypeTag ](
   }
 }
 
-class ParquetPartitionDescriptor(id: Int, val sliceCount: Int, val paths: Array[String])
+class ParquetPartitionDescriptor(val rddId: Int, val partitionId: Int, val paths: Array[String])
   extends Partition {
   /**
    * Get the split's index within its parent RDD
    */
-  override def index: Int = id
+  override def index: Int = partitionId
+
+  override def hashCode(): Int = 41 * (41 + rddId) + partitionId
+
 }
