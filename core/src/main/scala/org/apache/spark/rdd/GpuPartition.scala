@@ -1,7 +1,7 @@
 package org.apache.spark.rdd
 
 import java.io._
-import java.nio.channels.FileChannel
+import java.nio.channels.{Channels, FileChannel}
 import java.nio.file.Files
 import java.nio.{Buffer, ByteBuffer, ByteOrder, CharBuffer, DoubleBuffer, FloatBuffer, IntBuffer, LongBuffer, ShortBuffer}
 
@@ -9,6 +9,7 @@ import org.apache.spark.Logging
 import org.apache.spark.scheduler.OpenCLContext
 import org.jocl.CL._
 import org.jocl._
+import sun.nio.ch.DirectBuffer
 
 import scala.reflect.ClassTag
 import scala.reflect.api.Universe
@@ -55,9 +56,9 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
     if (_byteData == null) {
       val colIndexes = columnTypes.zipWithIndex.filter(_._1.tpe =:= TypeTag.Byte.tpe).map(_._2)
       _byteData = new Array[ByteBuffer](colIndexes.length)
-      _byteData.indices.foreach { i =>
-        val offset = columnOffsets(i)
-        val length = columnOffsets(i + 1) - offset
+      _byteData.indices.zip(colIndexes).foreach { case(i, actualIndex) =>
+        val offset = columnOffsets(actualIndex)
+        val length = columnOffsets(actualIndex + 1) - offset
         _byteData(i) = allocateBuffer(length)
       }
     }
@@ -68,9 +69,9 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
     if (_shortData == null) {
       val colIndexes = columnTypes.zipWithIndex.filter(_._1.tpe =:= TypeTag.Short.tpe).map(_._2)
       _shortData = new Array[ShortBuffer](colIndexes.length)
-      _shortData.indices.foreach { i =>
-        val offset = columnOffsets(i)
-        val length = columnOffsets(i + 1) - offset
+      _shortData.indices.zip(colIndexes).foreach { case(i, actualIndex) =>
+        val offset = columnOffsets(actualIndex)
+        val length = columnOffsets(actualIndex + 1) - offset
         _shortData(i) = allocateBuffer(length).asShortBuffer()
       }
     }
@@ -81,9 +82,9 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
     if (_intData == null) {
       val colIndexes = columnTypes.zipWithIndex.filter(_._1.tpe =:= TypeTag.Int.tpe).map(_._2)
       _intData = new Array[IntBuffer](colIndexes.length)
-      _intData.indices.foreach { i =>
-        val offset = columnOffsets(i)
-        val length = columnOffsets(i + 1) - offset
+      _intData.indices.zip(colIndexes).foreach { case(i, actualIndex) =>
+        val offset = columnOffsets(actualIndex)
+        val length = columnOffsets(actualIndex + 1) - offset
         _intData(i) = allocateBuffer(length).asIntBuffer()
       }
     }
@@ -94,9 +95,9 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
     if (_longData == null) {
       val colIndexes = columnTypes.zipWithIndex.filter(_._1.tpe =:= TypeTag.Long.tpe).map(_._2)
       _longData = new Array[LongBuffer](colIndexes.length)
-      _longData.indices.foreach { i =>
-        val offset = columnOffsets(i)
-        val length = columnOffsets(i + 1) - offset
+      _longData.indices.zip(colIndexes).foreach { case(i, actualIndex) =>
+        val offset = columnOffsets(actualIndex)
+        val length = columnOffsets(actualIndex + 1) - offset
         _longData(i) = allocateBuffer(length).asLongBuffer()
       }
     }
@@ -107,9 +108,9 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
     if (_floatData == null) {
       val colIndexes = columnTypes.zipWithIndex.filter(_._1.tpe =:= TypeTag.Float.tpe).map(_._2)
       _floatData = new Array[FloatBuffer](colIndexes.length)
-      _floatData.indices.foreach { i =>
-        val offset = columnOffsets(i)
-        val length = columnOffsets(i + 1) - offset
+      _floatData.indices.zip(colIndexes).foreach { case(i, actualIndex) =>
+        val offset = columnOffsets(actualIndex)
+        val length = columnOffsets(actualIndex + 1) - offset
         _floatData(i) = allocateBuffer(length).asFloatBuffer()
       }
     }
@@ -120,9 +121,9 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
     if (_doubleData == null) {
       val colIndexes = columnTypes.zipWithIndex.filter(_._1.tpe =:= TypeTag.Double.tpe).map(_._2)
       _doubleData = new Array[DoubleBuffer](colIndexes.length)
-      _doubleData.indices.foreach { i =>
-        val offset = columnOffsets(i)
-        val length = columnOffsets(i + 1) - offset
+      _doubleData.indices.zip(colIndexes).foreach { case(i, actualIndex) =>
+        val offset = columnOffsets(actualIndex)
+        val length = columnOffsets(actualIndex + 1) - offset
         _doubleData(i) = ByteBuffer.allocateDirect(length).asDoubleBuffer()
       }
     }
@@ -133,9 +134,9 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
     if (_booleanData == null) {
       val colIndexes = columnTypes.zipWithIndex.filter(_._1.tpe =:= TypeTag.Boolean.tpe).map(_._2)
       _booleanData = new Array[ByteBuffer](colIndexes.length)
-      _booleanData.indices.foreach { i =>
-        val offset = columnOffsets(i)
-        val length = columnOffsets(i + 1) - offset
+      _booleanData.indices.zip(colIndexes).foreach { case(i, actualIndex) =>
+        val offset = columnOffsets(actualIndex)
+        val length = columnOffsets(actualIndex + 1) - offset
         _booleanData(i) = allocateBuffer(length)
       }
     }
@@ -146,9 +147,9 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
     if (_charData == null) {
       val colIndexes = columnTypes.zipWithIndex.filter(_._1.tpe =:= TypeTag.Char.tpe).map(_._2)
       _charData = new Array[CharBuffer](colIndexes.length)
-      _charData.indices.foreach { i =>
-        val offset = columnOffsets(i)
-        val length = columnOffsets(i + 1) - offset
+      _charData.indices.zip(colIndexes).foreach { case(i, actualIndex) =>
+        val offset = columnOffsets(actualIndex)
+        val length = columnOffsets(actualIndex + 1) - offset
         _charData(i) = allocateBuffer(length).asCharBuffer()
       }
     }
@@ -161,9 +162,9 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
         isStringType(tp)
       }.map{case (tp, index) => index}
       _stringData = new Array[ByteBuffer](colIndexes.length)
-      _stringData.indices.foreach { i =>
-        val offset = columnOffsets(i)
-        val length = columnOffsets(i + 1) - offset
+      _stringData.indices.zip(colIndexes).foreach { case(i, actualIndex) =>
+        val offset = columnOffsets(actualIndex)
+        val length = columnOffsets(actualIndex + 1) - offset
         _stringData(i) = allocateBuffer(length)
       }
     }
@@ -204,6 +205,19 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
     channel.close()
     logInfo(f"total elements ${totalTupleNum}")
     totalTupleNum.toInt
+  }
+
+  def extractUnderlyingBuffer(buffer: Buffer) :ByteBuffer ={
+    if (buffer.isInstanceOf[ByteBuffer]) {
+      buffer.asInstanceOf[ByteBuffer]
+    } else if (buffer.isInstanceOf[DirectBuffer]){
+      val directBuffer = buffer.asInstanceOf[DirectBuffer]
+
+      val underlyingByteBuffer = directBuffer.attachment().asInstanceOf[ByteBuffer]
+      underlyingByteBuffer
+    } else {
+      throw new IllegalArgumentException(f"${buffer}:${buffer.getClass}")
+    }
   }
 
   /**
