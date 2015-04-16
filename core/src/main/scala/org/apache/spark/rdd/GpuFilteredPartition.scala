@@ -157,7 +157,7 @@ class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLCon
     clSetKernelArg(kernel, 5, Sizeof.cl_mem, Pointer.to(gpuFilter))
     clSetKernelArg(kernel, 6, Sizeof.cl_mem, Pointer.to(result))
 
-    debugGpuBuffer[V](resulst, outSize, "result before scan_other")
+    debugGpuBuffer[V](result, outSize, "result before scan_other")
 
     clEnqueueNDRangeKernel(context.queue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
 
