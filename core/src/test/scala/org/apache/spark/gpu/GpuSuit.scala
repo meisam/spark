@@ -36,9 +36,9 @@ class GpuSuit extends FunSuite with SharedSparkContext {
     assert(totalResult === expectedData.length)
 
     val collectedData = flattenResults[T](collectedPartitions)
-    expectedData.zip(collectedData).foreach {
-      case (vt, vc) =>
-        assert(vt === vc)
+    expectedData.zip(collectedData).zipWithIndex.foreach {
+      case ((ve, vc), index) =>
+        assert(ve === vc, f"$ve != $vc at $index")
     }
 
   }
