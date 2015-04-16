@@ -707,12 +707,10 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
       Pointer.to(values.asInstanceOf[Array[Double]])
     } else if (typeOf[T] =:= typeOf[Char]) {
       Pointer.to(values.asInstanceOf[Array[Char]])
-    } else if (typeOf[T] =:= typeOf[Char]) {
-      Pointer.to(values.asInstanceOf[Array[Char]])
     } else if (typeOf[T] =:= typeOf[Boolean]) {
       Pointer.to(values.asInstanceOf[Array[Boolean]].map{ v => if (v) 1 else 0})
     } else if (isStringType[T]) {
-      Pointer.to(values.asInstanceOf[Array[Char]])
+      Pointer.to(values.asInstanceOf[Array[Byte]])
     } else {
       throw new NotImplementedError("Cannot create a pointer to an array of %s.".format(
         typeOf[T].toString))
