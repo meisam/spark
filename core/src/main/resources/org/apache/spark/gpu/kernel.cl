@@ -642,6 +642,34 @@ __kernel void join_dim_##column_type                                            
     }                                                                                           \
 }                                                                                               \
 
+__kernel void join_dim_string(__global int *resPsum, __global char * dim
+        , int attrSize, long num, __global int * filter, __global char * result) {
+    size_t startIndex = get_global_id(0);
+    size_t stride = get_global_size(0);
+    long localCount = resPsum[startIndex];
+
+    for(size_t i = startIndex; i < num;i += stride) {
+        int dimId = filter[i];
+        if( dimId != 0){
+            int endOfStr = 0;
+            int k = 0;
+            for (k = 0; k < MAX_SRING_SIZE; ++k) {
+                char currentChar = dim[dimId + k - 1];
+                endOfStr = endOfStr || (currentChar == 0);
+                if (endOfStr) {
+                    result[localCount + k] =  0;
+                    break;
+                   // result[localCount + k] = 'Z';
+                } else {
+                    result[localCount + k] = dim[dimId + k - 1];
+                }
+
+            }
+            localCount++;
+        }
+    }
+}
+
 declare_join_dim_kernel(int)
 declare_join_dim_kernel(long)
 declare_join_dim_kernel(float)
