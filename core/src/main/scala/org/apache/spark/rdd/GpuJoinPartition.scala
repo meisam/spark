@@ -34,6 +34,8 @@ U: TypeTag]
 
     val hsize = (1 to 31).map(1 << _).filter(_ >= rightPartition.size).head
 
+    logInfo(f"hsize=$hsize, rightPartition.size = ${rightPartition.size}")
+
     // Number of primary keys for each hash value
     val gpu_hashNum = createReadWriteBuffer[Int](hsize)
 
@@ -44,8 +46,10 @@ U: TypeTag]
     val global_work_size = Array[Long](globalSize)
     val local_work_size = Array[Long](localSize)
 
+    logInfo(f"globalSize=$globalSize, localSize=$localSize")
+
     clEnqueueNDRangeKernel(context.queue, memSetIntKernel, 1, null, global_work_size, local_work_size, 0,
-      null, null)
+    null, null)
 
     val threadNum = globalSize
 
@@ -187,7 +191,8 @@ U: TypeTag]
           } else {
             val rightColumnIndex = toRightTableIndex(columnIndex)
             if (rightColumnIndex != joinColIndexRight) {
-            	rightPartition.columnTypes.zipWithIndex.map(_._2 + leftPartition.columnTypes.length)
+              rightPartition.columnTypes.zipWithIndex.map(_._2 + leftPartition.columnTypes.length)
+              logInfo(f"right col index = $rightColumnIndex")
               val column = rightPartition.getColumn(rightColumnIndex)(columnType)
               val sizeInBytes = joinResultCount * baseSize(columnType)
   

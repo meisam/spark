@@ -101,6 +101,7 @@ class HandWrittenGpuSsbQueriesSuit extends GpuSuit {
   }
 
   def measureTime(measurementName: String)(code: => Int): Long = {
+    println(f"started $measurementName ...")
     val startTime = System.nanoTime
     val resultsCount = code
     val endTime = System.nanoTime
@@ -118,7 +119,7 @@ class HandWrittenGpuSsbQueriesSuit extends GpuSuit {
 
   val SCALE_FACTOR = 10
 
-  test("SSB_q1_1 test") {
+  ignore("SSB_q1_1 test") {
     // select sum(lo_extendedprice*lo_discount) as revenue
     // from lineorder, ddate
     // where lo_orderdate = d_datekey
@@ -240,7 +241,7 @@ class HandWrittenGpuSsbQueriesSuit extends GpuSuit {
     }
   }
 
-  test("SSB_q1_2 test") {
+  ignore("SSB_q1_2 test") {
 
 
     //    select sum(lo_extendedprice*lo_discount) as revenue
@@ -346,7 +347,7 @@ class HandWrittenGpuSsbQueriesSuit extends GpuSuit {
     openCLContext.resetMetrics
   }
 
-  test("SSB_q1_3 test") {
+  ignore("SSB_q1_3 test") {
 
     //    select sum(lo_extendedprice*lo_discount) as revenue
     //    from lineorder,ddate
@@ -399,7 +400,7 @@ class HandWrittenGpuSsbQueriesSuit extends GpuSuit {
     }
 
     val loFilterQty1 = new GpuFilteredPartition[(Int, Int, Int, Int), Int](openCLContext,
-      201, 3, ComparisonOperation.>=, 26, 1<< 25)
+      201, 3, ComparisonOperation.>=, 26, 1 << 25)
 
     measureTime("loFilterQty1 filter") {
       loFilterQty1.filter(loRaw)
@@ -478,13 +479,13 @@ class HandWrittenGpuSsbQueriesSuit extends GpuSuit {
 
     /*__________________________ d_datekey. d_year _____________________________*/
 
-    val ddatePaths = Array("/home/fathi/workspace/gpudb/database/SSB/scale-10/DDATE0"
-      , "/home/fathi/workspace/gpudb/database/SSB/scale-10/DDATE4")
-    val dDateRaw = new GpuPartition[(Int, Int)](openCLContext, 3000)
-
-    measureTime("date load") {
-      dDateRaw.fillFromFiles(ddatePaths)
-    }
+//    val ddatePaths = Array("/home/fathi/workspace/gpudb/database/SSB/scale-10/DDATE0"
+//      , "/home/fathi/workspace/gpudb/database/SSB/scale-10/DDATE4")
+//    val dDateRaw = new GpuPartition[(Int, Int)](openCLContext, 3000)
+//
+//    measureTime("date load") {
+//      dDateRaw.fillFromFiles(ddatePaths)
+//    }
 
     /*____________________________________ supkey, s_region ________________________*/
     val supplierPaths = Array(
@@ -496,107 +497,132 @@ class HandWrittenGpuSsbQueriesSuit extends GpuSuit {
       supplierRaw.fillFromFiles(supplierPaths)
     }
 
-    /*____________________________________ revenue,date,partkey,supkey ________________________*/
-    val lineOrderPaths = Array(
-      "/home/fathi/workspace/gpudb/database/SSB/scale-10/LINEORDER12",
-      "/home/fathi/workspace/gpudb/database/SSB/scale-10/LINEORDER5",
-      "/home/fathi/workspace/gpudb/database/SSB/scale-10/LINEORDER3",
-      "/home/fathi/workspace/gpudb/database/SSB/scale-10/LINEORDER4")
-    val loRaw = new GpuPartition[(Int, Int, Int, Int)](openCLContext, DEFAULT_CAPACITY)
-
-    measureTime("lineorder load") {
-      loRaw.fillFromFiles(lineOrderPaths)
+    (0 until supplierRaw.size).foreach{ i =>
+      if (i % 100 == 0) println(f"supplierRaw($i)=${supplierRaw(i)}")
     }
 
-    /*__________________________ key. brand, category _____________________________*/
-    val partPaths = Array("/home/fathi/workspace/gpudb/database/SSB/scale-10/PART0"
-      , "/home/fathi/workspace/gpudb/database/SSB/scale-10/PART4"
-      , "/home/fathi/workspace/gpudb/database/SSB/scale-10/PART3")
-
-    val partsRaw = new GpuPartition[(Int, String, String)](openCLContext, 1 << 20)
-
-    measureTime("parts load") {
-      partsRaw.fillFromFiles(partPaths)
-    }
+//    /*____________________________________ revenue,date,partkey,supkey ________________________*/
+//    val lineOrderPaths = Array(
+//      "/home/fathi/workspace/gpudb/database/SSB/scale-10/LINEORDER12",
+//      "/home/fathi/workspace/gpudb/database/SSB/scale-10/LINEORDER5",
+//      "/home/fathi/workspace/gpudb/database/SSB/scale-10/LINEORDER3",
+//      "/home/fathi/workspace/gpudb/database/SSB/scale-10/LINEORDER4")
+//    val loRaw = new GpuPartition[(Int, Int, Int, Int)](openCLContext, DEFAULT_CAPACITY)
+//
+//    measureTime("lineorder load") {
+//      loRaw.fillFromFiles(lineOrderPaths)
+//    }
+//
+//    /*__________________________ key. brand, category _____________________________*/
+//    val partPaths = Array("/home/fathi/workspace/gpudb/database/SSB/scale-10/PART0"
+//      , "/home/fathi/workspace/gpudb/database/SSB/scale-10/PART4"
+//      , "/home/fathi/workspace/gpudb/database/SSB/scale-10/PART3")
+//
+//    val partsRaw = new GpuPartition[(Int, String, String)](openCLContext, 1 << 20)
+//
+//    measureTime("parts load") {
+//      partsRaw.fillFromFiles(partPaths)
+//    }
 
     val supplierFilter = new GpuFilteredPartition[(Int, String), String](openCLContext,
-      21001, 1, ComparisonOperation.==, "AMERICA", 1 << 15)
+      21001, 1, ComparisonOperation.==, "AMERICA\u0000", 1 << 13)
 
     measureTime("supplier filter") {
       supplierFilter.filter(supplierRaw)
     }
 
-    /*____________________________________ supkey ________________________*/
-    val supplierProjection = new GpuProjectionPartition[Tuple1[Int], (Int, String)](
-    openCLContext, supplierFilter, Array(0), 2000)
-
-    measureTime("supplier projection") {
-      supplierProjection.project()
+    (0 until supplierFilter.size).foreach{ i =>
+      if (i % 100 == 0) println(f"supplierFilter($i)=${supplierFilter(i)}")
     }
 
-    /*______________________________ revenue,date,partkey,supkey, d_year____________________*/
-    val loDateJoinPartition = new GpuJoinPartition[
-      (Int, Int, Int, Int, Int), (Int, Int, Int, Int), (Int, Int), Int](openCLContext,
-        loRaw, dDateRaw, 1, 0, DEFAULT_CAPACITY)
-
-    measureTime("join on date") {
-      loDateJoinPartition.join()
-    }
-
-    /*______________________________ revenue,partkey,supkey, d_year____________________*/
-    val loDateProjection = new GpuProjectionPartition[(Int, Int, Int, Int),
-      (Int, Int, Int, Int, Int)](
-        openCLContext, loDateJoinPartition, Array(0, 2, 3, 4), DEFAULT_CAPACITY)
-
-    measureTime("projection after join with date"){
-      loDateProjection.project()
-    }
-
-    /*______________________________ revenue,date,partkey,supkey, d_year, _________________*/
-    val loSupplierJoin = new GpuJoinPartition[
-      (Int, Int, Int, Int, Int), (Int, Int, Int, Int), Tuple1[Int], Int](
-    openCLContext, loDateProjection, supplierProjection, 3, 0, 1 << 15)
-
-    measureTime("join on supplier") {
-      loSupplierJoin.join()
-    }
-
-    /*______________________________ revenue,date,partkey, d_year __________________*/
-    val loSupplierProjection = new GpuProjectionPartition[(Int, Int, Int, Int),
-      (Int, Int, Int, Int, Int)](
-      openCLContext, loSupplierJoin, Array(0, 1, 2, 4), DEFAULT_CAPACITY)
-
-    measureTime("projection after join with supplier"){
-      loSupplierProjection.project()
-    }
-
-    /*__________________________ key. brand, category _____________________________*/
-    val partsFilter = new GpuFilteredPartition[(Int, String, String), String](openCLContext,
-      21005, 2, ComparisonOperation.==, "MFGR#12", DEFAULT_CAPACITY)
-
-    measureTime("parts filter") {
-      partsFilter.filter(partsRaw)
-    }
-
-//    /*__________________________ key. brand _____________________________*/
-//    val partsProjection = new GpuProjectionPartition [(Int, String), (Int, String, String)]
-//    (openCLContext, partsFilter, Array(0, 1), DEFAULT_CAPACITY)
+//    /*____________________________________ supkey ________________________*/
+//    val supplierProjection = new GpuProjectionPartition[Tuple1[Int], (Int, String)](
+//    openCLContext, supplierFilter, Array(0), 1 << 13)
+//
+//    measureTime("supplier projection") {
+//      supplierProjection.project()
+//    }
+//
+//    (0 until supplierProjection.size).foreach{ i =>
+//      if (i % 100 == 0) println(f"supplierProjection($i)=${supplierFilter(i)}")
+//    }
+//
+//    /*______________________________ revenue,date,partkey,supkey, d_year____________________*/
+//    val loDateJoinPartition = new GpuJoinPartition[
+//      (Int, Int, Int, Int, Int), (Int, Int, Int, Int), (Int, Int), Int](openCLContext,
+//        loRaw, dDateRaw, 1, 0, DEFAULT_CAPACITY)
+//
+//    measureTime("join on date") {
+//      loDateJoinPartition.join()
+//    }
+//
+//    /*______________________________ revenue,partkey,supkey, d_year____________________*/
+//    val loDateProjection = new GpuProjectionPartition[(Int, Int, Int, Int),
+//      (Int, Int, Int, Int, Int)](
+//        openCLContext, loDateJoinPartition, Array(0, 2, 3, 4), DEFAULT_CAPACITY)
+//
+//    measureTime("projection after join with date"){
+//      loDateProjection.project()
+//    }
+//
+//    /*______________________________ revenue,partkey,supkey, d_year, _________________*/
+//    val loSupplierJoin = new GpuJoinPartition[
+//      (Int, Int, Int, Int), (Int, Int, Int, Int), Tuple1[Int], Int](
+//    openCLContext, loDateProjection, supplierProjection, 2, 0, 1 << 19)
+//
+//    measureTime("join on supplier") {
+//      loSupplierJoin.join()
+//    }
+//
+//    /*______________________________ revenue, partkey, d_year __________________*/
+//    val loSupplierProjection = new GpuProjectionPartition[(Int, Int, Int),
+//      (Int, Int, Int, Int)](
+//      openCLContext, loSupplierJoin, Array(0, 1, 3), DEFAULT_CAPACITY)
+//
+//    measureTime("projection after join with supplier"){
+//      loSupplierProjection.project()
+//    }
+//
+//    /*__________________________ key. brand, category _____________________________*/
+//    val partsFilter = new GpuFilteredPartition[(Int, String, String), String](openCLContext,
+//      21005, 2, ComparisonOperation.==, "MFGR#12", 1 << 15)
 //
 //    measureTime("parts filter") {
+//      partsFilter.filter(partsRaw)
+//    }
+//
+//    /*__________________________ key. brand _____________________________*/
+//    val partsProjection = new GpuProjectionPartition [(Int, String), (Int, String, String)](
+//    openCLContext, partsFilter, Array(0, 1), 1 << 15)
+//
+//    measureTime("parts projection") {
 //      partsProjection.project()
 //    }
-
-    //    val loPartJoin = new GpuJoinPartition[
-//      (Int, Int, Int, Int, Int, String, String, String), (Int, Int, Int, Int, Int, String),
-//      (Int, String, String), Int](openCLContext,
-//        loSupplierJoin, partsFilter, 2, 0, DEFAULT_CAPACITY)
+//
+//    /*______________________________ revenue, partkey, d_year, brand __________________*/
+//    val loPartJoin = new GpuJoinPartition[
+//      (Int, Int, Int, String), (Int, Int, Int), (Int, String), Int](openCLContext,
+//        loSupplierProjection, partsProjection, 2, 0, 1 << 19)
 //
 //    measureTime("join on parts") {
 //      loPartJoin.join()
 //    }
 //
-//    val yearColumn = new MathExp(MathOp.NOOP, 1, null, null, MathOperationType.column, 4)
-//    val brandColumn = new MathExp(MathOp.NOOP, 1, null, null, MathOperationType.column, 6)
+//    (0 until 10).foreach{ i => println(f"loPartJoin($i)=${loPartJoin(i)}") }
+//
+//    /*______________________________ revenue, d_year, brand __________________*/
+//    val loPartProjection = new GpuProjectionPartition[(Int, Int, String),
+//      (Int, Int, Int, String)](
+//        openCLContext, loPartJoin, Array(0, 2, 3), DEFAULT_CAPACITY)
+//
+//    measureTime("projection after join with parts"){
+//      loPartProjection.project()
+//    }
+//
+//    (0 until 10).foreach{ i => println(f"loPartProjected($i)=${loPartProjection(i)}") }
+//
+//    val yearColumn = new MathExp(MathOp.NOOP, 1, null, null, MathOperationType.column, 1)
+//    val brandColumn = new MathExp(MathOp.NOOP, 1, null, null, MathOperationType.column, 2)
 //    val revenueColumn = new MathExp(MathOp.NOOP, 1, null, null, MathOperationType.column, 0)
 //
 //    val yearGB = new AggregationExp(AggregationOperation.groupBy, yearColumn)
@@ -604,21 +630,21 @@ class HandWrittenGpuSsbQueriesSuit extends GpuSuit {
 //    val revenueSum = new AggregationExp(AggregationOperation.sum, revenueColumn)
 //
 //    val aggregatePartition = new GpuAggregationPartition[(Float, Int, String),
-//      (Int, Int, Int, Int, Int, String, String, String)](openCLContext,
-//        loPartJoin, Array(revenueSum, yearGB, brandGB), DEFAULT_CAPACITY)
+//      (Int, Int, String)](openCLContext,
+//        loPartProjection, Array(revenueSum, yearGB, brandGB), 1 << 9)
 //
 //    measureTime("aggregation") {
 //      aggregatePartition.aggregate()
 //    }
-
-    val endTime = System.nanoTime()
-    val totalTime = endTime - startTime
-    println("EXPERIMENT: total time = %,15d".format(totalTime))
-    println("EXPERIMENT: Disk Read = %,15d".format(openCLContext.diskReadTime))
-    println("EXPERIMENT: PCI transfer time = %,15d".format(openCLContext.pciTransferTime))
-    println("EXPERIMENT: PCI transfer byte = %,15d".format(openCLContext.pciTransferBytes))
-    println("EXPERIMENT: ===================================")
-    openCLContext.resetMetrics
+//
+//    val endTime = System.nanoTime()
+//    val totalTime = endTime - startTime
+//    println("EXPERIMENT: total time = %,15d".format(totalTime))
+//    println("EXPERIMENT: Disk Read = %,15d".format(openCLContext.diskReadTime))
+//    println("EXPERIMENT: PCI transfer time = %,15d".format(openCLContext.pciTransferTime))
+//    println("EXPERIMENT: PCI transfer byte = %,15d".format(openCLContext.pciTransferBytes))
+//    println("EXPERIMENT: ===================================")
+//    openCLContext.resetMetrics
 
   }
 
@@ -739,176 +765,261 @@ class HandWrittenGpuSsbQueriesSuit extends GpuSuit {
     //    group by d_year,p_brand1
     //    order by d_year,p_brand1
 
-//
-//    /*__________________________ d_datekey. d_year _____________________________*/
-//
-//    val ddatePaths = Array("/home/fathi/workspace/gpudb/database/SSB/scale-10/DDATE0"
-//      , "/home/fathi/workspace/gpudb/database/SSB/scale-10/DDATE4")
-//    val dDateRaw = sc.fromColumnarFiles[(Int, Int)](ddatePaths, 1000, 1)
-//
-//
-//    dDateRaw.cache()
-//    dDateRaw.count()
-//
-//    /*____________________________________ supkey, s_region ________________________*/
-//    val supplierPaths = Array(
-//      "/home/fathi/workspace/gpudb/database/SSB/scale-10/SUPPLIER0",
-//      "/home/fathi/workspace/gpudb/database/SSB/scale-10/SUPPLIER5")
-//    val supplierRaw = sc.fromColumnarFiles[(Int, String)](supplierPaths,
-//      DEFAULT_CAPACITY, 1)
-//
-//    supplierRaw.cache()
-//    supplierRaw.count()
-//
-//    /*____________________________________ revenue,date,partkey,supkey ________________________*/
-//    val lineOrderPaths = Array(
-//      "/home/fathi/workspace/gpudb/database/SSB/scale-10/LINEORDER12",
-//      "/home/fathi/workspace/gpudb/database/SSB/scale-10/LINEORDER5",
-//      "/home/fathi/workspace/gpudb/database/SSB/scale-10/LINEORDER3",
-//      "/home/fathi/workspace/gpudb/database/SSB/scale-10/LINEORDER4")
-//    val loRaw = sc.fromColumnarFiles[(Int, Int, Int, Int)](lineOrderPaths, DEFAULT_CAPACITY)
-//
-//    loRaw.cache()
-//    loRaw.count()
-//
-//    /*__________________________ key. brand, category _____________________________*/
-//    val partPaths = Array("/home/fathi/workspace/gpudb/database/SSB/scale-10/PART0"
-//      , "/home/fathi/workspace/gpudb/database/SSB/scale-10/PART4")
-//
-//    val partsRaw = sc.fromColumnarFiles[(Int, String)](partPaths, DEFAULT_CAPACITY)
-//
-//    partsRaw.cache()
-//    partsRaw.count()
-//
-//    (1 to ITERATIONS).map { iterationCount =>
-//
-//      val loDateJoinPartition = new GpuJoinPartition[
-//        (Int, Int, Int, Int, Int), (Int, Int, Int, Int), (Int, Int), Int](
-//          loRaw, dDateRaw, 2, 0, DEFAULT_CAPACITY)
-//
-//      val supplierFilter = new GpuFilteredPartition[(Int, String), String](
-//        supplierRaw, 1, ComparisonOperation.==, "EUROPE", DEFAULT_CAPACITY)
-//
-//
-//      val loSupplierJoin = new GpuJoinPartition[
-//        (Int, Int, Int, Int, Int, String), (Int, Int, Int, Int, Int), (Int, String), Int](
-//          loDateJoinPartition, supplierFilter, 3, 0, DEFAULT_CAPACITY)
-//
-//      val partsFilter = new GpuFilteredPartition[(Int, String), String](
-//        partsRaw, 2, ComparisonOperation.==, "MFGR#2239", DEFAULT_CAPACITY)
-//
-//      val loPartJoin = new GpuJoinPartition[
-//        (Int, Int, Int, Int, Int, String, String), (Int, Int, Int, Int, Int, String),
-//        (Int, String), Int](
-//          loSupplierJoin, partsFilter, 2, 0, DEFAULT_CAPACITY)
-//
-//      val yearColumn = new MathExp(MathOp.NOOP, 1, null, null, MathOperationType.column, 4)
-//      val brandColumn = new MathExp(MathOp.NOOP, 1, null, null, MathOperationType.column, 6)
-//      val revenueColumn = new MathExp(MathOp.NOOP, 1, null, null, MathOperationType.column, 0)
-//
-//      val yearGB = new AggregationExp(AggregationOperation.groupBy, yearColumn)
-//      val brandGB = new AggregationExp(AggregationOperation.groupBy, brandColumn)
-//      val revenueSum = new AggregationExp(AggregationOperation.sum, revenueColumn)
-//
-//      val aggregatePartition = new GpuAggregationPartition[(Float, Int, String),
-//        (Int, Int, Int, Int, Int, String, String)](
-//          loPartJoin, Array(revenueSum, yearGB, brandGB), DEFAULT_CAPACITY)
-//
-//
-//      val startComputationTimeStamp = System.nanoTime()
-//      aggregatePartition.foreachPartition {
-//        p => Unit
-//      }
-//      val endComputationTimeStamp = System.nanoTime()
-//
-//      val execTime = endComputationTimeStamp - startComputationTimeStamp
-//      println(f"[PROFILING RESULTS]: ${iterationCount},ssb_2_3,${execTime},NA,${SCALE_FACTOR},SparkGPU")
-//      if (iterationCount == 1) {
-//
-//
-//        println(f"[RESULTS]: loDateJoinPartition.count = ${loDateJoinPartition.count}")
-//        println(f"[RESULTS]: supplierFilter.count = ${supplierFilter.count}")
-//        println(f"[RESULTS]: loSupplierJoin.count = ${loSupplierJoin.count}")
-//        println(f"[RESULTS]: partsFilter.count = ${partsFilter.count}")
-//        println(f"[RESULTS]: loPartJoin.count = ${loPartJoin.count}")
-//        println(f"[RESULTS]: aggregatePartition.count = ${aggregatePartition.count}")
-//
-//        println(f"[RESULTS]: loDateJoinPartition.count = ${loDateJoinPartition.count}")
-//        println(f"[RESULTS]: supplierFilter.count = ${supplierFilter.count}")
-//        println(f"[RESULTS]: loSupplierJoin.count = ${loSupplierJoin.count}")
-//        println(f"[RESULTS]: partsFilter.count = ${partsFilter.count}")
-//        println(f"[RESULTS]: loPartJoin.count = ${loPartJoin.count}")
-//        println(f"[RESULTS]: aggregatePartition.count = ${aggregatePartition.count}")
-//
-//        println(f"lo join date results ${flattenResults(loDateJoinPartition.collect()).size}")
-//        flattenResults(loDateJoinPartition.collect()).foreach(r => println(f"[RESULTS]: loDateJoinPartition${r}"))
-//        flattenResults(supplierFilter.collect()).foreach(r => println(f"[RESULTS]: supplierFilte${r}"))
-//        flattenResults(loSupplierJoin.collect()).foreach(r => println(f"[RESULTS]: loSupplierJoi${r}"))
-//        flattenResults(partsFilter.collect()).foreach(r => println(f"[RESULTS]: partsFilter.c${r}"))
-//        flattenResults(loPartJoin.collect()).foreach(r => println(f"[RESULTS]: loPartJoin.co${r}"))
-//        flattenResults(aggregatePartition.collect()).foreach(r => println(f"[RESULTS]: aggregatePartition.${r}"))
-//      }
-//
-//      println("[DEBUGGING]: Unpersisting all intermediate RDDS ...")
-//      loDateJoinPartition.unpersist(true)
-//      supplierFilter.unpersist(true)
-//      loSupplierJoin.unpersist(true)
-//      partsFilter.unpersist(true)
-//      loPartJoin.unpersist(true)
-//      aggregatePartition.unpersist(true)
-//      println("[DEBUGGING]: ... finished unpersisting all intermediate RDDS")
-//
-//    }
+    //
+    //    /*__________________________ d_datekey. d_year _____________________________*/
+    //
+    //    val ddatePaths = Array("/home/fathi/workspace/gpudb/database/SSB/scale-10/DDATE0"
+    //      , "/home/fathi/workspace/gpudb/database/SSB/scale-10/DDATE4")
+    //    val dDateRaw = sc.fromColumnarFiles[(Int, Int)](ddatePaths, 1000, 1)
+    //
+    //
+    //    dDateRaw.cache()
+    //    dDateRaw.count()
+    //
+    //    /*____________________________________ supkey, s_region ________________________*/
+    //    val supplierPaths = Array(
+    //      "/home/fathi/workspace/gpudb/database/SSB/scale-10/SUPPLIER0",
+    //      "/home/fathi/workspace/gpudb/database/SSB/scale-10/SUPPLIER5")
+    //    val supplierRaw = sc.fromColumnarFiles[(Int, String)](supplierPaths,
+    //      DEFAULT_CAPACITY, 1)
+    //
+    //    supplierRaw.cache()
+    //    supplierRaw.count()
+    //
+    //    /*____________________________________ revenue,date,partkey,supkey ________________________*/
+    //    val lineOrderPaths = Array(
+    //      "/home/fathi/workspace/gpudb/database/SSB/scale-10/LINEORDER12",
+    //      "/home/fathi/workspace/gpudb/database/SSB/scale-10/LINEORDER5",
+    //      "/home/fathi/workspace/gpudb/database/SSB/scale-10/LINEORDER3",
+    //      "/home/fathi/workspace/gpudb/database/SSB/scale-10/LINEORDER4")
+    //    val loRaw = sc.fromColumnarFiles[(Int, Int, Int, Int)](lineOrderPaths, DEFAULT_CAPACITY)
+    //
+    //    loRaw.cache()
+    //    loRaw.count()
+    //
+    //    /*__________________________ key. brand, category _____________________________*/
+    //    val partPaths = Array("/home/fathi/workspace/gpudb/database/SSB/scale-10/PART0"
+    //      , "/home/fathi/workspace/gpudb/database/SSB/scale-10/PART4")
+    //
+    //    val partsRaw = sc.fromColumnarFiles[(Int, String)](partPaths, DEFAULT_CAPACITY)
+    //
+    //    partsRaw.cache()
+    //    partsRaw.count()
+    //
+    //    (1 to ITERATIONS).map { iterationCount =>
+    //
+    //      val loDateJoinPartition = new GpuJoinPartition[
+    //        (Int, Int, Int, Int, Int), (Int, Int, Int, Int), (Int, Int), Int](
+    //          loRaw, dDateRaw, 2, 0, DEFAULT_CAPACITY)
+    //
+    //      val supplierFilter = new GpuFilteredPartition[(Int, String), String](
+    //        supplierRaw, 1, ComparisonOperation.==, "EUROPE", DEFAULT_CAPACITY)
+    //
+    //
+    //      val loSupplierJoin = new GpuJoinPartition[
+    //        (Int, Int, Int, Int, Int, String), (Int, Int, Int, Int, Int), (Int, String), Int](
+    //          loDateJoinPartition, supplierFilter, 3, 0, DEFAULT_CAPACITY)
+    //
+    //      val partsFilter = new GpuFilteredPartition[(Int, String), String](
+    //        partsRaw, 2, ComparisonOperation.==, "MFGR#2239", DEFAULT_CAPACITY)
+    //
+    //      val loPartJoin = new GpuJoinPartition[
+    //        (Int, Int, Int, Int, Int, String, String), (Int, Int, Int, Int, Int, String),
+    //        (Int, String), Int](
+    //          loSupplierJoin, partsFilter, 2, 0, DEFAULT_CAPACITY)
+    //
+    //      val yearColumn = new MathExp(MathOp.NOOP, 1, null, null, MathOperationType.column, 4)
+    //      val brandColumn = new MathExp(MathOp.NOOP, 1, null, null, MathOperationType.column, 6)
+    //      val revenueColumn = new MathExp(MathOp.NOOP, 1, null, null, MathOperationType.column, 0)
+    //
+    //      val yearGB = new AggregationExp(AggregationOperation.groupBy, yearColumn)
+    //      val brandGB = new AggregationExp(AggregationOperation.groupBy, brandColumn)
+    //      val revenueSum = new AggregationExp(AggregationOperation.sum, revenueColumn)
+    //
+    //      val aggregatePartition = new GpuAggregationPartition[(Float, Int, String),
+    //        (Int, Int, Int, Int, Int, String, String)](
+    //          loPartJoin, Array(revenueSum, yearGB, brandGB), DEFAULT_CAPACITY)
+    //
+    //
+    //      val startComputationTimeStamp = System.nanoTime()
+    //      aggregatePartition.foreachPartition {
+    //        p => Unit
+    //      }
+    //      val endComputationTimeStamp = System.nanoTime()
+    //
+    //      val execTime = endComputationTimeStamp - startComputationTimeStamp
+    //      println(f"[PROFILING RESULTS]: ${iterationCount},ssb_2_3,${execTime},NA,${SCALE_FACTOR},SparkGPU")
+    //      if (iterationCount == 1) {
+    //
+    //
+    //        println(f"[RESULTS]: loDateJoinPartition.count = ${loDateJoinPartition.count}")
+    //        println(f"[RESULTS]: supplierFilter.count = ${supplierFilter.count}")
+    //        println(f"[RESULTS]: loSupplierJoin.count = ${loSupplierJoin.count}")
+    //        println(f"[RESULTS]: partsFilter.count = ${partsFilter.count}")
+    //        println(f"[RESULTS]: loPartJoin.count = ${loPartJoin.count}")
+    //        println(f"[RESULTS]: aggregatePartition.count = ${aggregatePartition.count}")
+    //
+    //        println(f"[RESULTS]: loDateJoinPartition.count = ${loDateJoinPartition.count}")
+    //        println(f"[RESULTS]: supplierFilter.count = ${supplierFilter.count}")
+    //        println(f"[RESULTS]: loSupplierJoin.count = ${loSupplierJoin.count}")
+    //        println(f"[RESULTS]: partsFilter.count = ${partsFilter.count}")
+    //        println(f"[RESULTS]: loPartJoin.count = ${loPartJoin.count}")
+    //        println(f"[RESULTS]: aggregatePartition.count = ${aggregatePartition.count}")
+    //
+    //        println(f"lo join date results ${flattenResults(loDateJoinPartition.collect()).size}")
+    //        flattenResults(loDateJoinPartition.collect()).foreach(r => println(f"[RESULTS]: loDateJoinPartition${r}"))
+    //        flattenResults(supplierFilter.collect()).foreach(r => println(f"[RESULTS]: supplierFilte${r}"))
+    //        flattenResults(loSupplierJoin.collect()).foreach(r => println(f"[RESULTS]: loSupplierJoi${r}"))
+    //        flattenResults(partsFilter.collect()).foreach(r => println(f"[RESULTS]: partsFilter.c${r}"))
+    //        flattenResults(loPartJoin.collect()).foreach(r => println(f"[RESULTS]: loPartJoin.co${r}"))
+    //        flattenResults(aggregatePartition.collect()).foreach(r => println(f"[RESULTS]: aggregatePartition.${r}"))
+    //      }
+    //
+    //      println("[DEBUGGING]: Unpersisting all intermediate RDDS ...")
+    //      loDateJoinPartition.unpersist(true)
+    //      supplierFilter.unpersist(true)
+    //      loSupplierJoin.unpersist(true)
+    //      partsFilter.unpersist(true)
+    //      loPartJoin.unpersist(true)
+    //      aggregatePartition.unpersist(true)
+    //      println("[DEBUGGING]: ... finished unpersisting all intermediate RDDS")
+    //
+    //    }
   }
 
-  ignore("collect on large data test") {
-    /*__________________________ d_datekey. d_year _____________________________*/
+  ignore("SSB_q3_1 test") {
 
-//    val ddatePaths = Array("/home/fathi/workspace/gpudb/database/SSB/scale-10/DDATE0"
-//      , "/home/fathi/workspace/gpudb/database/SSB/scale-10/DDATE4")
-//    val dDateRaw = sc.fromColumnarFiles[(Int, Int)](ddatePaths, 639, 1)
-//
-//
-//    dDateRaw.cache()
-//    println(f"dDateRaw.count()=${dDateRaw.count()}")
-//    val results = flattenResults[(Int, Int)](dDateRaw.collect)
-//
-//    val supplierPaths = Array(
-//      "/home/fathi/workspace/gpudb/database/SSB/scale-10/SUPPLIER0",
-//      "/home/fathi/workspace/gpudb/database/SSB/scale-10/SUPPLIER5")
-//    val supplierRaw: GpuRDD[(Int, String)] = sc.fromColumnarFiles[(Int, String)](supplierPaths,
-//      1000, 1)
-//
-//    supplierRaw.cache()
-//    println(f"supplierRaw.count()=${supplierRaw.count()}")
-//
-//
-//    val results2 = flattenResults[(Int, String)](supplierRaw.collect)
-//
-//    results.take(100).foreach(x => println(x))
-//    results2.take(100).foreach(x => println(x))
-//    println(f"results.size=${results.size}")
-//    println(f"results2.size=${results2.size}")
-//  }
-//
-//  /**
-//   *
-//   */
-//  ignore("collect on String on large data test") {
-//    /*__________________________ d_datekey. d_year _____________________________*/
-//
-//    val ddatePaths = Array("/home/fathi/workspace/gpudb/database/SSB/scale-10/DDATE0"
-//      , "/home/fathi/workspace/gpudb/database/SSB/scale-10/DDATE1"
-//      , "/home/fathi/workspace/gpudb/database/SSB/scale-10/DDATE2")
-//    val dDateRaw = sc.fromColumnarFiles[(Int, String, String)](ddatePaths, 639, 1)
-//
-//
-//    dDateRaw.cache()
-//    println(f"dDateRaw.count()=${dDateRaw.count()}")
-//    val results = flattenResults[(Int, String, String)](dDateRaw.collect)
-//
-//    results.take(100).foreach(x => println(x))
-//    println(f"results.size=${results.size}")
+//    select c_nation,s_nation,d_year,sum(lo_revenue) as revenue
+//    from customer,lineorder,supplier,ddate
+//    where lo_custkey = c_custkey
+//    and lo_suppkey = s_suppkey
+//    and lo_orderdate = d_datekey
+//    and c_region = 'ASIA'
+//    and s_region = 'ASIA'
+//    and d_year >=1992 and d_year <= 1997
+//    group by c_nation,s_nation,d_year
+//    order by d_year asc,revenue desc;
+
+    //
+    //    /*__________________________ d_datekey. d_year _____________________________*/
+    //
+    //    val ddatePaths = Array("/home/fathi/workspace/gpudb/database/SSB/scale-10/DDATE0"
+    //      , "/home/fathi/workspace/gpudb/database/SSB/scale-10/DDATE4")
+    //    val dDateRaw = sc.fromColumnarFiles[(Int, Int)](ddatePaths, 1000, 1)
+    //
+    //
+    //    dDateRaw.cache()
+    //    dDateRaw.count()
+    //
+    //    /*____________________________________ supkey, s_region ________________________*/
+    //    val supplierPaths = Array(
+    //      "/home/fathi/workspace/gpudb/database/SSB/scale-10/SUPPLIER0",
+    //      "/home/fathi/workspace/gpudb/database/SSB/scale-10/SUPPLIER5")
+    //    val supplierRaw = sc.fromColumnarFiles[(Int, String)](supplierPaths,
+    //      DEFAULT_CAPACITY, 1)
+    //
+    //    supplierRaw.cache()
+    //    supplierRaw.count()
+    //
+    //    /*____________________________________ revenue,date,partkey,supkey ________________________*/
+    //    val lineOrderPaths = Array(
+    //      "/home/fathi/workspace/gpudb/database/SSB/scale-10/LINEORDER12",
+    //      "/home/fathi/workspace/gpudb/database/SSB/scale-10/LINEORDER5",
+    //      "/home/fathi/workspace/gpudb/database/SSB/scale-10/LINEORDER3",
+    //      "/home/fathi/workspace/gpudb/database/SSB/scale-10/LINEORDER4")
+    //    val loRaw = sc.fromColumnarFiles[(Int, Int, Int, Int)](lineOrderPaths, DEFAULT_CAPACITY)
+    //
+    //    loRaw.cache()
+    //    loRaw.count()
+    //
+    //    /*__________________________ key. brand, category _____________________________*/
+    //    val partPaths = Array("/home/fathi/workspace/gpudb/database/SSB/scale-10/PART0"
+    //      , "/home/fathi/workspace/gpudb/database/SSB/scale-10/PART4")
+    //
+    //    val partsRaw = sc.fromColumnarFiles[(Int, String)](partPaths, DEFAULT_CAPACITY)
+    //
+    //    partsRaw.cache()
+    //    partsRaw.count()
+    //
+    //    (1 to ITERATIONS).map { iterationCount =>
+    //
+    //      val loDateJoinPartition = new GpuJoinPartition[
+    //        (Int, Int, Int, Int, Int), (Int, Int, Int, Int), (Int, Int), Int](
+    //          loRaw, dDateRaw, 2, 0, DEFAULT_CAPACITY)
+    //
+    //      val supplierFilter = new GpuFilteredPartition[(Int, String), String](
+    //        supplierRaw, 1, ComparisonOperation.==, "EUROPE", DEFAULT_CAPACITY)
+    //
+    //
+    //      val loSupplierJoin = new GpuJoinPartition[
+    //        (Int, Int, Int, Int, Int, String), (Int, Int, Int, Int, Int), (Int, String), Int](
+    //          loDateJoinPartition, supplierFilter, 3, 0, DEFAULT_CAPACITY)
+    //
+    //      val partsFilter = new GpuFilteredPartition[(Int, String), String](
+    //        partsRaw, 2, ComparisonOperation.==, "MFGR#2239", DEFAULT_CAPACITY)
+    //
+    //      val loPartJoin = new GpuJoinPartition[
+    //        (Int, Int, Int, Int, Int, String, String), (Int, Int, Int, Int, Int, String),
+    //        (Int, String), Int](
+    //          loSupplierJoin, partsFilter, 2, 0, DEFAULT_CAPACITY)
+    //
+    //      val yearColumn = new MathExp(MathOp.NOOP, 1, null, null, MathOperationType.column, 4)
+    //      val brandColumn = new MathExp(MathOp.NOOP, 1, null, null, MathOperationType.column, 6)
+    //      val revenueColumn = new MathExp(MathOp.NOOP, 1, null, null, MathOperationType.column, 0)
+    //
+    //      val yearGB = new AggregationExp(AggregationOperation.groupBy, yearColumn)
+    //      val brandGB = new AggregationExp(AggregationOperation.groupBy, brandColumn)
+    //      val revenueSum = new AggregationExp(AggregationOperation.sum, revenueColumn)
+    //
+    //      val aggregatePartition = new GpuAggregationPartition[(Float, Int, String),
+    //        (Int, Int, Int, Int, Int, String, String)](
+    //          loPartJoin, Array(revenueSum, yearGB, brandGB), DEFAULT_CAPACITY)
+    //
+    //
+    //      val startComputationTimeStamp = System.nanoTime()
+    //      aggregatePartition.foreachPartition {
+    //        p => Unit
+    //      }
+    //      val endComputationTimeStamp = System.nanoTime()
+    //
+    //      val execTime = endComputationTimeStamp - startComputationTimeStamp
+    //      println(f"[PROFILING RESULTS]: ${iterationCount},ssb_2_3,${execTime},NA,${SCALE_FACTOR},SparkGPU")
+    //      if (iterationCount == 1) {
+    //
+    //
+    //        println(f"[RESULTS]: loDateJoinPartition.count = ${loDateJoinPartition.count}")
+    //        println(f"[RESULTS]: supplierFilter.count = ${supplierFilter.count}")
+    //        println(f"[RESULTS]: loSupplierJoin.count = ${loSupplierJoin.count}")
+    //        println(f"[RESULTS]: partsFilter.count = ${partsFilter.count}")
+    //        println(f"[RESULTS]: loPartJoin.count = ${loPartJoin.count}")
+    //        println(f"[RESULTS]: aggregatePartition.count = ${aggregatePartition.count}")
+    //
+    //        println(f"[RESULTS]: loDateJoinPartition.count = ${loDateJoinPartition.count}")
+    //        println(f"[RESULTS]: supplierFilter.count = ${supplierFilter.count}")
+    //        println(f"[RESULTS]: loSupplierJoin.count = ${loSupplierJoin.count}")
+    //        println(f"[RESULTS]: partsFilter.count = ${partsFilter.count}")
+    //        println(f"[RESULTS]: loPartJoin.count = ${loPartJoin.count}")
+    //        println(f"[RESULTS]: aggregatePartition.count = ${aggregatePartition.count}")
+    //
+    //        println(f"lo join date results ${flattenResults(loDateJoinPartition.collect()).size}")
+    //        flattenResults(loDateJoinPartition.collect()).foreach(r => println(f"[RESULTS]: loDateJoinPartition${r}"))
+    //        flattenResults(supplierFilter.collect()).foreach(r => println(f"[RESULTS]: supplierFilte${r}"))
+    //        flattenResults(loSupplierJoin.collect()).foreach(r => println(f"[RESULTS]: loSupplierJoi${r}"))
+    //        flattenResults(partsFilter.collect()).foreach(r => println(f"[RESULTS]: partsFilter.c${r}"))
+    //        flattenResults(loPartJoin.collect()).foreach(r => println(f"[RESULTS]: loPartJoin.co${r}"))
+    //        flattenResults(aggregatePartition.collect()).foreach(r => println(f"[RESULTS]: aggregatePartition.${r}"))
+    //      }
+    //
+    //      println("[DEBUGGING]: Unpersisting all intermediate RDDS ...")
+    //      loDateJoinPartition.unpersist(true)
+    //      supplierFilter.unpersist(true)
+    //      loSupplierJoin.unpersist(true)
+    //      partsFilter.unpersist(true)
+    //      loPartJoin.unpersist(true)
+    //      aggregatePartition.unpersist(true)
+    //      println("[DEBUGGING]: ... finished unpersisting all intermediate RDDS")
+    //
+    //    }
   }
 
 }
