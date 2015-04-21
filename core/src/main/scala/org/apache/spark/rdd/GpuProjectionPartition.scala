@@ -50,7 +50,7 @@ class GpuProjectionPartition[T <: Product : TypeTag, TP <: Product : TypeTag](co
       val typedIndices = projectColumnIndices.filter(parent.columnTypes(_).tpe =:= typeOf[Int])
       assert(typedIndices.length == colIndexes.length)
 
-        _intData.indices.zip(typedIndices).foreach { case (thisIndex, parentIndex) =>
+      _intData.indices.zip(typedIndices).foreach { case (thisIndex, parentIndex) =>
         _intData(thisIndex) = parent.intData(parent.toTypeAwareColumnIndex(parentIndex))
       }
     }
@@ -64,8 +64,6 @@ class GpuProjectionPartition[T <: Product : TypeTag, TP <: Product : TypeTag](co
       val typedIndices = projectColumnIndices.filter(parent.columnTypes(_).tpe =:= typeOf[Long])
       assert(typedIndices.length == colIndexes.length)
 
-      logInfo(f"typedIndices = ${typedIndices.mkString(",")}")
-      logInfo(f"colIndexes = ${colIndexes.mkString(",")}")
       _longData.indices.zip(typedIndices).foreach { case (thisIndex, parentIndex) =>
         _longData(thisIndex) = parent.longData(parent.toTypeAwareColumnIndex(parentIndex))
       }
@@ -78,12 +76,6 @@ class GpuProjectionPartition[T <: Product : TypeTag, TP <: Product : TypeTag](co
       val colIndexes = columnTypes.zipWithIndex.filter(_._1.tpe =:= TypeTag.Float.tpe).map(_._2)
       _floatData = new Array[FloatBuffer](colIndexes.length)
       val typedIndices = projectColumnIndices.filter(parent.columnTypes(_).tpe =:= typeOf[Float])
-
-      logInfo(f"parent.columnTypes = ${parent.columnTypes.mkString(",")}")
-      logInfo(f"this.columnTypes = ${columnTypes.mkString(",")}")
-      logInfo(f"typedIndices = ${typedIndices.mkString(",")}")
-      logInfo(f"colIndexes = ${colIndexes.mkString(",")}")
-
       assert(typedIndices.length == colIndexes.length)
 
       _floatData.indices.zip(typedIndices).foreach { case (thisIndex, parentIndex) =>
