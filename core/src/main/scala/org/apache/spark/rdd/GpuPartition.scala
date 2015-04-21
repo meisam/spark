@@ -436,6 +436,7 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
     })
 
     val resultTuple = values.length match {
+      case 1 => new Tuple1[Any](values(0)).asInstanceOf[T]
       case 2 => (values(0), values(1)).asInstanceOf[T]
       case 3 => (values(0), values(1), values(2)).asInstanceOf[T]
       case 4 => (values(0), values(1), values(2), values(3)).asInstanceOf[T]
