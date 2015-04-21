@@ -77,7 +77,7 @@ __kernel void genScanFilter_##assign_name##_string_##operation_name             
         for(size_t i = tid; i<tupleNum;i+=stride){                                           \
                 int con = 1;                                                                 \
                 for(int k = 0; k < MAX_SRING_SIZE; k++) {                                    \
-                    if (where[k] == 0) {                                                     \
+                    if (col[i * MAX_SRING_SIZE + k] == 0 && where[k] == 0) {                 \
                       break;                                                                 \
                     } else {                                                                 \
                         con = con && (col[i * MAX_SRING_SIZE + k] operation where[k]);       \
@@ -811,7 +811,10 @@ int gpu_strcmp_local(__local char *s1, __local char *s2, int len) {
     int res = 0;
 
     for(int i=0;i < len;i++) {
-        if(s1[i]<s2[i]) {
+        if((s1[i] == 0 ) && (s2[i] == 0)) {
+            res = 0;
+            break;
+        } else if(s1[i]<s2[i]) {
             res = -1;
             break;
         } else if(s1[i]>s2[i]) {
