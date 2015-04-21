@@ -160,6 +160,7 @@ class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLCon
     clSetKernelArg(kernel, 6, Sizeof.cl_mem, Pointer.to(result))
 
     debugGpuBuffer[V](result, outSize, "result before scan_other", false)
+    logInfo(f"globalSize = $globalSize, localSize=$localSize")
 
     clEnqueueNDRangeKernel(context.queue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
 
@@ -169,15 +170,16 @@ class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLCon
     assert(resultColData != null)
     deviceToHostCopy[V](result, resultColData, outSize, 0)
 
-    logInfo(f"resultColData.class = ${resultColData.getClass}")
+    val identity =     System.identityHashCode(resultColData)
+    logInfo(f"resultColData.class = ${resultColData.getClass} with identity=$identity")
     if (resultColData.isInstanceOf[ByteBuffer]) {
       val byteBuffer = resultColData.asInstanceOf[ByteBuffer]
-      logInfo(f"column($columnIndex) is char buffer = ${byteBuffer.toString}")
+      logInfo(f"column($columnIndex) is byte buffer = ${byteBuffer.toString}")
 
       val start = byteBuffer.position()
 
       val end = byteBuffer.limit()
-      val bytes = new Array[Byte](end -start)
+      val bytes = new Array[Byte](math.min(end -start, 500))
 
       byteBuffer.get(bytes)
 
@@ -186,7 +188,6 @@ class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLCon
       logInfo(f"resultColData = $str")
 
     }
-
 
     releaseCol(result)
     releaseCol(scanCol)
