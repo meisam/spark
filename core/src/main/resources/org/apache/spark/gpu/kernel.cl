@@ -852,7 +852,7 @@ void Comparator(
 )
 {
     int t;
-    char buf[32];
+    char buf[MAX_SRING_SIZE];
 
     if ((gpu_strcmp_local(keyA,keyB,keySize) == 1) == dir)
     {
