@@ -263,6 +263,10 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
           baseSize(colType)
         }
 
+        assert(baseSize(colType) == baseSizeInFile, {
+          f"baseSize($colType) != baseSizeInFile (${baseSize(colType)}, $baseSizeInFile})"
+        })
+
         assert(blockSize == totalTupleNum * baseSizeInFile, {
           f"blockSize != totalTupleNum * baseSize($colType) ($blockSize != $totalTupleNum * ${baseSizeInFile})"
         })
