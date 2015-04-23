@@ -152,6 +152,26 @@ class GpuFilteredPartitionSuit extends GpuSuit {
     validateResults[(Int, String)](expectedData.toArray, Array(gpuPartition))
   }
 
+  test("GpuFilteredPartition(Int, String) == more than local size test") {
+    val START = 1000
+    val LENGTH = 300
+    val testData: Array[(Int, String)] = (START until START + LENGTH).map(v => (v, f"STR_VAL$v")).toArray
+
+    val criterion = "STR_VAL%d".format(START + 5)
+
+    val parentPartition = new GpuPartition[(Int, String)](openCLContext, DEFAULT_CAPACITY)
+    parentPartition.fill(testData.toIterator)
+
+    val gpuPartition = new GpuFilteredPartition[(Int, String), String](openCLContext, 0,
+      1, ComparisonOperation.==, criterion, DEFAULT_CAPACITY)
+
+    gpuPartition.filter(parentPartition)
+
+    val expectedData = testData.filter(_._2 == criterion)
+
+    validateResults[(Int, String)](expectedData.toArray, Array(gpuPartition))
+  }
+
   test("kernel.genScanFilter_init_int_eq test") {
     val TEST_DATA_SIZE = 3 + (1 << 10) // TODO larger data sizes may saturate java heap
 

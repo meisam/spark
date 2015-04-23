@@ -324,6 +324,25 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
         } else if (colType.tpe =:= TypeTag.Char.tpe) {
           charData(toTypeAwareColumnIndex(colIndex)) = buffer.asCharBuffer
         } else if (isStringType(colType)) {
+          implicit def toCharIterator(byteBuffer: ByteBuffer): Iterator[Char] = {
+
+            val iterator = new Iterator[Char](){
+
+              val bb = byteBuffer
+              var location = -1
+
+              override def hasNext: Boolean = (location + 1)  < byteBuffer.limit
+
+              override def next(): Char = {
+                location += 1
+                byteBuffer.get(location).toChar
+              }
+            }
+
+            iterator
+          }
+
+          logInfo(f"Raw data load from columnar files($colIndex, $colType) ${buffer.mkString(",")}")
           stringData(toTypeAwareColumnIndex(colIndex)) = buffer
         } else {
           throw new NotImplementedError("Unknown type %s".format(colType))
@@ -889,13 +908,13 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
   def debugGpuBuffer[V: TypeTag](buffer: cl_mem, size: Int, msg: String, quiet: Boolean
   = true) {
     if (!quiet) {
-      val MAX_LENGTH = 500
+      val MAX_LENGTH = Int.MaxValue
       val usedSize = Math.min(size, MAX_LENGTH)
       if (isStringType[V]) {
         val tempBuffer = Array.ofDim[Byte](usedSize*MAX_STRING_SIZE)
         deviceToHostCopy[Byte](buffer, pointer[Byte](tempBuffer), usedSize*MAX_STRING_SIZE, 0)
         logInfo(s"${msg} (RAW)= ${tempBuffer.mkString(" ,")}")
-        logInfo(s"${msg} (CHR)= ${tempBuffer.map(i => i.toChar).mkString}")
+//        logInfo(s"${msg} (CHR)= ${tempBuffer.map(i => i.toChar).mkString}")
       } else {
         val mirror = ru.runtimeMirror(getClass.getClassLoader)
         implicit val xClassTag = ClassTag[V](mirror.runtimeClass(typeOf[V]))

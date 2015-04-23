@@ -159,8 +159,11 @@ class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLCon
     clSetKernelArg(kernel, 5, Sizeof.cl_mem, Pointer.to(gpuFilter))
     clSetKernelArg(kernel, 6, Sizeof.cl_mem, Pointer.to(result))
 
-    debugGpuBuffer[V](result, outSize, "result before scan_other", false)
-    logInfo(f"globalSize = $globalSize, localSize=$localSize")
+    debugGpuBuffer[V](scanCol, parent.size, "scanCol before scan_other", false)
+    debugGpuBuffer[Int](gpuPsum, globalSize, "gpuPsum before scan_other", false)
+    debugGpuBuffer[Int](gpuFilter, parent.size, "gpuFilter before scan_other", false)
+    debugGpuBuffer[V](result, outSize, s"result[${typeOf[V]}] before scan_other", false)
+    logInfo(f"sizes: global=$globalSize, local=$localSize, col=$colSize, this=$size, parent=${parent.size}")
 
     clEnqueueNDRangeKernel(context.queue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
 

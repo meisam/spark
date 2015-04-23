@@ -17,6 +17,9 @@
 
 package org.apache.spark.gpu
 
+import java.nio.ByteBuffer
+
+import org.apache.spark.Logging
 import org.apache.spark.rdd._
 
 import scala.language.existentials
@@ -92,7 +95,7 @@ import scala.language.existentials
 /**
  * A set of test cases that run SSB on Spark GPU
  */
-class HandWrittenGpuSsbQueriesSuit extends GpuSuit {
+class HandWrittenGpuSsbQueriesSuit extends GpuSuit with Logging{
 
   override def beforeAll() {
     super.beforeAll()
@@ -496,6 +499,27 @@ class HandWrittenGpuSsbQueriesSuit extends GpuSuit {
     measureTime("supplier load") {
       supplierRaw.fillFromFiles(supplierPaths)
     }
+    val t: ByteBuffer = supplierRaw.stringData(0)
+
+    implicit def toCharIterator(byteBuffer: ByteBuffer): Iterator[Char] = {
+
+      val iterator = new Iterator[Char](){
+
+        val bb = byteBuffer
+        var location = -1
+
+        override def hasNext: Boolean = (location + 1)  < byteBuffer.limit
+
+        override def next(): Char = {
+          location += 1
+          byteBuffer.get(location).toChar
+        }
+      }
+
+      iterator
+    }
+
+    logInfo(f"Raw supplier regions ${t.mkString}")
 
     (0 until supplierRaw.size).foreach{ i =>
       if (i % 100 == 0) println(f"supplierRaw($i)=${supplierRaw(i)}")
@@ -525,7 +549,7 @@ class HandWrittenGpuSsbQueriesSuit extends GpuSuit {
 //    }
 
     val supplierFilter = new GpuFilteredPartition[(Int, String), String](openCLContext,
-      21001, 1, ComparisonOperation.==, "AMERICA\u0000", 1 << 13)
+      21001, 1, ComparisonOperation.==, "AMERICA", 1 << 13)
 
     measureTime("supplier filter") {
       supplierFilter.filter(supplierRaw)
