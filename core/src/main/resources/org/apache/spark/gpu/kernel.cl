@@ -646,26 +646,16 @@ __kernel void join_dim_string(__global int *resPsum, __global char * dim
         , int attrSize, long num, __global int * filter, __global char * result) {
     size_t startIndex = get_global_id(0);
     size_t stride = get_global_size(0);
-    long localCount = resPsum[startIndex];
+    long localCount = resPsum[startIndex] * MAX_SRING_SIZE;
 
     for(size_t i = startIndex; i < num;i += stride) {
         int dimId = filter[i];
         if( dimId != 0){
-            int endOfStr = 0;
             int k = 0;
             for (k = 0; k < MAX_SRING_SIZE; ++k) {
-                char currentChar = dim[dimId + k - 1];
-                endOfStr = endOfStr || (currentChar == 0);
-                if (endOfStr) {
-                    result[localCount + k] =  0;
-                    break;
-                   // result[localCount + k] = 'Z';
-                } else {
-                    result[localCount + k] = dim[dimId + k - 1];
-                }
-
+                result[localCount + k] = dim[(dimId-1) * MAX_SRING_SIZE + k];
             }
-            localCount++;
+            localCount += MAX_SRING_SIZE;
         }
     }
 }
@@ -693,6 +683,24 @@ __kernel void join_fact_##column_type                                           
                 }                                                                               \
         }                                                                                       \
 }                                                                                               \
+
+__kernel void join_fact_string(__global int *resPsum, __global char * fact
+        , int attrSize, long  num, __global int * filter, __global char * result) {
+
+    size_t startIndex = get_global_id(0);
+    size_t stride = get_global_size(0);
+        long localCount = resPsum[startIndex] * MAX_SRING_SIZE;
+
+        for(size_t i=startIndex;i<num;i+=stride){
+                if(filter[i] != 0){
+                    int k = 0;
+                    for (k=0; k < MAX_SRING_SIZE; ++k) {
+                        result[localCount + k] = fact[i * MAX_SRING_SIZE + k];
+                    }
+                    localCount += MAX_SRING_SIZE;
+                }
+        }
+}
 
 declare_join_fact_kernel(int)
 declare_join_fact_kernel(long)
