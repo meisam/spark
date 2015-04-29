@@ -595,8 +595,13 @@ __kernel void build_groupby_key(__global char * content, __global long * colOffs
                  hkey = 1;
  
              } else if (gbType[j] == STRING) {
-                 for(int k = 0; k < gbSize[j]; k++)
-                     hkey ^= ( hkey << 5 ) + ( hkey >> 2 ) + content[offset + i * gbSize[j] + k];
+                 for(int k = 0; k < gbSize[j]; k++) {
+                     char c = content[offset + i * gbSize[j] + k];
+                     if (c == 0) {
+                         break;
+                     }
+                     hkey ^= ( hkey << 5 ) + ( hkey >> 2 ) + c;
+                }
  
              } else if (gbType[j] == INT){
                  for(int k = 0; k < gbSize[j]; k++) // gbSize[j] for int types should be 4 bytes
