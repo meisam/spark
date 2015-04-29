@@ -49,14 +49,14 @@ class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLCon
       clSetKernelArg(genScanKernel, 1, Sizeof.cl_long, Pointer.to(Array[Long](tupleNum)))
       // string types are represented as char* in C/OpenCL and should be treated differently
       if (isStringType[U]) {
-        debugGpuBuffer[String](gpuCol, tupleNum, "gpuCol before mem set to zero", false)
+        debugGpuBuffer[String](gpuCol, tupleNum, "gpuCol before mem set to zero")
         val conditionValueBuffer = new Array[Byte](MAX_STRING_SIZE)
         val length = Math.min(value.toString().length(), MAX_STRING_SIZE)
         val stringBytes = value.toString().getBytes(0, length, conditionValueBuffer, 0)
 
         val conditionValue = createReadBuffer[Byte](MAX_STRING_SIZE)
         hostToDeviceCopy[Byte](Pointer.to(conditionValueBuffer), conditionValue, MAX_STRING_SIZE)
-        debugGpuBuffer[String](conditionValue, 1, "conditionValue", false)
+        debugGpuBuffer[String](conditionValue, 1, "conditionValue")
         clSetKernelArg(genScanKernel, 2, Sizeof.cl_mem, Pointer.to(conditionValue))
       } else {
         clSetKernelArg(genScanKernel, 2, baseSize[U], pointer(toArray(value)))
@@ -76,8 +76,8 @@ class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLCon
       clSetKernelArg(countScanNumKernel, 2, Sizeof.cl_mem, Pointer.to(gpuCount))
       clEnqueueNDRangeKernel(context.queue, countScanNumKernel, 1, null, global_work_size, local_work_size, 0, null, null)
 
-      debugGpuBuffer[Int](gpuFilter, tupleNum, "gpuFilter after countScanNum", false)
-      debugGpuBuffer[Int](gpuCount, globalSize, "gpuCount after countScanNum", false)
+      debugGpuBuffer[Int](gpuFilter, tupleNum, "gpuFilter after countScanNum")
+      debugGpuBuffer[Int](gpuCount, globalSize, "gpuCount after countScanNum")
       scanImpl(gpuCount, globalSize, gpuPsum)
 
       val tmp1 = Array[Int](0)
@@ -159,15 +159,15 @@ class GpuFilteredPartition[T <: Product: TypeTag, U: TypeTag](context: OpenCLCon
     clSetKernelArg(kernel, 5, Sizeof.cl_mem, Pointer.to(gpuFilter))
     clSetKernelArg(kernel, 6, Sizeof.cl_mem, Pointer.to(result))
 
-    debugGpuBuffer[V](scanCol, parent.size, "scanCol before scan_other", false)
-    debugGpuBuffer[Int](gpuPsum, globalSize, "gpuPsum before scan_other", false)
-    debugGpuBuffer[Int](gpuFilter, parent.size, "gpuFilter before scan_other", false)
-    debugGpuBuffer[V](result, outSize, s"result[${typeOf[V]}] before scan_other", false)
+    debugGpuBuffer[V](scanCol, parent.size, "scanCol before scan_other")
+    debugGpuBuffer[Int](gpuPsum, globalSize, "gpuPsum before scan_other")
+    debugGpuBuffer[Int](gpuFilter, parent.size, "gpuFilter before scan_other")
+    debugGpuBuffer[V](result, outSize, s"result[${typeOf[V]}] before scan_other")
     logInfo(f"sizes: global=$globalSize, local=$localSize, col=$colSize, this=$size, parent=${parent.size}")
 
     clEnqueueNDRangeKernel(context.queue, kernel, 1, null, global_work_size, local_work_size, 0, null, null)
 
-    debugGpuBuffer[V](result, outSize, "result after scan_other", false)
+    debugGpuBuffer[V](result, outSize, "result after scan_other")
 
     val resultColData: Buffer = this.getColumn[V](columnIndex, true)
     assert(resultColData != null)
