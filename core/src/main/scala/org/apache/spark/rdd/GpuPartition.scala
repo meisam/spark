@@ -906,7 +906,7 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
   def debugGpuBuffer[V: TypeTag](buffer: cl_mem, size: Int, msg: String, quiet: Boolean
   = true) {
     if (!quiet) {
-      val MAX_LENGTH = Int.MaxValue
+      val MAX_LENGTH = 500
       val usedSize = Math.min(size, MAX_LENGTH)
       if (isStringType[V]) {
         val tempBuffer = Array.ofDim[Byte](usedSize*MAX_STRING_SIZE)
