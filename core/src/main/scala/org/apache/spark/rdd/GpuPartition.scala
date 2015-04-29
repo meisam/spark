@@ -416,13 +416,11 @@ class GpuPartition[T <: Product : TypeTag](context: OpenCLContext, val capacity:
     val offset = rowIndex * MAX_STRING_SIZE
     val sourceBuffer = stringData(typeAwareColumnIndex)
     val identity =     System.identityHashCode(sourceBuffer)
-    logInfo(f"identity of string column is $identity")
     sourceBuffer.position(offset)
     val reusedCharBuffer = new Array[Byte](MAX_STRING_SIZE)
     sourceBuffer.get(reusedCharBuffer)
-    val str = new String(reusedCharBuffer)
-    logInfo(f"getString(colIndex=$typeAwareColumnIndex, rowIndex=$rowIndex) = $str")
-    str.trim()
+    val str = new String(reusedCharBuffer.takeWhile(_ != 0))
+    str
   }
 
   /**
