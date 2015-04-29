@@ -632,7 +632,7 @@ class HandWrittenGpuSsbQueriesSuit extends GpuSuit with Logging{
     /*_______________________ revenue,supkey, d_year, brand __________________*/
     val loSupplierJoin = new GpuJoinPartition[(Int, Int, Int, String),
       (Int, Int, Int, String), Tuple1[Int], Int](
-        openCLContext, loPartProjection, supplierProjection, 1, 0, 1 << 22)
+        openCLContext, loPartProjection, supplierProjection, 1, 0, 1 << 19)
 
     measureTime("join on supplier") {
       loSupplierJoin.join()
@@ -642,7 +642,7 @@ class HandWrittenGpuSsbQueriesSuit extends GpuSuit with Logging{
     /*_______________________ revenue, d_year, brand __________________*/
     val loSupplierProjection = new GpuProjectionPartition[(Int, Int, String),
       (Int, Int, Int, String)](
-      openCLContext, loSupplierJoin, Array(0, 2, 3), DEFAULT_CAPACITY)
+      openCLContext, loSupplierJoin, Array(0, 2, 3), 1 << 19)
 
     measureTime("projection after join with supplier"){
       loSupplierProjection.project()
@@ -660,7 +660,7 @@ class HandWrittenGpuSsbQueriesSuit extends GpuSuit with Logging{
 
     val aggregatePartition = new GpuAggregationPartition[(Float, Int, String),
       (Int, Int, String)](openCLContext,
-        loSupplierProjection, Array(revenueSum, yearGB, brandGB), 1 << 22)
+        loSupplierProjection, Array(revenueSum, yearGB, brandGB), 1 << 15)
 
     measureTime("aggregation") {
       aggregatePartition.aggregate()
